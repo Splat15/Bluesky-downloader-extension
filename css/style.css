@@ -1,0 +1,63 @@
+.download-button-spacer-image {
+  position: absolute;
+  opacity: 0;
+}
+
+.download-button-spacer {
+  bottom: 10px;
+  right: 10px;
+  border-radius: 1000px;
+  border: none;
+  width: 28px;
+  height: 28px;
+  transition:
+    background-color 0.1s,
+    box-shadow 0.2s,
+    background-color 0.2s,
+    opacity 0.2s;
+}
+
+.download-button-spacer-hover {
+  box-shadow:
+    10px 10px 20px rgba(0, 0, 0, 0.32),
+    10px -10px 20px rgba(0, 0, 0, 0.32),
+    -10px 10px 20px rgba(0, 0, 0, 0.32),
+    -10px -10px 20px rgba(0, 0, 0, 0.32);
+  background: rgba(0, 0, 0, 0.308);
+  opacity: 1 !important;
+}
+
+.download-button-spacer-image:hover {
+  background-color: rgba(100, 100, 100, 0.251) !important;
+}
+
+.download-button-spacer:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.download-button {
+  all: unset;
+
+  display: block;
+  border: none;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 1000px;
+}
+
+.download-icon {
+  width: 15px;
+  height: 15px;
+  margin: calc(50% - 7.5px);
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  transition: opacity 0.2s;
+}
+
+.download-progress {
+  width: 20px !important;
+  height: 20px !important;
+  margin: calc(50% - 10px) !important;
+}

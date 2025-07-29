@@ -1,0 +1,36 @@
+{
+  "manifest_version": 2,
+  "name": "Bluesky downloader",
+  "version": "1.0",
+  "description": "Bluesky downloader",
+  "icons": {
+    "32": "icons/32.png",
+    "48": "icons/48.png",
+    "96": "icons/96.png"
+  },
+  "permissions": ["<all_urls>", "storage"],
+  "browser_action": {
+    "default_icon": "icons/48.png",
+    "default_title": "Addon-Template",
+    "default_popup": "html/popup.html"
+  },
+  "background": {
+    "scripts": [
+      "lib/ffmpeg.min.js",
+      "lib/ffmpeg-core.js",
+      "js/video-downloader.js",
+      "js/background.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["lib/progressbar.min.js", "js/classes.js", "js/content.js"]
+    }
+  ],
+  "options_ui": {
+    "page": "html/options.html"
+  },
+  "web_accessible_resources": ["data/*", "lib/*", "icons/*"],
+  "content_security_policy": "script-src 'self' 'wasm-eval'; object-src 'self';"
+}
