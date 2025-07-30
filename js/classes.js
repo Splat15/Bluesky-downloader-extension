@@ -62,10 +62,7 @@ class NodeObserver {
             return this
       }
 
-      // Stops the node observer
-      /**
-       * Stops the **`NodeObserver`**
-       */
+      /** Stops the **`NodeObserver`** */
       Stop() {
             this.#observer.disconnect()
       }
@@ -73,9 +70,7 @@ class NodeObserver {
 
 
 // Download button
-/**
- * Creates a download button structure at the specified **`element`**.
- */
+/** Creates a download button structure at the specified **`element`**. */
 class Downloadbutton {
       static Icons = {
             Download: browser.runtime.getURL("../icons/download.svg"),
@@ -85,11 +80,14 @@ class Downloadbutton {
       static Image = 0
       static Video = 1
 
+      #mobileDevice = this.#detectMobile()
+
       #downloadButton = null
       #downloadIcon = null
       #downloadButtonDiv = null
       #progressCircle = null
       #progressCircleElem = null
+      #dropshadow
 
       #username
       #postID
@@ -101,7 +99,7 @@ class Downloadbutton {
 
             // Get post URL
             if (/bsky\.app\/profile\/[^\/]+\/post\/\w+/.test(document.URL)) {
-                  const matches = document.URL.match(/profile\/([^\/]+)\/post\/([^\/]+)/)
+                  const matches = document.location.href.match(/profile\/([^\/]+)\/post\/([^\/]+)/)
                   this.#username = matches[1]
                   this.#postID = matches[2]
             }
@@ -127,10 +125,8 @@ class Downloadbutton {
                   this.#GetDownloadButton(this.url, this.#fileName)
                   element.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  element.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-spacer-hover"))
-                  element.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-spacer-hover"))
-                  this.#downloadButtonDiv.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-spacer-hover"))
-                  this.#downloadButtonDiv.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-spacer-hover"))
+                  element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
             else if (this.type == Downloadbutton.Video) {
                   this.url = this.url.replace("/thumbnail.jpg", "/playlist.m3u8")
@@ -144,14 +140,23 @@ class Downloadbutton {
             }
       }
 
-      // Assembles the html element structure
+      /** Assembles the html element structure */
       #GetDownloadButton(url, fileName) {
             // Download button div
             this.#downloadButtonDiv = document.createElement("div")
-            this.#downloadButtonDiv.classList.add("download-button-spacer")
+            this.#downloadButtonDiv.classList.add("download-button-div")
+            if (this.#mobileDevice)
+                  this.#downloadButtonDiv.style.opacity = 1
             if (this.type == Downloadbutton.Image)
-                  this.#downloadButtonDiv.classList.add("download-button-spacer-image")
+                  this.#downloadButtonDiv.classList.add("download-button-div-image")
             this.#downloadButtonDiv.id = "download-button"
+
+            if (this.type == Downloadbutton.Image) {
+                  // Dropshadow 
+                  this.#dropshadow = document.createElement("div")
+                  this.#dropshadow.classList.add("dropshadow")
+                  this.#downloadButtonDiv.appendChild(this.#dropshadow)
+            }
 
             // Download button
             this.#downloadButton = document.createElement("button")
@@ -170,104 +175,138 @@ class Downloadbutton {
             this.#downloadIcon.classList.add("download-icon")
             this.#downloadIcon.src = this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download
             this.#downloadButton.appendChild(this.#downloadIcon)
+      }
 
-            // Download button progress circle
+      /** Downloads the url based on type of button */
+      async #Download(url, fileName) {
+            this.status
+            this.#CreateProgressCircle()
+            this.#progressCircle.set(0.01)
+
+            this.#downloadIcon.style.opacity = 0
+            setTimeout(() => {
+                  this.#progressCircleElem.style.opacity = 1
+            }, 200);
+
+            try {
+                  // Image download
+                  if (this.type == Downloadbutton.Image) {
+
+                        // Get local URL
+                        const file = await fetch(url)
+                        this.#progressCircle.animate(0.5, { duration: 300 })
+                        const fileBlob = await file.blob()
+                        this.#progressCircle.animate(1, { duration: 300 })
+                        const fileURL = URL.createObjectURL(fileBlob)
+
+                        // Download file
+                        const a = document.createElement('a');
+                        a.download = fileName + "-" + Math.round(Math.random() * 1000) + ".jpg";
+                        a.href = fileURL;
+                        a.click();
+
+                        this.#downloadIcon.src = Downloadbutton.Icons.Done
+                        setTimeout(() => {
+                              this.#progressCircleElem.style.opacity = 0
+                              setTimeout(() => {
+                                    this.#downloadIcon.style.opacity = 1
+                                    this.#DestroyProgressCircle()
+                              }, 200);
+                        }, 800)
+
+                        window.URL.revokeObjectURL(fileURL);
+                        this.#AddURLToHistory(url)
+                  }
+
+                  // Video download
+                  else if (this.type == Downloadbutton.Video) {
+                        // Generate unique ID for process
+                        const id = Math.round(Math.random() * 10000000)
+
+                        // Add listener for progress updates from background script
+                        browser.runtime.onMessage.addListener((message) => {
+                              if (message.type == "bsky-download-progress" &&
+                                    message.id == id &&
+                                    message.url == url) {
+
+                                    // Error occurred during download, skipped file 
+                                    if (message.hasOwnProperty("error")) {
+                                          throw new Error(message.error)
+                                    }
+
+                                    // Progress update
+                                    console.log(message.progress)
+                                    this.#progressCircle.animate(message.progress / 100, { duration: 300 })
+
+                                    // Download done
+                                    if (message.progress == 100) {
+                                          // Save URL to history
+                                          this.#AddURLToHistory(url)
+
+                                          if (message.fileBlob !== null) {
+                                                let fileURL = URL.createObjectURL(message.fileBlob)
+                                                const a = document.createElement('a');
+                                                a.download = fileName + ".mp4";
+                                                a.href = fileURL;
+
+                                                a.click();
+
+                                                window.URL.revokeObjectURL(fileURL)
+                                          }
+
+                                          // transition back to static icon
+                                          this.#downloadIcon.src = Downloadbutton.Icons.Done
+                                          setTimeout(() => {
+                                                this.#progressCircleElem.style.opacity = 0
+                                                setTimeout(() => {
+                                                      this.#downloadIcon.style.opacity = 1
+                                                      this.#DestroyProgressCircle()
+                                                }, 200);
+                                          }, 800)
+                                    }
+                              }
+                        })
+
+                        // Send download request to background script
+                        browser.runtime.sendMessage({
+                              type: "bsky-download",
+                              id: id,
+                              url: url,
+                              fileName: fileName
+                        })
+                  }
+            }
+            catch (error) {
+                  console.error(error)
+
+                  this.#downloadIcon.src = Downloadbutton.Icons.Error
+                  this.#progressCircleElem.style.opacity = 0
+                  setTimeout(() => {
+                        this.#downloadIcon.style.opacity = 1
+                        this.#DestroyProgressCircle()
+                  }, 300);
+            }
+      }
+
+      /** Add download button progress circle */
+      #CreateProgressCircle() {
             this.#progressCircle = new ProgressBar.Circle(this.#downloadButton, {
                   strokeWidth: 10,
                   color: "#f1f3f5ff",
             });
             this.#progressCircleElem = this.#downloadButton.lastElementChild
-            this.#progressCircleElem.classList.add("download-icon", "download-progress")
             this.#progressCircleElem.style.opacity = 0
+            this.#progressCircleElem.classList.add("download-icon", "download-progress")
             this.#progressCircleElem.id = "download-button-progress"
       }
 
-      // Downloads the url based on type of button
-      async #Download(url, fileName) {
-            this.#progressCircle.set(0.01)
-            this.#progressCircle.animate(0.05)
-            // Image download
-            if (this.type == Downloadbutton.Image) {
-                  // Get local URL
-                  const file = await fetch(url)
-                  const fileBlob = await file.blob()
-                  const fileURL = URL.createObjectURL(fileBlob)
-
-                  // Download file
-                  const a = document.createElement('a');
-                  a.download = fileName + "-" + Math.round(Math.random() * 1000) + ".jpg";
-                  a.href = fileURL;
-
-                  a.click();
-
-                  window.URL.revokeObjectURL(fileURL);
-                  this.#downloadIcon.style.opacity = 0
-                  setTimeout(() => {
-                        this.#downloadIcon.src = Downloadbutton.Icons.Done
-                        this.#downloadIcon.style.opacity = 1
-                  }, 300);
-                  this.#AddURLToHistory(url)
-            }
-
-            // Video download
-            else if (this.type == Downloadbutton.Video) {
-                  this.#downloadIcon.style.opacity = 0
-                  setTimeout(() => {
-                        this.#progressCircleElem.style.opacity = 1
-                  }, 300);
-
-                  // Generate unique ID for process
-                  const id = Math.round(Math.random() * 10000000)
-
-                  // Add listener for progress updates from background script
-                  browser.runtime.onMessage.addListener((message) => {
-                        if (message.type == "bsky-download-progress" &&
-                              message.id == id &&
-                              message.url == url) {
-
-                              // Error occurred during download, skipped file 
-                              if (message.hasOwnProperty("error")) {
-                                    console.error(message.error)
-
-                                    this.#downloadIcon.src = Downloadbutton.Icons.Error
-                                    this.#progressCircleElem.style.opacity = 0
-                                    setTimeout(() => {
-                                          this.#downloadIcon.style.opacity = 1
-                                    }, 300);
-                              }
-
-                              // Progress update
-                              console.log(message.progress)
-                              this.#progressCircle.animate(message.progress / 100, { duration: 300 })
-
-                              // Download done
-                              if (message.progress == 100) {
-                                    // Save URL to history
-                                    this.#AddURLToHistory(url)
-
-                                    // transition back to static icon
-                                    this.#downloadIcon.src = Downloadbutton.Icons.Done
-                                    setTimeout(() => {
-                                          this.#progressCircleElem.style.opacity = 0
-                                          setTimeout(() => {
-                                                this.#downloadIcon.style.opacity = 1
-                                                this.#progressCircle.set(0)
-                                          }, 200);
-                                    }, 800)
-                              }
-                        }
-                  })
-
-                  // Send download request to background script
-                  browser.runtime.sendMessage({
-                        type: "bsky-download",
-                        id: id,
-                        url: url,
-                        fileName: fileName
-                  })
-            }
+      /** Free up memory by destroying progress circle */
+      #DestroyProgressCircle() {
+            this.#progressCircle.destroy()
+            this.#progressCircle = null;
       }
 
+      /** Returns the nth parent of an element */
       #GetNthParent(element, n) {
             while (n > 0) {
                   element = element.parentElement
@@ -277,22 +316,51 @@ class Downloadbutton {
             return element
       }
 
-      /**
-       * Adds downloaded URL to local storage
-       */
+      /** Adds downloaded URL to local storage */
       #AddURLToHistory(url) {
+            const hash = this.#generateHash(url)
+
             let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
             if (_storage == null) _storage = []
-            if (_storage.indexOf(url) == -1) _storage.push(url)
+            if (_storage.indexOf(hash) == -1) _storage.push(hash)
             localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
       }
 
-      /**
-       * Checks if URL is present in local storage
-       */
+      /** Checks if URL is present in local storage */
       #GetURLFromHistory(url) {
+            const hash = this.#generateHash(url)
+
             let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
             if (_storage == null) return false
-            return _storage.indexOf(url) !== -1
+            return _storage.indexOf(hash) !== -1
       }
+
+      /** Detect if a mobile device is used in the least intrusive way
+       * 
+       *  Checking if `browser.downloads === undefined` would require extra permissions
+       */
+      #detectMobile() {
+            const toMatch = [
+                  /Android/i,
+                  /webOS/i,
+                  /iPhone/i,
+                  /iPad/i,
+                  /iPod/i,
+                  /BlackBerry/i,
+                  /Windows Phone/i
+            ];
+
+            return toMatch.some((toMatchItem) => {
+                  return navigator.userAgent.match(toMatchItem);
+            });
+      }
+
+      #generateHash = (string) => {
+            let hash = 0;
+            for (const char of string) {
+                  hash = (hash << 5) - hash + char.charCodeAt(0);
+                  hash |= 0; // Constrain to 32bit integer
+            }
+            return hash;
+      };
 }

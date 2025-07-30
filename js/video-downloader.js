@@ -23,6 +23,7 @@ class VideoDownloader {
       #onProgress
       #downloadReady
       #maxTries = 3
+      #mobileDevice = this.#detectMobile()
 
       constructor() {
             this.#queue = []
@@ -58,22 +59,26 @@ class VideoDownloader {
 
             try {
                   const videoBlob = await this.#proccessPlaylist(url);
-                  this.status = "Processing...";
+                  let fileBlob = await this.#convertVideo(videoBlob)
 
-                  this.originalDownloadLink = URL.createObjectURL(videoBlob);
-                  let fileURL = await this.#convertVideo(videoBlob)
-                  const a = document.createElement('a');
-                  a.download = fileName + ".mp4";
-                  a.href = fileURL;
+                  if (this.#mobileDevice) {
+                        this.#setProgress(25, null, fileBlob)
+                  }
+                  else {
+                        let fileURL = URL.createObjectURL(fileBlob)
 
-                  a.click();
+                        const a = document.createElement('a');
+                        a.download = fileName + ".mp4";
+                        a.href = fileURL;
+                        a.click();
 
-                  window.URL.revokeObjectURL(fileURL);
-                  this.#setProgress(25)
+                        window.URL.revokeObjectURL(fileURL);
+                        this.#setProgress(25)
+                  }
 
                   this.#downloadReady = true;
-
                   if (this.#queue.length > 0) this.#download()
+
             } catch (error) {
                   console.error(error)
 
@@ -100,8 +105,6 @@ class VideoDownloader {
 
             this.#setProgress(60)
 
-            this.status = "Converting to mp4...";
-
             this.#ffmpeg.FS(
                   "writeFile",
                   "input.ts",
@@ -124,9 +127,8 @@ class VideoDownloader {
                   type: "video/mp4",
             });
 
-            return URL.createObjectURL(mp4Blob);
+            return mp4Blob
       }
-
 
       async #proccessPlaylist(playlistUrl) {
             const masterPlaylistResponse = await fetch(playlistUrl);
@@ -148,7 +150,6 @@ class VideoDownloader {
             return this.#downloadSegments(segmentUrls);
       }
 
-
       #parseHighestQualityVideoUrl(masterPlaylist, baseUrl) {
             let highestBandwidth = 0;
             let highestQualityUrl = "";
@@ -164,14 +165,12 @@ class VideoDownloader {
             return new URL(highestQualityUrl, baseUrl).toString();
       }
 
-
       #parseSegmentUrls(videoPlaylist, baseUrl) {
             return videoPlaylist
                   .split("\n")
                   .filter((line) => !line.startsWith("#") && line.trim() !== "")
                   .map((segment) => new URL(segment, baseUrl).toString());
       }
-
 
       async #downloadSegments(segmentUrls) {
             const chunks = [];
@@ -184,9 +183,29 @@ class VideoDownloader {
       }
 
 
-      #setProgress(progress, error = null) {
+      #setProgress(progress, error = null, videoBlob = null) {
             this.progress += progress
             //console.log(this.progress)
-            this.#onProgress(this.progress, error)
+            this.#onProgress(this.progress, error, videoBlob)
+      }
+
+      /** Detect if a mobile device is used in the least intrusive way
+       * 
+       *  Checking if `browser.downloads === undefined` would require extra permissions
+       */
+      #detectMobile() {
+            const toMatch = [
+                  /Android/i,
+                  /webOS/i,
+                  /iPhone/i,
+                  /iPad/i,
+                  /iPod/i,
+                  /BlackBerry/i,
+                  /Windows Phone/i
+            ];
+
+            return toMatch.some((toMatchItem) => {
+                  return navigator.userAgent.match(toMatchItem);
+            });
       }
 }
