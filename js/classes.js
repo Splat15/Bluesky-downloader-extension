@@ -92,6 +92,7 @@ class Downloadbutton {
       #username
       #postID
       #fileName
+      #downloading = false
 
       constructor(type, element, url) {
             this.url = url
@@ -179,6 +180,9 @@ class Downloadbutton {
 
       /** Downloads the url based on type of button */
       async #Download(url, fileName) {
+            if (this.#downloading) return
+            this.#downloading = true
+
             this.status
             this.#CreateProgressCircle()
             this.#progressCircle.set(0.01)
@@ -210,6 +214,7 @@ class Downloadbutton {
                               this.#progressCircleElem.style.opacity = 0
                               setTimeout(() => {
                                     this.#downloadIcon.style.opacity = 1
+                                    this.#downloading = false
                                     this.#DestroyProgressCircle()
                               }, 200);
                         }, 800)
@@ -231,11 +236,17 @@ class Downloadbutton {
 
                                     // Error occurred during download, skipped file 
                                     if (message.hasOwnProperty("error")) {
+                                          this.#downloadIcon.src = Downloadbutton.Icons.Error
+                                          this.#progressCircleElem.style.opacity = 0
+                                          setTimeout(() => {
+                                                this.#downloadIcon.style.opacity = 1
+                                                this.#downloading = false
+                                                this.#DestroyProgressCircle()
+                                          }, 300);
                                           throw new Error(message.error)
                                     }
 
                                     // Progress update
-                                    console.log(message.progress)
                                     this.#progressCircle.animate(message.progress / 100, { duration: 300 })
 
                                     // Download done
@@ -260,6 +271,7 @@ class Downloadbutton {
                                                 this.#progressCircleElem.style.opacity = 0
                                                 setTimeout(() => {
                                                       this.#downloadIcon.style.opacity = 1
+                                                      this.#downloading = false
                                                       this.#DestroyProgressCircle()
                                                 }, 200);
                                           }, 800)
@@ -283,6 +295,7 @@ class Downloadbutton {
                   this.#progressCircleElem.style.opacity = 0
                   setTimeout(() => {
                         this.#downloadIcon.style.opacity = 1
+                        this.#downloading = false
                         this.#DestroyProgressCircle()
                   }, 300);
             }
@@ -293,6 +306,7 @@ class Downloadbutton {
             this.#progressCircle = new ProgressBar.Circle(this.#downloadButton, {
                   strokeWidth: 10,
                   color: "#f1f3f5ff",
+                  trailColor: "#f1f3f534"
             });
             this.#progressCircleElem = this.#downloadButton.lastElementChild
             this.#progressCircleElem.style.opacity = 0
@@ -329,10 +343,14 @@ class Downloadbutton {
       /** Checks if URL is present in local storage */
       #GetURLFromHistory(url) {
             const hash = this.#generateHash(url)
-
-            let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-            if (_storage == null) return false
-            return _storage.indexOf(hash) !== -1
+            let _storage = []
+            try {
+                  _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
+            }
+            catch {
+                  localStorage.setItem("downloadedURLs", JSON.stringify([]))
+            }
+            return _storage.length > 0 && _storage.indexOf(hash) !== -1
       }
 
       /** Detect if a mobile device is used in the least intrusive way

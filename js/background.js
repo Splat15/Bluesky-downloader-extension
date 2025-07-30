@@ -1,14 +1,9 @@
 // On install create popup on content script 
 let installTime = 0
-chrome.runtime.onInstalled.addListener((details) => {
+browser.runtime.onInstalled.addListener((details) => {
       console.log("installed")
       installTime = Date.now();
 });
-
-let t = document.createElement("a");
-t.onclick = () => console.log("a")
-document.body.appendChild(t)
-t.click()
 
 // Add listeners for messages from content scripts
 browser.runtime.onMessage.addListener((message, sender) => {
@@ -29,4 +24,4 @@ browser.runtime.onMessage.addListener((message, sender) => {
       }
 });
 
-let downloader = new VideoDownloader();
+const downloader = new VideoDownloader();

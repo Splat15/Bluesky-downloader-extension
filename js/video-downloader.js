@@ -39,6 +39,8 @@ class VideoDownloader {
       }
 
       download(url, fileName, onProgress = () => { }) {
+            if (this.#queue.find(element => element.url == url)) return
+
             this.#queue.push({ url: url, fileName: fileName, onProgress: onProgress, tries: 0 })
             if (this.#downloadReady) {
                   this.#downloadReady = false
@@ -185,7 +187,6 @@ class VideoDownloader {
 
       #setProgress(progress, error = null, videoBlob = null) {
             this.progress += progress
-            //console.log(this.progress)
             this.#onProgress(this.progress, error, videoBlob)
       }
 
