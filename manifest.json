@@ -2,11 +2,11 @@
   "manifest_version": 2,
   "name": "Bluesky downloader",
   "version": "1.0",
-  "description": "Bluesky downloader",
+  "description": "Video and image downloader for bluesky",
   "icons": {
     "32": "icons/32.png",
-    "48": "icons/48.png",
-    "96": "icons/96.png"
+    "64": "icons/64.png",
+    "128": "icons/128.png"
   },
   "permissions": ["<all_urls>", "storage"],
   "browser_action": {
