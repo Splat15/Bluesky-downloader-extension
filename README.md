@@ -1,4 +1,4 @@
-Bluesky downloads is a Firefox extension that adds download buttons for video and image posts on Bluesky.<br/>
+Bluesky downloader is a Firefox extension that adds download buttons for video and image posts on Bluesky.<br/>
 It is built to support Firefox desktop and mobile.<br/>
 <br/>
 Video downloads are based on [downloader.notx.blue](https://github.com/breakzplatform/downloader.notx.blue) ([down.blue](https://down.blue)) by [breakzplatform](https://github.com/breakzplatform).<br/>
