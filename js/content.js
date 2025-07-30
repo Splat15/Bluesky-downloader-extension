@@ -1,3 +1,13 @@
+// Check if extension is newly installed
+const maxInstallTimeDelay = 1000
+browser.runtime.onMessage.addListener((message) => {
+      if (message.type == "install-time-response" &&
+            Date.now() - message.installTime < maxInstallTimeDelay)
+            InstallCleanup()
+})
+browser.runtime.sendMessage({ type: "install-time" })
+
+
 // Add download buttons to images in feed
 new NodeObserver(
       element => element.tagName == "IMG" &&
@@ -8,6 +18,7 @@ new NodeObserver(
       // Create download button
       element => new Downloadbutton(Downloadbutton.Image, element, element.src)
 )
+
 
 // Add download buttons to videos in feed
 new NodeObserver(
@@ -40,8 +51,35 @@ new NodeObserver(
       }
 )
 
+
 // Add stylesheet
 const stylesheet = document.createElement("link")
 stylesheet.href = browser.runtime.getURL("../css/style.css")
 stylesheet.rel = "stylesheet"
 document.head.appendChild(stylesheet)
+
+
+// Clean up old and non-functional download buttons
+// Manually add download buttons again
+// The document should already be completely loaded when this fires
+function InstallCleanup() {
+      // Clean up
+      Array.from(document.querySelectorAll("#download-button")).forEach(element => element.remove())
+
+      // Manually re-add download buttons without the document needing to refresh
+      // Images
+      const imageElements = Array.from(document.querySelectorAll("img[src]"))
+            .filter(element => /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) && !element.hasAttribute("draggable"))
+            .forEach(element => new Downloadbutton(Downloadbutton.Image, element, element.src))
+
+      // Videos
+      Array.from(document.querySelectorAll("video[poster][playsinline][preload='none']"))
+            .forEach(element => {
+                  const downloadElement = Array.from(element.parentElement.parentElement.querySelectorAll("div[dir='auto']"))
+                        .filter(element => !element.parentElement.hasAttribute("aria-label"))[0]
+                  if (downloadElement) {
+                        new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
+                  }
+            })
+
+} 
