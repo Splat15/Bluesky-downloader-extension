@@ -9,7 +9,7 @@
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
-  "permissions": ["<all_urls>", "storage"],
+  "permissions": ["*://*.bsky.app/*", "storage"],
   "browser_action": {
     "default_icon": "icons/48.png",
     "default_title": "Addon-Template",
@@ -25,7 +25,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["*://*.bsky.app/*"],
       "js": ["lib/progressbar.min.js", "js/classes.js", "js/content.js"]
     }
   ],
