@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Bluesky downloader",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Video and image downloader for bluesky",
   "icons": {
     "16": "icons/16.png",
@@ -12,8 +12,7 @@
   "permissions": ["*://*.bsky.app/*", "storage"],
   "browser_action": {
     "default_icon": "icons/48.png",
-    "default_title": "Addon-Template",
-    "default_popup": "html/popup.html"
+    "default_title": "Bluesky downloader"
   },
   "background": {
     "scripts": [
