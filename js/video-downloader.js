@@ -30,12 +30,6 @@ class VideoDownloader {
             this.#downloadReady = true
             this.progress = 0
             this.#onProgress = () => { }
-
-            this.#ffmpeg = createFFmpeg({
-                  corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
-                  log: true,
-                  mainName: 'main'
-            });
       }
 
       download(url, fileName, onProgress = () => { }) {
@@ -63,8 +57,10 @@ class VideoDownloader {
                   const videoBlob = await this.#proccessPlaylist(url);
                   let fileBlob = await this.#convertVideo(videoBlob)
 
+                  let ffmpegRestartPromise = new Promise(resolve => { this.#ffmpeg.exit().then(() => { this.#ffmpeg.load().then(resolve()) }) })
+
                   if (this.#mobileDevice) {
-                        this.#setProgress(25, null, fileBlob)
+                        this.#setProgress(100, null, fileBlob)
                   }
                   else {
                         let fileURL = URL.createObjectURL(fileBlob)
@@ -75,7 +71,7 @@ class VideoDownloader {
                         a.click();
 
                         window.URL.revokeObjectURL(fileURL);
-                        this.#setProgress(25)
+                        this.#setProgress(100)
                   }
 
                   this.#downloadReady = true;
@@ -93,6 +89,8 @@ class VideoDownloader {
                         this.#setProgress(0, error)
                   }
 
+                  await ffmpegRestartPromise
+
                   this.#downloadReady = true;
 
                   if (this.#queue.length > 0) this.#download()
@@ -100,12 +98,20 @@ class VideoDownloader {
       }
 
       async #convertVideo(videoBlob) {
-            if (this.#ffmpeg.isLoaded()) {
-                  await this.#ffmpeg.exit();
-            }
-            await this.#ffmpeg.load();
+            if (!this.#ffmpeg) {
 
-            this.#setProgress(60)
+                  this.#ffmpeg = createFFmpeg({
+                        corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
+                        log: true,
+                        mainName: 'main'
+                  });
+            }
+
+            if (!this.#ffmpeg.isLoaded()) {
+                  await this.#ffmpeg.load();
+            }
+
+            this.#setProgress(70)
 
             this.#ffmpeg.FS(
                   "writeFile",
@@ -177,6 +183,9 @@ class VideoDownloader {
       async #downloadSegments(segmentUrls) {
             const chunks = [];
             for (let i = 0; i < segmentUrls.length; i++) {
+                  let d = Math.round(15 + (35 / segmentUrls.length) * (i + 1))
+                  console.log(d)
+                  this.#setProgress(d)
                   const response = await fetch(segmentUrls[i]);
                   chunks.push(await response.arrayBuffer());
             }
@@ -186,7 +195,7 @@ class VideoDownloader {
 
 
       #setProgress(progress, error = null, videoBlob = null) {
-            this.progress += progress
+            this.progress = progress
             this.#onProgress(this.progress, error, videoBlob)
       }
 

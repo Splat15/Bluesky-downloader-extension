@@ -10,44 +10,66 @@ browser.runtime.sendMessage({ type: "install-time" })
 
 // Add download buttons to images in feed
 new NodeObserver(
-      element => element.tagName == "IMG" &&
-            element.hasAttribute("alt") &&
-            element.hasAttribute("src") &&
-            /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) &&
-            element.draggable == true &&
-            element.downloadButton !== true,
-      // Create download button
-      element => new Downloadbutton(Downloadbutton.Image, element, element.src)
-)
-
-// Add download buttons to videos in feed
-new NodeObserver(
-      element => element.tagName == "VIDEO" &&
-            element.hasAttribute("poster") &&
-            element.hasAttribute("playsinline") &&
-            element.preload == "none" &&
-            element.downloadButton !== true,
+      // rudimentary test
+      element =>
+            element.tagName == "IMG" || element.tagName == "VIDEO",
 
       element => {
-            // Wait for element next to downloadButton to load
-            let observer = new NodeObserver(
-                  element2 => element2.tagName == "DIV" &&
-                        element2.dir == "auto",
-                  // Create download button
-                  element2 => new Downloadbutton(Downloadbutton.Video, element2, element.poster),
-                  true,
-                  element.parentElement.parentElement
-            )
-
-            // Check if element next to downloadButton is already loaded
-            const downloadElement = element.parentElement.parentElement.querySelector("div[dir='auto']")
-            if (downloadElement) {
-                  // Stop node observer from triggering
-                  observer.Stop()
-                  // Create download button
-                  new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
+            if (element.downloadButton == true) return
+            // exact tests
+            // logic for image elements
+            if (element.tagName == "IMG" &&
+                  element.draggable == true &&
+                  element.hasAttribute("alt") &&
+                  element.hasAttribute("src") &&
+                  /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src))
+            // Create download button
+            {
+                  new Downloadbutton(Downloadbutton.Image, element, element.src)
             }
 
+            // logic for video elements
+            else if (element.tagName == "VIDEO" && element.hasAttribute("playsinline")) {
+
+                  // Video posts
+                  if (element.preload == "none" &&
+                        element.hasAttribute("poster")) {
+
+                        // Create download button
+
+                        // Wait for element next to downloadButton to load
+                        let observer = new NodeObserver(
+                              element2 => element2.tagName == "DIV" &&
+                                    element2.dir == "auto" &&
+                                    !element2.parentElement.hasAttribute("aria-label"),
+                              // Create download button
+                              element2 => {
+                                    new Downloadbutton(Downloadbutton.Video, element2, element.poster)
+                              },
+                              true,
+                              element.parentElement.parentElement
+                        )
+
+                        // Check if element next to downloadButton is already loaded
+                        const downloadElement = element.parentElement.parentElement.querySelector("div[dir='auto']")
+                        if (downloadElement) {
+
+                              // Stop node observer from triggering
+                              observer.Stop()
+                              // Create download button
+                              new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
+                        }
+                  }
+
+                  // tenor GIF posts (actually webm)
+                  else if (element.preload == "auto" &&
+                        element.downloadButton !== true)
+                  // Create download button
+                  {
+                        new Downloadbutton(Downloadbutton.GIF
+                              , element, element.src)
+                  }
+            }
       }
 )
 
@@ -79,11 +101,17 @@ function InstallCleanup() {
       // Videos
       Array.from(document.querySelectorAll("video[poster][playsinline][preload='none']"))
             .forEach(element => {
-                  const downloadElement = Array.from(element.parentElement.parentElement.querySelectorAll("div[dir='auto']"))
+                  const downloadElement = Array.from(element.parentElement.parentElement.querySelectorAll('div:not([aria-label])>div[dir=auto]'))
                         .filter(element => !element.parentElement.hasAttribute("aria-label"))[0]
                   if (downloadElement) {
                         new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
                   }
+            })
+      
+      // GIFs
+      Array.from(document.querySelectorAll("video[playsinline][preload='auto']"))
+            .forEach(element => {
+                  new Downloadbutton(Downloadbutton.GIF, element, element.src)
             })
 
 } 

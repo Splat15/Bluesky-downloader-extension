@@ -8,6 +8,7 @@
  */
 class NodeObserver {
       #observer = null
+      #stopped = false
       constructor(
             Test,
             Callback,
@@ -29,8 +30,10 @@ class NodeObserver {
                         this.Stop()
                   }
             }
-            if (node.childNodes.length > 0) {
-                  for (const child of node.childNodes) {
+            if (!this.#stopped && node.childNodes.length > 0) {
+                  const childNodeArr = Array.from(node.childNodes) // Prevents recursive behaviour
+                  for (let i = 0; i < childNodeArr.length; i++) {
+                        const child = childNodeArr[i]
                         if (child.nodeType === Node.ELEMENT_NODE) {
                               this.#TestNodeDeep(Test, child, Callback, singleUse)
                         }
@@ -65,6 +68,7 @@ class NodeObserver {
       /** Stops the **`NodeObserver`** */
       Stop() {
             this.#observer.disconnect()
+            this.#stopped = true
       }
 }
 
@@ -79,6 +83,7 @@ class Downloadbutton {
       }
       static Image = 0
       static Video = 1
+      static GIF = 2
 
       #mobileDevice = this.#detectMobile()
 
@@ -90,40 +95,23 @@ class Downloadbutton {
       #dropshadow
 
       #username
-      #postID
-      #fileName
+      #did
       #downloading = false
 
       constructor(type, element, url) {
             this.url = url
             this.type = type
 
-            // Get post URL
-            if (/bsky\.app\/profile\/[^\/]+\/post\/\w+/.test(document.URL)) {
-                  const matches = document.location.href.match(/profile\/([^\/]+)\/post\/([^\/]+)/)
-                  this.#username = matches[1]
-                  this.#postID = matches[2]
-            }
-            else {
-                  const timestamps = this.#GetNthParent(element, 18).querySelectorAll("a[href] span")
-                  for (let i = 0; i < timestamps.length; i++) {
-                        try {
-                              const matches = timestamps[i].parentElement.href.match(/profile\/([^\/]+)\/post\/([^\/]+)/)
-                              this.#username = matches[1]
-                              this.#postID = matches[2]
-                              break
-                        }
-                        catch { }
-                  }
-            }
-            this.#fileName = this.#username + "@" + this.#postID
+            // Get user id
+            this.#did = url.replace(/%3A/g, ":").match(/\/(did:plc:\w+)\//)
+            if (this.#did) this.#did = this.#did[1]
+            else this.#did = undefined
 
             if (this.type == Downloadbutton.Image) {
-
                   this.url = this.url.replace("/feed_thumbnail/", "/feed_fullsize/")
 
                   element.downloadButton = true
-                  this.#GetDownloadButton(this.url, this.#fileName)
+                  this.#GetDownloadButton(this.url)
                   element.parentElement.appendChild(this.#downloadButtonDiv)
 
                   element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
@@ -133,8 +121,16 @@ class Downloadbutton {
                   this.url = this.url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
                   element.downloadButton = true
-                  this.#GetDownloadButton(this.url, this.#fileName)
+                  this.#GetDownloadButton(this.url)
                   element.parentElement.insertBefore(this.#downloadButtonDiv, element)
+            }
+            else if (this.type == Downloadbutton.GIF) {
+                  element.downloadButton = true
+                  this.#GetDownloadButton(this.url)
+                  element.parentElement.appendChild(this.#downloadButtonDiv)
+
+                  element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
             else {
                   throw new Error("Invalid download button type: " + this.type)
@@ -142,22 +138,22 @@ class Downloadbutton {
       }
 
       /** Assembles the html element structure */
-      #GetDownloadButton(url, fileName) {
+      #GetDownloadButton(url) {
             // Download button div
             this.#downloadButtonDiv = document.createElement("div")
             this.#downloadButtonDiv.classList.add("download-button-div")
             if (this.#mobileDevice)
                   this.#downloadButtonDiv.style.opacity = 1
-            if (this.type == Downloadbutton.Image)
-                  this.#downloadButtonDiv.classList.add("download-button-div-image")
-            this.#downloadButtonDiv.id = "download-button"
 
-            if (this.type == Downloadbutton.Image) {
+            if (this.type != Downloadbutton.Video) {
+                  this.#downloadButtonDiv.classList.add("download-button-div-image")
                   // Dropshadow 
                   this.#dropshadow = document.createElement("div")
                   this.#dropshadow.classList.add("dropshadow")
                   this.#downloadButtonDiv.appendChild(this.#dropshadow)
             }
+
+            this.#downloadButtonDiv.id = "download-button"
 
             // Download button
             this.#downloadButton = document.createElement("button")
@@ -166,7 +162,7 @@ class Downloadbutton {
                   "click",
                   (event) => {
                         event.stopPropagation()
-                        this.#Download(url, fileName);
+                        this.#Download(url);
                   })
             this.#downloadButtonDiv.appendChild(this.#downloadButton);
 
@@ -174,27 +170,48 @@ class Downloadbutton {
             this.#downloadIcon = document.createElement("img")
             this.#downloadIcon.id = "download-button-static"
             this.#downloadIcon.classList.add("download-icon")
+            this.#downloadIcon.style.opacity = 1
             this.#downloadIcon.src = this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download
             this.#downloadButton.appendChild(this.#downloadIcon)
       }
 
       /** Downloads the url based on type of button */
-      async #Download(url, fileName) {
+      async #Download(url) {
+            let fileName
+            if (this.type != Downloadbutton.GIF) {
+                  if (!this.#username) {
+                        const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
+                        const responseBody = JSON.parse(await response.text())
+                        this.#username = responseBody.handle
+                  }
+
+                  fileName = this.#username + "-" + this.#generateHash(url).toString().slice(6)
+            }
+            else {
+                  fileName = url.match(/\w+(?=\.\w+$)/)[0]
+            }
+
             if (this.#downloading) return
             this.#downloading = true
 
-            this.status
+            this.#downloadIcon.style.opacity = 0
             this.#CreateProgressCircle()
             this.#progressCircle.set(0.01)
 
-            this.#downloadIcon.style.opacity = 0
-            setTimeout(() => {
-                  this.#progressCircleElem.style.opacity = 1
-            }, 200);
-
+            // Purely cosmetic, delays download for 300ms to let the opacity transitions progress
+            await new Promise((resolve) => {
+                  setTimeout(() => {
+                        this.#progressCircleElem.style.opacity = 1
+                        
+                        setTimeout(() => {
+                              resolve()
+                        }, 100);
+                  }, 200);
+            })
+            
             try {
                   // Image download
-                  if (this.type == Downloadbutton.Image) {
+                  if (this.type != Downloadbutton.Video) {
 
                         // Get local URL
                         const file = await fetch(url)
@@ -204,10 +221,10 @@ class Downloadbutton {
                         const fileURL = URL.createObjectURL(fileBlob)
 
                         // Download file
-                        const a = document.createElement('a');
-                        a.download = fileName + "-" + Math.round(Math.random() * 1000) + ".jpg";
-                        a.href = fileURL;
-                        a.click();
+                        const a = document.createElement('a')
+                        a.download = fileName + (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")
+                        a.href = fileURL
+                        a.click()
 
                         this.#downloadIcon.src = Downloadbutton.Icons.Done
                         setTimeout(() => {
@@ -224,7 +241,7 @@ class Downloadbutton {
                   }
 
                   // Video download
-                  else if (this.type == Downloadbutton.Video) {
+                  else {
                         // Generate unique ID for process
                         const id = Math.round(Math.random() * 10000000)
 
@@ -303,14 +320,16 @@ class Downloadbutton {
 
       /** Add download button progress circle */
       #CreateProgressCircle() {
-            this.#progressCircle = new ProgressBar.Circle(this.#downloadButton, {
+            this.#progressCircleElem = document.createElement("div")
+            this.#progressCircleElem.classList.add("download-icon")
+            this.#downloadButton.appendChild(this.#progressCircleElem)
+
+            this.#progressCircle = new ProgressBar.Circle(this.#progressCircleElem, {
                   strokeWidth: 10,
                   color: "#f1f3f5ff",
                   trailColor: "#f1f3f534"
             });
-            this.#progressCircleElem = this.#downloadButton.lastElementChild
-            this.#progressCircleElem.style.opacity = 0
-            this.#progressCircleElem.classList.add("download-icon", "download-progress")
+            this.#progressCircleElem.firstElementChild.classList.add("download-progress")
             this.#progressCircleElem.id = "download-button-progress"
       }
 

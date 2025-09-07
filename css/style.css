@@ -11,6 +11,7 @@
   width: 28px;
   height: 28px;
   transition: opacity 0.2s;
+  z-index: 1000;
 }
 
 .dropshadow {
@@ -46,6 +47,7 @@
 }
 
 .download-icon {
+  opacity: 0;
   width: 15px;
   height: 15px;
   margin: calc(50% - 7.5px);
