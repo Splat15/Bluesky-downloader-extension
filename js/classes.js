@@ -139,58 +139,32 @@ class Downloadbutton {
 
       /** Assembles the html element structure */
       #GetDownloadButton(url) {
-            // Download button div
-            this.#downloadButtonDiv = document.createElement("div")
-            this.#downloadButtonDiv.classList.add("download-button-div")
-            if (this.#mobileDevice)
-                  this.#downloadButtonDiv.style.opacity = 1
+            const domParser = new DOMParser()
+            const downloadButton = domParser.parseFromString(`
+                  <div class="download-button-div${this.type != Downloadbutton.Video ? ` download-button-div-image` : ``}" id="download-button-div"${this.#mobileDevice ? ` style="opacity: 1"` : ``}>
+                  ${this.type != Downloadbutton.Video ? `<div class="dropshadow" id="dropshadow"></div>` : ``}
+                  <button class="download-button" id="download-button">
+                  <img id="download-button-static" class="download-icon" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
+                  </button>
+                  </div>`.replace(/\s{2,}/g, " "), "text/html")
 
-            if (this.type != Downloadbutton.Video) {
-                  this.#downloadButtonDiv.classList.add("download-button-div-image")
-                  // Dropshadow 
-                  this.#dropshadow = document.createElement("div")
-                  this.#dropshadow.classList.add("dropshadow")
-                  this.#downloadButtonDiv.appendChild(this.#dropshadow)
-            }
+            this.#downloadButtonDiv = downloadButton.getElementById("download-button-div")
+            this.#dropshadow = downloadButton.getElementById("dropshadow")
+            this.#downloadButton = downloadButton.getElementById("download-button")
+            this.#downloadIcon = downloadButton.getElementById("download-button-static")
 
-            this.#downloadButtonDiv.id = "download-button"
-
-            // Download button
-            this.#downloadButton = document.createElement("button")
-            this.#downloadButton.className = "download-button"
             this.#downloadButton.addEventListener(
                   "click",
                   (event) => {
                         event.stopPropagation()
                         this.#Download(url);
                   })
-            this.#downloadButtonDiv.appendChild(this.#downloadButton);
 
-            // Download button static icon
-            this.#downloadIcon = document.createElement("img")
-            this.#downloadIcon.id = "download-button-static"
-            this.#downloadIcon.classList.add("download-icon")
-            this.#downloadIcon.style.opacity = 1
-            this.#downloadIcon.src = this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download
-            this.#downloadButton.appendChild(this.#downloadIcon)
+            return downloadButton
       }
 
       /** Downloads the url based on type of button */
       async #Download(url) {
-            let fileName
-            if (this.type != Downloadbutton.GIF) {
-                  if (!this.#username) {
-                        const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
-                        const responseBody = JSON.parse(await response.text())
-                        this.#username = responseBody.handle
-                  }
-
-                  fileName = this.#username + "-" + this.#generateHash(url).toString().slice(6)
-            }
-            else {
-                  fileName = url.match(/\w+(?=\.\w+$)/)[0]
-            }
-
             if (this.#downloading) return
             this.#downloading = true
 
@@ -202,14 +176,28 @@ class Downloadbutton {
             await new Promise((resolve) => {
                   setTimeout(() => {
                         this.#progressCircleElem.style.opacity = 1
-                        
+
                         setTimeout(() => {
                               resolve()
                         }, 100);
                   }, 200);
             })
-            
+
             try {
+                  let fileName
+                  if (this.type != Downloadbutton.GIF) {
+                        if (!this.#username) {
+                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
+                              const responseBody = JSON.parse(await response.text())
+                              this.#username = responseBody.handle
+                        }
+
+                        fileName = this.#username + "-" + this.#generateHash(url).toString().slice(6)
+                  }
+                  else {
+                        fileName = url.match(/\w+(?=\.\w+$)/)[0]
+                  }
+
                   // Image download
                   if (this.type != Downloadbutton.Video) {
 
@@ -233,7 +221,7 @@ class Downloadbutton {
                                     this.#downloadIcon.style.opacity = 1
                                     this.#downloading = false
                                     this.#DestroyProgressCircle()
-                              }, 200);
+                              }, 100);
                         }, 800)
 
                         window.URL.revokeObjectURL(fileURL);
