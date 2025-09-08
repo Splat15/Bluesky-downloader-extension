@@ -53,11 +53,22 @@ class VideoDownloader {
             this.#downloadReady = false
             this.progress = 0
 
+
+            if (!this.#ffmpeg) {
+
+                  this.#ffmpeg = createFFmpeg({
+                        corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
+                        log: true,
+                        mainName: 'main'
+                  });
+            }
+
+            let ffmpegLoading = new Promise(resolve => this.#ffmpeg.load().then(resolve()))
+
             try {
                   const videoBlob = await this.#proccessPlaylist(url);
+                  await ffmpegLoading
                   let fileBlob = await this.#convertVideo(videoBlob)
-
-                  let ffmpegRestartPromise = new Promise(resolve => { this.#ffmpeg.exit().then(() => { this.#ffmpeg.load().then(resolve()) }) })
 
                   if (this.#mobileDevice) {
                         this.#setProgress(100, null, fileBlob)
@@ -74,9 +85,6 @@ class VideoDownloader {
                         this.#setProgress(100)
                   }
 
-                  this.#downloadReady = true;
-                  if (this.#queue.length > 0) this.#download()
-
             } catch (error) {
                   console.error(error)
 
@@ -89,12 +97,11 @@ class VideoDownloader {
                         this.#setProgress(0, error)
                   }
 
-                  await ffmpegRestartPromise
-
-                  this.#downloadReady = true;
-
-                  if (this.#queue.length > 0) this.#download()
             }
+
+            await this.#ffmpeg.exit()
+            this.#downloadReady = true;
+            if (this.#queue.length > 0) this.#download()
       }
 
       async #convertVideo(videoBlob) {
@@ -111,7 +118,7 @@ class VideoDownloader {
                   await this.#ffmpeg.load();
             }
 
-            this.#setProgress(70)
+            this.#setProgress(90)
 
             this.#ffmpeg.FS(
                   "writeFile",
@@ -183,9 +190,10 @@ class VideoDownloader {
       async #downloadSegments(segmentUrls) {
             const chunks = [];
             for (let i = 0; i < segmentUrls.length; i++) {
-                  let d = Math.round(15 + (35 / segmentUrls.length) * (i + 1))
-                  console.log(d)
-                  this.#setProgress(d)
+                  let progress = Math.round(15 + (55 / segmentUrls.length) * (i + 1))
+                  console.log(progress)
+                  this.#setProgress(progress)
+
                   const response = await fetch(segmentUrls[i]);
                   chunks.push(await response.arrayBuffer());
             }
