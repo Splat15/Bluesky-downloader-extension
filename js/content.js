@@ -26,6 +26,7 @@ new NodeObserver(
             // Create download button
             {
                   new Downloadbutton(Downloadbutton.Image, element, element.src)
+                  StartOnboarding(element)
             }
 
             // logic for video elements
@@ -107,11 +108,49 @@ function InstallCleanup() {
                         new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
                   }
             })
-      
+
       // GIFs
       Array.from(document.querySelectorAll("video[playsinline][preload='auto']"))
             .forEach(element => {
                   new Downloadbutton(Downloadbutton.GIF, element, element.src)
             })
 
-} 
+}
+
+function StartOnboarding(element) {
+      const outerFlasher = document.createElement("div")
+      outerFlasher.classList.add("onboarding-image")
+      element.parentElement.appendChild(outerFlasher)
+      const innerFlasher = document.createElement("div")
+      innerFlasher.classList.add("onboarding-image")
+      innerFlasher.style.bor
+      element.parentElement.appendChild(innerFlasher)
+      setInterval(() => {
+            innerFlasher.active = !innerFlasher.active
+            if (innerFlasher.active) {
+                  innerFlasher.style.borderWidth = "5px"
+                  innerFlasher.style.width = "calc(100% - 40px)"
+                  innerFlasher.style.height = "calc(100% - 40px)"
+                  innerFlasher.style.margin = "15px"
+            }
+            else {
+                  innerFlasher.style.borderWidth = "5px"
+                  innerFlasher.style.width = "calc(100% - 20px)"
+                  innerFlasher.style.height = "calc(100% - 20px)"
+                  innerFlasher.style.margin = "5px"
+            }
+            outerFlasher.active = !outerFlasher.active
+            if (outerFlasher.active) {
+                  outerFlasher.style.borderWidth = "5px"
+                  outerFlasher.style.width = "calc(100% - 20px)"
+                  outerFlasher.style.height = "calc(100% - 20px)"
+                  outerFlasher.style.margin = "5px"
+            }
+            else {
+                  outerFlasher.style.borderWidth = "5px"
+                  outerFlasher.style.width = "calc(100% - 10px)"
+                  outerFlasher.style.height = "calc(100% - 10px)"
+                  outerFlasher.style.margin = "0px"
+            }
+      }, 500)
+}
