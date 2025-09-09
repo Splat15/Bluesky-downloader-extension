@@ -357,7 +357,8 @@ class Downloadbutton {
             catch {
                   localStorage.setItem("downloadedURLs", JSON.stringify([]))
             }
-            return _storage.length > 0 && _storage.indexOf(hash) !== -1
+
+            return _storage && _storage.length > 0 && _storage.indexOf(hash) !== -1
       }
 
       /** Detect if a mobile device is used in the least intrusive way

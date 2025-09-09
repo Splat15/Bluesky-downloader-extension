@@ -1,6 +1,6 @@
 // Onboarding
 let onboardingStatus
-let onboardingElements = {image: [], video: []}
+let onboardingElements = { image: [], video: [] }
 
 const minUptime = 1000
 browser.runtime.onMessage.addListener((message) => {
@@ -44,7 +44,7 @@ new NodeObserver(
 
                   if (imageOnboardingHasRun || onboardingStatus.image) return
                   imageOnboardingHasRun = true
-                  
+
                   // Onboarding procedure
                   let flashingBorders = []
                   for (let i = 0; i < 3; i++) {
@@ -125,6 +125,7 @@ new NodeObserver(
                               // Create download button
                               new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
                         }
+
                   }
 
                   // tenor GIF posts (actually webm)
