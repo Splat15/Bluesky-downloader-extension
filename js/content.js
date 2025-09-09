@@ -1,12 +1,27 @@
-// Check if extension is newly installed
-const maxInstallTimeDelay = 1000
-browser.runtime.onMessage.addListener((message) => {
-      if (message.type == "install-time-response" &&
-            Date.now() - message.installTime < maxInstallTimeDelay)
-            InstallCleanup()
-})
-browser.runtime.sendMessage({ type: "install-time" })
+// Onboarding
+let onboardingStatus
+let onboardingElements = {image: [], video: []}
 
+const minUptime = 1000
+browser.runtime.onMessage.addListener((message) => {
+      if (message.type == "init") {
+            if (Date.now() - message.uptime < minUptime) InstallCleanup()
+
+            onboardingStatus = message.onboardingStatus
+      }
+      else if (message.type == "onboarding-update") {
+            onboardingStatus = message.onboardingStatus
+            if (onboardingStatus.image) {
+                  onboardingElements.image.forEach(borderElement => borderElement.Destroy())
+            }
+            if (onboardingStatus.video) {
+                  onboardingElements.video.forEach(borderElement => borderElement.Destroy())
+            }
+      }
+})
+browser.runtime.sendMessage({ type: "init" })
+
+let imageOnboardingHasRun
 
 // Add download buttons to images in feed
 new NodeObserver(
@@ -25,8 +40,58 @@ new NodeObserver(
                   /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src))
             // Create download button
             {
-                  new Downloadbutton(Downloadbutton.Image, element, element.src)
-                  StartOnboarding(element)
+                  const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
+
+                  if (imageOnboardingHasRun || onboardingStatus.image) return
+                  imageOnboardingHasRun = true
+                  
+                  // Onboarding procedure
+                  let flashingBorders = []
+                  for (let i = 0; i < 3; i++) {
+                        const border = new FlashingBorder(
+                              element.parentElement,
+                              new FlashingBorder.BorderState(0, 0, 0),
+                              new FlashingBorder.BorderState(i, i, 5),
+                              new FlashingBorder.BorderState(i * 9 - i * 1.5, i * 9 - i * 1.5, 5 - i * 1.5),
+                              800
+                        )
+                        border.Start()
+                        flashingBorders.push(border)
+                        onboardingElements.image.push(border)
+                  }
+
+                  let hasRun = false
+                  element.parentElement.addEventListener("mouseover", () => {
+                        if (hasRun) return
+                        hasRun = true
+
+                        flashingBorders.forEach(border => border.Destroy())
+
+                        flashingBorders = []
+                        for (let i = 0; i < 3; i++) {
+                              let highStrokeWidth = 4 - i * 1.5
+                              let highSize = -8.5 * i - highStrokeWidth * 2
+
+                              const border = new FlashingBorder(
+                                    downloadButton.downloadButton.parentElement,
+                                    new FlashingBorder.BorderState(0, 0, 0),
+                                    new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
+                                    new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
+                                    800
+                              )
+                              border.borderElement.style.borderRadius = "1000px"
+                              border.Start()
+                              flashingBorders.push(border)
+                              onboardingElements.image.push(border)
+
+                              downloadButton.downloadButton.parentElement.addEventListener("mouseover", () => {
+                                    flashingBorders.forEach(border => border.Destroy())
+
+                                    onboardingStatus.image = true
+                                    browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+                              })
+                        }
+                  })
             }
 
             // logic for video elements
@@ -117,40 +182,3 @@ function InstallCleanup() {
 
 }
 
-function StartOnboarding(element) {
-      const outerFlasher = document.createElement("div")
-      outerFlasher.classList.add("onboarding-image")
-      element.parentElement.appendChild(outerFlasher)
-      const innerFlasher = document.createElement("div")
-      innerFlasher.classList.add("onboarding-image")
-      innerFlasher.style.bor
-      element.parentElement.appendChild(innerFlasher)
-      setInterval(() => {
-            innerFlasher.active = !innerFlasher.active
-            if (innerFlasher.active) {
-                  innerFlasher.style.borderWidth = "5px"
-                  innerFlasher.style.width = "calc(100% - 40px)"
-                  innerFlasher.style.height = "calc(100% - 40px)"
-                  innerFlasher.style.margin = "15px"
-            }
-            else {
-                  innerFlasher.style.borderWidth = "5px"
-                  innerFlasher.style.width = "calc(100% - 20px)"
-                  innerFlasher.style.height = "calc(100% - 20px)"
-                  innerFlasher.style.margin = "5px"
-            }
-            outerFlasher.active = !outerFlasher.active
-            if (outerFlasher.active) {
-                  outerFlasher.style.borderWidth = "5px"
-                  outerFlasher.style.width = "calc(100% - 20px)"
-                  outerFlasher.style.height = "calc(100% - 20px)"
-                  outerFlasher.style.margin = "5px"
-            }
-            else {
-                  outerFlasher.style.borderWidth = "5px"
-                  outerFlasher.style.width = "calc(100% - 10px)"
-                  outerFlasher.style.height = "calc(100% - 10px)"
-                  outerFlasher.style.margin = "0px"
-            }
-      }, 500)
-}
