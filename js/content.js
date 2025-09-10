@@ -3,6 +3,8 @@ let onboardingStatus
 let onboardingElements = { image: [], video: [] }
 let onboardingHasRun = { video: false, image: false }
 
+const mobileDevice = Downloadbutton.DetectMobileDevice()
+
 const minUptime = 1000
 browser.runtime.onMessage.addListener((message) => {
       if (message.type == "init") {
@@ -42,7 +44,8 @@ new NodeObserver(
                   const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
 
                   if (!onboardingStatus.image && !onboardingHasRun.image) {
-                        CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+                        if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
+                        else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
                         onboardingHasRun.image = true
                   }
             }
@@ -87,7 +90,8 @@ new NodeObserver(
 
                               // Onboarding procedure
                               if (!onboardingStatus.video && !onboardingHasRun.video) {
-                                    CreateFlashingBorders(element, downloadButton, Downloadbutton.Video)
+                                    if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Video)
+                                    else CreateFlashingBorders(element, downloadButton, Downloadbutton.Video)
                                     onboardingHasRun.video = true
                               }
                         })
@@ -132,7 +136,9 @@ function InstallCleanup() {
                   let downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
 
                   if (!onboardingStatus.image && !onboardingHasRun.image) {
-                        CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+                        if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
+                        else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+                        
                         onboardingHasRun.image = true
                   }
             })
@@ -148,7 +154,9 @@ function InstallCleanup() {
 
                               // Onboarding procedure
                               if (!onboardingStatus.video && !onboardingHasRun.video) {
-                                    CreateFlashingBorders(videoElement, downloadButton, Downloadbutton.Video)
+                                    if (mobileDevice) CreateFlashingBordersMobile(videoElement, downloadButton, Downloadbutton.Video)
+                                    else CreateFlashingBorders(videoElement, downloadButton, Downloadbutton.Video)
+                                    
                                     onboardingHasRun.video = true
                               }
                         }
@@ -183,8 +191,7 @@ function CreateFlashingBorders(element, downloadButton, type) {
 
       let hasRun = false
       element.parentElement.parentElement.addEventListener("mouseover", () => {
-            if (
-                  hasRun &&
+            if (hasRun &&
                   (type == Downloadbutton.Image && onboardingStatus.image) ||
                   (type == Downloadbutton.Video && onboardingStatus.video)
             ) return
@@ -210,16 +217,106 @@ function CreateFlashingBorders(element, downloadButton, type) {
                   flashingBorders.push(border)
                   if (type == Downloadbutton.Video) onboardingElements.video.push(border)
                   else onboardingElements.image.push(border)
-
-                  downloadButton.downloadButton.parentElement.addEventListener("mouseover", () => {
-                        flashingBorders.forEach(border => border.Destroy())
-
-                        if (type == Downloadbutton.Video) onboardingStatus.video = true
-                        else onboardingStatus.image = true
-
-                        browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
-                  })
             }
+
+            downloadButton.downloadButton.parentElement.addEventListener("mouseover", () => {
+                  flashingBorders.forEach(border => border.Destroy())
+
+                  if (type == Downloadbutton.Video) onboardingStatus.video = true
+                  else onboardingStatus.image = true
+
+                  browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+            })
       })
 }
 
+function CreateFlashingBordersMobile(element, downloadButton, type) {
+      let flashingBorders = []
+
+      if (type == Downloadbutton.Image) {
+            for (let i = 0; i < 3; i++) {
+                  let highStrokeWidth = 4 - i * 1.5
+                  let highSize = -8.5 * i - highStrokeWidth * 2
+
+                  const border = new FlashingBorder(
+                        downloadButton.downloadButton,
+                        new FlashingBorder.BorderState(0, 0, 0),
+                        new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
+                        new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
+                        800
+                  )
+                  border.borderElement.style.borderRadius = "1000px"
+                  border.Start()
+
+                  flashingBorders.push(border)
+                  if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                  else onboardingElements.image.push(border)
+            }
+
+            setTimeout(() => {
+                  flashingBorders.forEach(border => border.Destroy())
+
+                  if (type == Downloadbutton.Video) onboardingStatus.video = true
+                  else onboardingStatus.image = true
+
+                  browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+            }, 2400)
+
+            return
+      }
+
+      for (let i = 0; i < 3; i++) {
+            const border = new FlashingBorder(
+                  element.parentElement,
+                  new FlashingBorder.BorderState(0, 0, 0),
+                  new FlashingBorder.BorderState(i, i, 5),
+                  new FlashingBorder.BorderState(i * 9 - i * 1.5, i * 9 - i * 1.5, 5 - i * 1.5),
+                  800
+            )
+            border.Start()
+
+            flashingBorders.push(border)
+            if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+            else onboardingElements.image.push(border)
+      }
+
+      let hasRun = false
+      element.parentElement.parentElement.addEventListener("click", () => {
+            if (hasRun &&
+                  type == Downloadbutton.Video &&
+                  onboardingStatus.video
+            ) return
+            hasRun = true
+
+            flashingBorders.forEach(border => border.Destroy())
+
+            flashingBorders = []
+            for (let i = 0; i < 3; i++) {
+                  let highStrokeWidth = 4 - i * 1.5
+                  let highSize = -8.5 * i - highStrokeWidth * 2
+
+                  const border = new FlashingBorder(
+                        downloadButton.downloadButton,
+                        new FlashingBorder.BorderState(0, 0, 0),
+                        new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
+                        new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
+                        800
+                  )
+                  border.borderElement.style.borderRadius = "1000px"
+                  border.Start()
+
+                  flashingBorders.push(border)
+                  if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                  else onboardingElements.image.push(border)
+            }
+
+            setTimeout(() => {
+                  flashingBorders.forEach(border => border.Destroy())
+
+                  if (type == Downloadbutton.Video) onboardingStatus.video = true
+                  else onboardingStatus.image = true
+
+                  browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+            }, 2400)
+      })
+}

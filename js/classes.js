@@ -85,7 +85,7 @@ class Downloadbutton {
       static Video = 1
       static GIF = 2
 
-      #mobileDevice = this.#detectMobile()
+      #mobileDevice = Downloadbutton.DetectMobileDevice()
 
       downloadButton = null
       #downloadIcon = null
@@ -362,10 +362,8 @@ class Downloadbutton {
       }
 
       /** Detect if a mobile device is used in the least intrusive way
-       * 
-       *  Checking if `browser.downloads === undefined` would require extra permissions
        */
-      #detectMobile() {
+      static DetectMobileDevice() {
             const toMatch = [
                   /Android/i,
                   /webOS/i,
