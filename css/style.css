@@ -64,7 +64,7 @@
 }
 
 .onboarding-image {
-  border: solid red 0px;
+  border: solid #208BFE 0px;
   position: absolute;
   overflow: visible;
   z-index: 1000;

@@ -421,18 +421,20 @@ class FlashingBorder {
 
             this.borderElement = document.createElement("div")
             this.borderElement.classList.add("onboarding-image")
+            this.borderElement.id = "flashing-border"
+            this.#ApplyState()
             this.borderElement.style.transition = `cubic-bezier(.45,.05,.55,.95) all ${this.#intervalTime * 0.9}ms`
             this.#element.appendChild(this.borderElement)
-
-            this.#ApplyState()
       }
 
       Start() {
             if (this.#active) return
             this.#active = true
 
-            this.#interval = setInterval(() => this.#Flash(), this.#intervalTime)
-            //this.#Flash()
+            setTimeout(() => {
+                  this.#interval = setInterval(() => this.#Flash(), this.#intervalTime)
+                  this.#Flash()
+            }, 100)
       }
 
       Stop() {

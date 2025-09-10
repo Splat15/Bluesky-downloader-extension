@@ -4,8 +4,16 @@ const startTime = Date.now()
 let tabIDs = []
 
 let onboardingStatus = localStorage.getItem("onboarding-status")
-if (!onboardingStatus) onboardingStatus = { image: false, video: false }
+if (!onboardingStatus) onboardingStatus = { image: true, video: true }
 else onboardingStatus = JSON.parse(onboardingStatus)
+
+
+browser.runtime.onInstalled.addListener((details) => {
+      if (details.reason == "install") {
+            onboardingStatus = { image: false, video: false }
+            localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
+      }
+});
 
 // Add listeners for messages from content scripts
 browser.runtime.onMessage.addListener((message, sender) => {
@@ -39,7 +47,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   try {
                         browser.tabs.sendMessage(tabID, { type: "onboarding-update", onboardingStatus: onboardingStatus })
                   }
-                  catch {}
+                  catch { }
             })
       }
 });

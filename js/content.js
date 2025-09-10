@@ -1,13 +1,14 @@
 // Onboarding
 let onboardingStatus
 let onboardingElements = { image: [], video: [] }
+let onboardingHasRun = { video: false, image: false }
 
 const minUptime = 1000
 browser.runtime.onMessage.addListener((message) => {
       if (message.type == "init") {
-            if (Date.now() - message.uptime < minUptime) InstallCleanup()
-
             onboardingStatus = message.onboardingStatus
+
+            if (message.uptime < minUptime) InstallCleanup()
       }
       else if (message.type == "onboarding-update") {
             onboardingStatus = message.onboardingStatus
@@ -20,8 +21,6 @@ browser.runtime.onMessage.addListener((message) => {
       }
 })
 browser.runtime.sendMessage({ type: "init" })
-
-let imageOnboardingHasRun
 
 // Add download buttons to images in feed
 new NodeObserver(
@@ -42,56 +41,10 @@ new NodeObserver(
             {
                   const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
 
-                  if (imageOnboardingHasRun || onboardingStatus.image) return
-                  imageOnboardingHasRun = true
-
-                  // Onboarding procedure
-                  let flashingBorders = []
-                  for (let i = 0; i < 3; i++) {
-                        const border = new FlashingBorder(
-                              element.parentElement,
-                              new FlashingBorder.BorderState(0, 0, 0),
-                              new FlashingBorder.BorderState(i, i, 5),
-                              new FlashingBorder.BorderState(i * 9 - i * 1.5, i * 9 - i * 1.5, 5 - i * 1.5),
-                              800
-                        )
-                        border.Start()
-                        flashingBorders.push(border)
-                        onboardingElements.image.push(border)
+                  if (!onboardingStatus.image && !onboardingHasRun.image) {
+                        CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+                        onboardingHasRun.image = true
                   }
-
-                  let hasRun = false
-                  element.parentElement.addEventListener("mouseover", () => {
-                        if (hasRun) return
-                        hasRun = true
-
-                        flashingBorders.forEach(border => border.Destroy())
-
-                        flashingBorders = []
-                        for (let i = 0; i < 3; i++) {
-                              let highStrokeWidth = 4 - i * 1.5
-                              let highSize = -8.5 * i - highStrokeWidth * 2
-
-                              const border = new FlashingBorder(
-                                    downloadButton.downloadButton.parentElement,
-                                    new FlashingBorder.BorderState(0, 0, 0),
-                                    new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
-                                    new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
-                                    800
-                              )
-                              border.borderElement.style.borderRadius = "1000px"
-                              border.Start()
-                              flashingBorders.push(border)
-                              onboardingElements.image.push(border)
-
-                              downloadButton.downloadButton.parentElement.addEventListener("mouseover", () => {
-                                    flashingBorders.forEach(border => border.Destroy())
-
-                                    onboardingStatus.image = true
-                                    browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
-                              })
-                        }
-                  })
             }
 
             // logic for video elements
@@ -100,32 +53,44 @@ new NodeObserver(
                   // Video posts
                   if (element.preload == "none" &&
                         element.hasAttribute("poster")) {
-
+                        let downloadElement;
                         // Create download button
+                        new Promise(resolve => {
+                              // Wait for element next to downloadButton to load
+                              let observer = new NodeObserver(
+                                    element2 => element2.tagName == "DIV" &&
+                                          element2.dir == "auto" &&
+                                          !element2.parentElement.hasAttribute("aria-label"),
+                                    // Create download button
+                                    element2 => {
+                                          //new Downloadbutton(Downloadbutton.Video, element2, element.poster)
+                                          downloadElement = element2
+                                          resolve()
+                                    },
+                                    true,
+                                    element.parentElement.parentElement
+                              )
 
-                        // Wait for element next to downloadButton to load
-                        let observer = new NodeObserver(
-                              element2 => element2.tagName == "DIV" &&
-                                    element2.dir == "auto" &&
-                                    !element2.parentElement.hasAttribute("aria-label"),
-                              // Create download button
-                              element2 => {
-                                    new Downloadbutton(Downloadbutton.Video, element2, element.poster)
-                              },
-                              true,
-                              element.parentElement.parentElement
-                        )
+                              // Check if element next to downloadButton is already loaded
+                              const element2 = element.parentElement.parentElement.querySelector("div[dir='auto']")
+                              if (element2) {
 
-                        // Check if element next to downloadButton is already loaded
-                        const downloadElement = element.parentElement.parentElement.querySelector("div[dir='auto']")
-                        if (downloadElement) {
+                                    // Stop node observer from triggering
+                                    observer.Stop()
+                                    // Create download button
+                                    //new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
+                                    downloadElement = element2
+                                    resolve()
+                              }
+                        }).then(() => {
+                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
 
-                              // Stop node observer from triggering
-                              observer.Stop()
-                              // Create download button
-                              new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
-                        }
-
+                              // Onboarding procedure
+                              if (!onboardingStatus.video && !onboardingHasRun.video) {
+                                    CreateFlashingBorders(element, downloadButton, Downloadbutton.Video)
+                                    onboardingHasRun.video = true
+                              }
+                        })
                   }
 
                   // tenor GIF posts (actually webm)
@@ -133,8 +98,7 @@ new NodeObserver(
                         element.downloadButton !== true)
                   // Create download button
                   {
-                        new Downloadbutton(Downloadbutton.GIF
-                              , element, element.src)
+                        new Downloadbutton(Downloadbutton.GIF, element, element.src)
                   }
             }
       }
@@ -157,22 +121,38 @@ document.head.appendChild(stylesheet)
  */
 function InstallCleanup() {
       // Clean up
-      Array.from(document.querySelectorAll("#download-button")).forEach(element => element.remove())
+      Array.from(document.querySelectorAll("#download-button-div")).forEach(element => element.remove())
+      Array.from(document.querySelectorAll("#flashing-border")).forEach(element => element.remove())
 
       // Manually re-add download buttons without the document needing to refresh
       // Images
       const imageElements = Array.from(document.querySelectorAll("img[src][alt]"))
             .filter(element => /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) && !element.hasAttribute("draggable"))
-            .forEach(element => new Downloadbutton(Downloadbutton.Image, element, element.src))
+            .forEach(element => {
+                  let downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
+
+                  if (!onboardingStatus.image && !onboardingHasRun.image) {
+                        CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+                        onboardingHasRun.image = true
+                  }
+            })
 
       // Videos
       Array.from(document.querySelectorAll("video[poster][playsinline][preload='none']"))
-            .forEach(element => {
-                  const downloadElement = Array.from(element.parentElement.parentElement.querySelectorAll('div:not([aria-label])>div[dir=auto]'))
-                        .filter(element => !element.parentElement.hasAttribute("aria-label"))[0]
-                  if (downloadElement) {
-                        new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
-                  }
+            .forEach(videoElement => {
+                  const downloadElements = Array.from(videoElement.parentElement.parentElement.querySelectorAll('div:not([aria-label])>div[dir=auto]'))
+                        .filter(element => !element.parentElement.hasAttribute("aria-label"))
+                  downloadElements.forEach(downloadElement => {
+                        if (downloadElement) {
+                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster)
+
+                              // Onboarding procedure
+                              if (!onboardingStatus.video && !onboardingHasRun.video) {
+                                    CreateFlashingBorders(videoElement, downloadButton, Downloadbutton.Video)
+                                    onboardingHasRun.video = true
+                              }
+                        }
+                  })
             })
 
       // GIFs
@@ -180,6 +160,66 @@ function InstallCleanup() {
             .forEach(element => {
                   new Downloadbutton(Downloadbutton.GIF, element, element.src)
             })
+}
 
+
+
+function CreateFlashingBorders(element, downloadButton, type) {
+      let flashingBorders = []
+      for (let i = 0; i < 3; i++) {
+            const border = new FlashingBorder(
+                  element.parentElement,
+                  new FlashingBorder.BorderState(0, 0, 0),
+                  new FlashingBorder.BorderState(i, i, 5),
+                  new FlashingBorder.BorderState(i * 9 - i * 1.5, i * 9 - i * 1.5, 5 - i * 1.5),
+                  800
+            )
+            border.Start()
+
+            flashingBorders.push(border)
+            if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+            else onboardingElements.image.push(border)
+      }
+
+      let hasRun = false
+      element.parentElement.parentElement.addEventListener("mouseover", () => {
+            if (
+                  hasRun &&
+                  (type == Downloadbutton.Image && onboardingStatus.image) ||
+                  (type == Downloadbutton.Video && onboardingStatus.video)
+            ) return
+            hasRun = true
+
+            flashingBorders.forEach(border => border.Destroy())
+
+            flashingBorders = []
+            for (let i = 0; i < 3; i++) {
+                  let highStrokeWidth = 4 - i * 1.5
+                  let highSize = -8.5 * i - highStrokeWidth * 2
+
+                  const border = new FlashingBorder(
+                        downloadButton.downloadButton,
+                        new FlashingBorder.BorderState(0, 0, 0),
+                        new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
+                        new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
+                        800
+                  )
+                  border.borderElement.style.borderRadius = "1000px"
+                  border.Start()
+
+                  flashingBorders.push(border)
+                  if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                  else onboardingElements.image.push(border)
+
+                  downloadButton.downloadButton.parentElement.addEventListener("mouseover", () => {
+                        flashingBorders.forEach(border => border.Destroy())
+
+                        if (type == Downloadbutton.Video) onboardingStatus.video = true
+                        else onboardingStatus.image = true
+
+                        browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+                  })
+            }
+      })
 }
 
