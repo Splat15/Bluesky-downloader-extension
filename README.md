@@ -6,9 +6,3 @@ The extension uses [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm), a W
 Implementation of ffmpeg.wasm is based on [browser-extension-ffmpeg](https://github.com/Aniny21/browser-extension-ffmpeg) by [Aniny21](https://github.com/Aniny21).<br/>
 SVG icons are made by [https://flaticon.com/uicons](https://flaticon.com/uicons).<br/>
 Progress indicators are from [progressbar.js](https://github.com/kimmobrunfeldt/progressbar.js) by [kimmobrunfeldt](https://github.com/kimmobrunfeldt). 
-
-To build run:</br>
-```
-npm install --save-dev web-ext
-web-ext build
-```
