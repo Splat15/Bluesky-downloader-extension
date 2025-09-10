@@ -165,144 +165,149 @@ class Downloadbutton {
 
       /** Downloads the url based on type of button */
       async #Download(url) {
-            if (this.#downloading) return
-            this.#downloading = true
-
-            this.#downloadIcon.style.opacity = 0
-            this.#CreateProgressCircle()
-            this.#progressCircle.set(0.01)
-
-            // Purely cosmetic, delays download for 300ms to let the opacity transitions progress
-            await new Promise((resolve) => {
-                  setTimeout(() => {
-                        this.#progressCircleElem.style.opacity = 1
-
-                        setTimeout(() => {
-                              resolve()
-                        }, 100);
-                  }, 200);
-            })
-
             try {
-                  let fileName
-                  if (this.type != Downloadbutton.GIF) {
-                        if (!this.#username) {
-                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
-                              const responseBody = JSON.parse(await response.text())
-                              this.#username = responseBody.handle
+                  if (this.#downloading) return
+                  this.#downloading = true
+
+                  this.#downloadIcon.style.opacity = 0
+                  this.#CreateProgressCircle()
+                  this.#progressCircle.set(0.01)
+
+                  // Purely cosmetic, delays download for 300ms to let the opacity transitions progress
+                  await new Promise((resolve) => {
+                        setTimeout(() => {
+                              this.#progressCircleElem.style.opacity = 1
+
+                              setTimeout(() => {
+                                    resolve()
+                              }, 100);
+                        }, 200);
+                  })
+
+                  try {
+                        let fileName
+                        if (this.type != Downloadbutton.GIF) {
+                              if (!this.#username) {
+                                    const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
+                                    const responseBody = JSON.parse(await response.text())
+                                    this.#username = responseBody.handle
+                              }
+
+                              fileName = this.#username + "-" + this.#generateHash(url).toString().slice(6)
+                        }
+                        else {
+                              fileName = url.match(/\w+(?=\.\w+$)/)[0]
                         }
 
-                        fileName = this.#username + "-" + this.#generateHash(url).toString().slice(6)
-                  }
-                  else {
-                        fileName = url.match(/\w+(?=\.\w+$)/)[0]
-                  }
+                        // Image download
+                        if (this.type != Downloadbutton.Video) {
 
-                  // Image download
-                  if (this.type != Downloadbutton.Video) {
+                              // Get local URL
+                              const file = await fetch(url)
+                              this.#progressCircle.animate(0.5, { duration: 300 })
+                              const fileBlob = await file.blob()
+                              this.#progressCircle.animate(1, { duration: 300 })
+                              const fileURL = URL.createObjectURL(fileBlob)
 
-                        // Get local URL
-                        const file = await fetch(url)
-                        this.#progressCircle.animate(0.5, { duration: 300 })
-                        const fileBlob = await file.blob()
-                        this.#progressCircle.animate(1, { duration: 300 })
-                        const fileURL = URL.createObjectURL(fileBlob)
+                              // Download file
+                              const a = document.createElement('a')
+                              a.download = fileName + (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")
+                              a.href = fileURL
+                              a.click()
 
-                        // Download file
-                        const a = document.createElement('a')
-                        a.download = fileName + (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")
-                        a.href = fileURL
-                        a.click()
-
-                        this.#downloadIcon.src = Downloadbutton.Icons.Done
-                        setTimeout(() => {
-                              this.#progressCircleElem.style.opacity = 0
+                              this.#downloadIcon.src = Downloadbutton.Icons.Done
                               setTimeout(() => {
-                                    this.#downloadIcon.style.opacity = 1
-                                    this.#downloading = false
-                                    this.#DestroyProgressCircle()
-                              }, 100);
-                        }, 800)
+                                    this.#progressCircleElem.style.opacity = 0
+                                    setTimeout(() => {
+                                          this.#downloadIcon.style.opacity = 1
+                                          this.#downloading = false
+                                          this.#DestroyProgressCircle()
+                                    }, 100);
+                              }, 800)
 
-                        window.URL.revokeObjectURL(fileURL);
-                        this.#AddURLToHistory(url)
-                  }
+                              window.URL.revokeObjectURL(fileURL);
+                              this.#AddURLToHistory(url)
+                        }
 
-                  // Video download
-                  else {
-                        // Generate unique ID for process
-                        const id = Math.round(Math.random() * 10000000)
+                        // Video download
+                        else {
+                              // Generate unique ID for process
+                              const id = Math.round(Math.random() * 10000000)
 
-                        // Add listener for progress updates from background script
-                        browser.runtime.onMessage.addListener((message) => {
-                              if (message.type == "bsky-download-progress" &&
-                                    message.id == id &&
-                                    message.url == url) {
+                              // Add listener for progress updates from background script
+                              browser.runtime.onMessage.addListener((message) => {
+                                    if (message.type == "bsky-download-progress" &&
+                                          message.id == id &&
+                                          message.url == url) {
 
-                                    // Error occurred during download, skipped file 
-                                    if (message.hasOwnProperty("error")) {
-                                          this.#downloadIcon.src = Downloadbutton.Icons.Error
-                                          this.#progressCircleElem.style.opacity = 0
-                                          setTimeout(() => {
-                                                this.#downloadIcon.style.opacity = 1
-                                                this.#downloading = false
-                                                this.#DestroyProgressCircle()
-                                          }, 300);
-                                          throw new Error(message.error)
-                                    }
-
-                                    // Progress update
-                                    this.#progressCircle.animate(message.progress / 100, { duration: 300 })
-
-                                    // Download done
-                                    if (message.progress == 100) {
-                                          // Save URL to history
-                                          this.#AddURLToHistory(url)
-
-                                          if (message.fileBlob !== null) {
-                                                let fileURL = URL.createObjectURL(message.fileBlob)
-                                                const a = document.createElement('a');
-                                                a.download = fileName + ".mp4";
-                                                a.href = fileURL;
-
-                                                a.click();
-
-                                                window.URL.revokeObjectURL(fileURL)
-                                          }
-
-                                          // transition back to static icon
-                                          this.#downloadIcon.src = Downloadbutton.Icons.Done
-                                          setTimeout(() => {
+                                          // Error occurred during download, skipped file 
+                                          if (message.hasOwnProperty("error")) {
+                                                this.#downloadIcon.src = Downloadbutton.Icons.Error
                                                 this.#progressCircleElem.style.opacity = 0
                                                 setTimeout(() => {
                                                       this.#downloadIcon.style.opacity = 1
                                                       this.#downloading = false
                                                       this.#DestroyProgressCircle()
-                                                }, 200);
-                                          }, 800)
-                                    }
-                              }
-                        })
+                                                }, 300);
+                                                throw new Error(message.error)
+                                          }
 
-                        // Send download request to background script
-                        browser.runtime.sendMessage({
-                              type: "bsky-download",
-                              id: id,
-                              url: url,
-                              fileName: fileName
-                        })
+                                          // Progress update
+                                          this.#progressCircle.animate(message.progress / 100, { duration: 300 })
+
+                                          // Download done
+                                          if (message.progress == 100) {
+                                                // Save URL to history
+                                                this.#AddURLToHistory(url)
+
+                                                if (message.fileBlob !== null) {
+                                                      let fileURL = URL.createObjectURL(message.fileBlob)
+                                                      const a = document.createElement('a');
+                                                      a.download = fileName + ".mp4";
+                                                      a.href = fileURL;
+
+                                                      a.click();
+
+                                                      window.URL.revokeObjectURL(fileURL)
+                                                }
+
+                                                // transition back to static icon
+                                                this.#downloadIcon.src = Downloadbutton.Icons.Done
+                                                setTimeout(() => {
+                                                      this.#progressCircleElem.style.opacity = 0
+                                                      setTimeout(() => {
+                                                            this.#downloadIcon.style.opacity = 1
+                                                            this.#downloading = false
+                                                            this.#DestroyProgressCircle()
+                                                      }, 200);
+                                                }, 800)
+                                          }
+                                    }
+                              })
+
+                              // Send download request to background script
+                              browser.runtime.sendMessage({
+                                    type: "bsky-download",
+                                    id: id,
+                                    url: url,
+                                    fileName: fileName
+                              })
+                        }
+                  }
+                  catch (error) {
+                        console.error(error)
+
+                        this.#downloadIcon.src = Downloadbutton.Icons.Error
+                        this.#progressCircleElem.style.opacity = 0
+                        setTimeout(() => {
+                              this.#downloadIcon.style.opacity = 1
+                              this.#downloading = false
+                              this.#DestroyProgressCircle()
+                        }, 300);
                   }
             }
             catch (error) {
-                  console.error(error)
-
-                  this.#downloadIcon.src = Downloadbutton.Icons.Error
-                  this.#progressCircleElem.style.opacity = 0
-                  setTimeout(() => {
-                        this.#downloadIcon.style.opacity = 1
-                        this.#downloading = false
-                        this.#DestroyProgressCircle()
-                  }, 300);
+                  console.log(error)
             }
       }
 
@@ -339,26 +344,37 @@ class Downloadbutton {
 
       /** Adds downloaded URL to local storage */
       #AddURLToHistory(url) {
-            const hash = this.#generateHash(url)
+            try {
+                  const hash = this.#generateHash(url)
 
-            let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-            if (_storage == null) _storage = []
-            if (_storage.indexOf(hash) == -1) _storage.push(hash)
-            localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
+                  let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
+                  if (_storage == null) _storage = []
+                  if (_storage.indexOf(hash) == -1) _storage.push(hash)
+                  localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
+            }
+            catch (error) {
+                  console.error(error)
+            }
       }
 
       /** Checks if URL is present in local storage */
       #GetURLFromHistory(url) {
-            const hash = this.#generateHash(url)
-            let _storage = []
             try {
-                  _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-            }
-            catch {
-                  localStorage.setItem("downloadedURLs", JSON.stringify([]))
-            }
+                  const hash = this.#generateHash(url)
+                  let _storage = []
+                  try {
+                        _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
+                  }
+                  catch {
+                        localStorage.setItem("downloadedURLs", JSON.stringify([]))
+                  }
 
-            return _storage && _storage.length > 0 && _storage.indexOf(hash) !== -1
+                  return _storage && _storage.length > 0 && _storage.indexOf(hash) !== -1
+            }
+            catch (error) {
+                  console.error(error)
+                  return false
+            }
       }
 
       /** Detect if a mobile device is used in the least intrusive way
@@ -449,9 +465,14 @@ class FlashingBorder {
       }
 
       Destroy() {
-            this.Stop().then(() => {
-                  this.borderElement.remove()
-            })
+            try {
+                  this.Stop().then(() => {
+                        this.borderElement.remove()
+                  })
+            }
+            catch (error) {
+                  
+            }
       }
 
       #Flash() {

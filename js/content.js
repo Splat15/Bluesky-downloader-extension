@@ -41,13 +41,16 @@ new NodeObserver(
                   /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src))
             // Create download button
             {
-                  const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
+                  try {
+                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
 
-                  if (!onboardingStatus.image && !onboardingHasRun.image) {
-                        if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
-                        else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
-                        onboardingHasRun.image = true
+                        if (!onboardingStatus.image && !onboardingHasRun.image) {
+                              if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
+                              else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+                              onboardingHasRun.image = true
+                        }
                   }
+                  catch (error) { console.error(error) }
             }
 
             // logic for video elements
@@ -86,14 +89,18 @@ new NodeObserver(
                                     resolve()
                               }
                         }).then(() => {
-                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
+                              try {
+                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
 
-                              // Onboarding procedure
-                              if (!onboardingStatus.video && !onboardingHasRun.video) {
-                                    if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Video)
-                                    else CreateFlashingBorders(element, downloadButton, Downloadbutton.Video)
-                                    onboardingHasRun.video = true
+                                    // Onboarding procedure
+                                    if (!onboardingStatus.video && !onboardingHasRun.video) {
+                                          if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Video)
+                                          else CreateFlashingBorders(element, downloadButton, Downloadbutton.Video)
+                                          onboardingHasRun.video = true
+                                    }
+
                               }
+                              catch (error) { console.error(error) }
                         })
                   }
 
@@ -102,7 +109,12 @@ new NodeObserver(
                         element.downloadButton !== true)
                   // Create download button
                   {
-                        new Downloadbutton(Downloadbutton.GIF, element, element.src)
+                        try {
+                              new Downloadbutton(Downloadbutton.GIF, element, element.src)
+                        }
+                        catch (error) {
+                              console.error(error)
+                        }
                   }
             }
       }
@@ -133,13 +145,18 @@ function InstallCleanup() {
       const imageElements = Array.from(document.querySelectorAll("img[src][alt]"))
             .filter(element => /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) && !element.hasAttribute("draggable"))
             .forEach(element => {
-                  let downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
+                  try {
+                        let downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
 
-                  if (!onboardingStatus.image && !onboardingHasRun.image) {
-                        if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
-                        else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
-                        
-                        onboardingHasRun.image = true
+                        if (!onboardingStatus.image && !onboardingHasRun.image) {
+                              if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
+                              else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+
+                              onboardingHasRun.image = true
+                        }
+                  }
+                  catch (error) {
+                        console.error(error)
                   }
             })
 
@@ -150,14 +167,19 @@ function InstallCleanup() {
                         .filter(element => !element.parentElement.hasAttribute("aria-label"))
                   downloadElements.forEach(downloadElement => {
                         if (downloadElement) {
-                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster)
+                              try {
+                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster)
 
-                              // Onboarding procedure
-                              if (!onboardingStatus.video && !onboardingHasRun.video) {
-                                    if (mobileDevice) CreateFlashingBordersMobile(videoElement, downloadButton, Downloadbutton.Video)
-                                    else CreateFlashingBorders(videoElement, downloadButton, Downloadbutton.Video)
-                                    
-                                    onboardingHasRun.video = true
+                                    // Onboarding procedure
+                                    if (!onboardingStatus.video && !onboardingHasRun.video) {
+                                          if (mobileDevice) CreateFlashingBordersMobile(videoElement, downloadButton, Downloadbutton.Video)
+                                          else CreateFlashingBorders(videoElement, downloadButton, Downloadbutton.Video)
+
+                                          onboardingHasRun.video = true
+                                    }
+                              }
+                              catch (error) {
+                                    console.error(error)
                               }
                         }
                   })
@@ -166,7 +188,12 @@ function InstallCleanup() {
       // GIFs
       Array.from(document.querySelectorAll("video[playsinline][preload='auto']"))
             .forEach(element => {
-                  new Downloadbutton(Downloadbutton.GIF, element, element.src)
+                  try {
+                        new Downloadbutton(Downloadbutton.GIF, element, element.src)
+                  }
+                  catch (error) {
+                        console.error(error)
+                  }
             })
 }
 
