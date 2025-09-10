@@ -1,12 +1,24 @@
-// On install create popup on content script 
 let installTime = 0
+const startTime = Date.now()
+
+let tabIDs = []
+
+let onboardingStatus = localStorage.getItem("onboarding-status")
+if (!onboardingStatus) onboardingStatus = { image: true, video: true }
+else onboardingStatus = JSON.parse(onboardingStatus)
+
+
 browser.runtime.onInstalled.addListener((details) => {
-      console.log("installed")
-      installTime = Date.now();
+      if (details.reason == "install") {
+            onboardingStatus = { image: false, video: false }
+            localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
+      }
 });
 
 // Add listeners for messages from content scripts
 browser.runtime.onMessage.addListener((message, sender) => {
+      tabIDs.push(sender.tab.id)
+
       if (message.type == "bsky-download" && message.url.length > 0) {
             // Start download
             downloader.download(message.url, message.fileName, (progress, error, fileBlob = null) => {
@@ -19,8 +31,24 @@ browser.runtime.onMessage.addListener((message, sender) => {
       }
 
       // Listener for installTime request
-      if (message.type == "install-time") {
-            browser.tabs.sendMessage(sender.tab.id, { type: "install-time-response", installTime: installTime })
+      if (message.type == "init") {
+            const uptime = Date.now() - startTime
+            browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus })
+      }
+
+      // Onboarding status updates
+      if (message.type == "onboarding-update") {
+            onboardingStatus.video = onboardingStatus.video || message.onboardingStatus.video
+            onboardingStatus.image = onboardingStatus.image || message.onboardingStatus.image
+
+            localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
+
+            tabIDs.forEach(tabID => {
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "onboarding-update", onboardingStatus: onboardingStatus })
+                  }
+                  catch { }
+            })
       }
 });
 

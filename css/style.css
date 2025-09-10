@@ -62,3 +62,13 @@
   height: 20px !important;
   margin: calc(50% - 10px) !important;
 }
+
+.onboarding-image {
+  border: solid #208BFE 0px;
+  position: absolute;
+  overflow: visible;
+  z-index: 1000;
+  border-radius: 12px;
+  pointer-events: none;
+  top: 0;
+}

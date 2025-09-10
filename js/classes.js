@@ -85,9 +85,9 @@ class Downloadbutton {
       static Video = 1
       static GIF = 2
 
-      #mobileDevice = this.#detectMobile()
+      #mobileDevice = Downloadbutton.DetectMobileDevice()
 
-      #downloadButton = null
+      downloadButton = null
       #downloadIcon = null
       #downloadButtonDiv = null
       #progressCircle = null
@@ -150,10 +150,10 @@ class Downloadbutton {
 
             this.#downloadButtonDiv = downloadButton.getElementById("download-button-div")
             this.#dropshadow = downloadButton.getElementById("dropshadow")
-            this.#downloadButton = downloadButton.getElementById("download-button")
+            this.downloadButton = downloadButton.getElementById("download-button")
             this.#downloadIcon = downloadButton.getElementById("download-button-static")
 
-            this.#downloadButton.addEventListener(
+            this.downloadButton.addEventListener(
                   "click",
                   (event) => {
                         event.stopPropagation()
@@ -310,7 +310,7 @@ class Downloadbutton {
       #CreateProgressCircle() {
             this.#progressCircleElem = document.createElement("div")
             this.#progressCircleElem.classList.add("download-icon")
-            this.#downloadButton.appendChild(this.#progressCircleElem)
+            this.downloadButton.appendChild(this.#progressCircleElem)
 
             this.#progressCircle = new ProgressBar.Circle(this.#progressCircleElem, {
                   strokeWidth: 10,
@@ -357,14 +357,13 @@ class Downloadbutton {
             catch {
                   localStorage.setItem("downloadedURLs", JSON.stringify([]))
             }
-            return _storage.length > 0 && _storage.indexOf(hash) !== -1
+
+            return _storage && _storage.length > 0 && _storage.indexOf(hash) !== -1
       }
 
       /** Detect if a mobile device is used in the least intrusive way
-       * 
-       *  Checking if `browser.downloads === undefined` would require extra permissions
        */
-      #detectMobile() {
+      static DetectMobileDevice() {
             const toMatch = [
                   /Android/i,
                   /webOS/i,
@@ -388,4 +387,107 @@ class Downloadbutton {
             }
             return hash;
       };
+}
+
+class FlashingBorder {
+      #element
+      borderElement
+      #lowState
+      #highState
+      #intervalTime
+      #initialState
+      #active = false
+      #interval
+      #state = 0
+      #borderStates
+
+      /**
+       * @param {Node} element Element to add append border element to
+       * @param {BorderState} initialState Initial state of the border
+       * @param {BorderState} lowState Low state of the border
+       * @param {BorderState} highState High state of the border
+       * @param {Number} intervalTime Interval of flashing in ms
+       */
+      constructor(element, initialState, lowState, highState, intervalTime) {
+            this.#element = element
+            if (typeof initialState === undefined) initialState = new FlashingBorder.BorderState(0, 0, 0)
+            this.#borderStates = [initialState, lowState, highState]
+            this.#lowState = lowState
+            this.#highState = highState
+            this.#intervalTime = intervalTime
+            this.#initialState = initialState
+
+            this.borderElement = document.createElement("div")
+            this.borderElement.classList.add("onboarding-image")
+            this.borderElement.id = "flashing-border"
+            this.#ApplyState()
+            this.borderElement.style.transition = `cubic-bezier(.45,.05,.55,.95) all ${this.#intervalTime * 0.9}ms`
+            this.#element.appendChild(this.borderElement)
+      }
+
+      Start() {
+            if (this.#active) return
+            this.#active = true
+
+            setTimeout(() => {
+                  this.#interval = setInterval(() => this.#Flash(), this.#intervalTime)
+                  this.#Flash()
+            }, 100)
+      }
+
+      Stop() {
+            return new Promise((resolve, reject) => {
+                  if (!this.#active) reject
+                  this.#active = false
+
+                  clearInterval(this.#interval)
+
+                  this.#state = 0
+                  this.#ApplyState()
+                  setTimeout(() => resolve(), this.#intervalTime)
+            })
+      }
+
+      Destroy() {
+            this.Stop().then(() => {
+                  this.borderElement.remove()
+            })
+      }
+
+      #Flash() {
+            if (this.#state != 2) this.#state = 2
+            else this.#state = 1
+
+            this.#ApplyState()
+      }
+
+      #ApplyState() {
+            this.#borderStates[this.#state].Apply(this.borderElement)
+      }
+
+
+      static BorderState = class BorderState {
+            xSize
+            ySize
+            strokeWidth
+
+            /**
+             * @param {Number} x Width in 100% - __px
+             * @param {Number} y Height in 100% - __px
+             * @param {Number} strokeWidth Width of the border stroke
+             */
+            constructor(x, y, strokeWidth) {
+                  this.xSize = x
+                  this.ySize = y
+                  this.strokeWidth = strokeWidth
+            }
+
+            Apply(element) {
+                  element.style.width = `calc(100% - ${(this.xSize + this.strokeWidth) * 2}px + 1px)`
+                  element.style.height = `calc(100% - ${(this.ySize + this.strokeWidth) * 2}px + 1px)`
+                  element.style.marginTop = this.ySize + "px"
+                  element.style.marginLeft = this.xSize + "px"
+                  element.style.borderWidth = this.strokeWidth + "px"
+            }
+      }
 }
