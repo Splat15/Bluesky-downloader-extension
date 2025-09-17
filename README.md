@@ -1,6 +1,8 @@
 Bluesky downloader is a Firefox extension that adds download buttons for video and image posts on Bluesky.<br/>
-It is built to support Firefox desktop and mobile.<br/>
-<br/>
+It is built to support Firefox desktop and mobile.
+<br/><br/>
+[Download link](https://addons.mozilla.org/en-CA/firefox/addon/bluesky-downloader/)
+<br/><br/>
 Video downloads are based on [downloader.notx.blue](https://github.com/breakzplatform/downloader.notx.blue) ([down.blue](https://down.blue)) by [breakzplatform](https://github.com/breakzplatform).<br/>
 The extension uses [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm), a WebAssembly port of ffmpeg to convert downloaded videos to the mp4 format.<br/>
 Implementation of ffmpeg.wasm is based on [browser-extension-ffmpeg](https://github.com/Aniny21/browser-extension-ffmpeg) by [Aniny21](https://github.com/Aniny21).<br/>
