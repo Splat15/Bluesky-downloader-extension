@@ -92,7 +92,8 @@ class Downloadbutton {
       #downloadButtonDiv = null
       #progressCircle = null
       #progressCircleElem = null
-      #dropshadow
+      #toastManager = new ToastManager()
+
 
       #username
       #did
@@ -114,6 +115,9 @@ class Downloadbutton {
                   this.#GetDownloadButton(this.url)
                   element.parentElement.appendChild(this.#downloadButtonDiv)
 
+                  let altTextButtons = Array.from(element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  altTextButtons.forEach(altTextButton => altTextButton.style.left = "16px !important")
+
                   element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
                   element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
@@ -128,6 +132,9 @@ class Downloadbutton {
                   element.downloadButton = true
                   this.#GetDownloadButton(this.url)
                   element.parentElement.appendChild(this.#downloadButtonDiv)
+
+                  let altTextButtons = Array.from(element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  altTextButtons.forEach(altTextButton => altTextButton.classList.add("alt-button-left"))
 
                   element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
                   element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
@@ -149,7 +156,6 @@ class Downloadbutton {
                   </div>`.replace(/\s{2,}/g, " "), "text/html")
 
             this.#downloadButtonDiv = downloadButton.getElementById("download-button-div")
-            this.#dropshadow = downloadButton.getElementById("dropshadow")
             this.downloadButton = downloadButton.getElementById("download-button")
             this.#downloadIcon = downloadButton.getElementById("download-button-static")
 
@@ -199,40 +205,101 @@ class Downloadbutton {
                               fileName = url.match(/\w+(?=\.\w+$)/)[0]
                         }
 
+                        this.#toastManager.DisplayToast(fileName + (this.type == Downloadbutton.Video ? ".mp4" : (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")))
+
                         // Image download
                         if (this.type != Downloadbutton.Video) {
 
-                              // Get local URL
-                              const file = await fetch(url)
-                              this.#progressCircle.animate(0.5, { duration: 300 })
-                              const fileBlob = await file.blob()
-                              this.#progressCircle.animate(1, { duration: 300 })
-                              const fileURL = URL.createObjectURL(fileBlob)
+                              // Old method without support for file paths
+                              // Used on mobile devices without browser.downloads API
+                              if (this.#mobileDevice) {
+                                    // Get local URL
+                                    const file = await fetch(url)
+                                    this.#progressCircle.animate(0.5, { duration: 300 })
+                                    const fileBlob = await file.blob()
+                                    this.#progressCircle.animate(1, { duration: 300 })
+                                    const fileURL = URL.createObjectURL(fileBlob)
 
-                              // Download file
-                              const a = document.createElement('a')
-                              a.download = fileName + (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")
-                              a.href = fileURL
-                              a.click()
+                                    // Download file
+                                    const a = document.createElement('a')
+                                    a.download = fileName + (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")
+                                    a.href = fileURL
+                                    a.click()
 
-                              this.#downloadIcon.src = Downloadbutton.Icons.Done
-                              setTimeout(() => {
-                                    this.#progressCircleElem.style.opacity = 0
+                                    this.#downloadIcon.src = Downloadbutton.Icons.Done
+
                                     setTimeout(() => {
-                                          this.#downloadIcon.style.opacity = 1
-                                          this.#downloading = false
-                                          this.#DestroyProgressCircle()
-                                    }, 100);
-                              }, 800)
+                                          this.#progressCircleElem.style.opacity = 0
+                                          setTimeout(() => {
+                                                this.#downloadIcon.style.opacity = 1
+                                                this.#downloading = false
+                                                this.#DestroyProgressCircle()
+                                          }, 100);
+                                    }, 800)
 
-                              window.URL.revokeObjectURL(fileURL);
-                              this.#AddURLToHistory(url)
+                                    window.URL.revokeObjectURL(fileURL);
+                                    this.#AddURLToHistory(url)
+                              }
+
+                              // New method
+                              else {
+                                    // Generate random process ID
+                                    const id = Math.round(Math.random() * 1000000000)
+
+                                    // Add listener for progress updates
+                                    browser.runtime.onMessage.addListener(message => {
+                                          if (message.type == "bsky-download-progress" &&
+                                                message.id == id &&
+                                                message.url == url) {
+
+                                                if (message.hasOwnProperty("error")) {
+                                                      this.#downloadIcon.src = Downloadbutton.Icons.Error
+                                                      this.#progressCircleElem.style.opacity = 0
+                                                      setTimeout(() => {
+                                                            this.#downloadIcon.style.opacity = 1
+                                                            this.#downloading = false
+                                                            this.#DestroyProgressCircle()
+                                                      }, 300);
+                                                      throw new Error(message.error)
+                                                }
+
+                                                this.#progressCircle.animate(message.progress / 100)
+
+                                                // Download is finished
+                                                if (message.progress >= 100) {
+                                                      this.#downloadIcon.src = Downloadbutton.Icons.Done
+
+                                                      setTimeout(() => {
+                                                            this.#progressCircleElem.style.opacity = 0
+                                                            setTimeout(() => {
+                                                                  this.#downloadIcon.style.opacity = 1
+                                                                  this.#downloading = false
+                                                                  this.#DestroyProgressCircle()
+                                                            }, 100);
+                                                      }, 800)
+
+                                                      this.#AddURLToHistory(url)
+                                                }
+                                          }
+
+                                    })
+
+                                    // Send download request
+                                    browser.runtime.sendMessage({
+                                          type: "bsky-download",
+                                          id: id,
+                                          url: url,
+                                          fileType: (this.fileType == Downloadbutton.GIF ? "gif" : "image"),
+                                          username: this.#username,
+                                          fileName: fileName
+                                    })
+                              }
                         }
 
                         // Video download
                         else {
                               // Generate unique ID for process
-                              const id = Math.round(Math.random() * 10000000)
+                              const id = Math.round(Math.random() * 1000000000)
 
                               // Add listener for progress updates from background script
                               browser.runtime.onMessage.addListener((message) => {
@@ -290,6 +357,8 @@ class Downloadbutton {
                                     type: "bsky-download",
                                     id: id,
                                     url: url,
+                                    fileType: "video",
+                                    username: this.#username,
                                     fileName: fileName
                               })
                         }
@@ -471,7 +540,7 @@ class FlashingBorder {
                   })
             }
             catch (error) {
-                  
+
             }
       }
 
@@ -509,6 +578,185 @@ class FlashingBorder {
                   element.style.marginTop = this.ySize + "px"
                   element.style.marginLeft = this.xSize + "px"
                   element.style.borderWidth = this.strokeWidth + "px"
+            }
+      }
+}
+
+
+class ToastManager {
+      toastList = []
+      toastContainer
+
+      constructor() {
+            this.toastContainer = document.getElementById("bskyDownloaderToastContainer")
+            if (!this.toastContainer) {
+                  this.toastContainer = document.createElement("div")
+                  this.toastContainer.classList.add("toast-container")
+                  this.toastContainer.id = "bskyDownloaderToastContainer"
+                  document.body.appendChild(this.toastContainer)
+            }
+      }
+
+      Destroy() {
+            let containers = Array.from(document.querySelectorAll("bskyDownloaderToastContainer"))
+            containers.forEach(container => container.remove())
+      }
+
+      DisplayToast(text, progressBar = true) {
+            let toast = new this.ToastNotification(text, this.toastContainer, progressBar)
+            toast.onAction = () => { this.DismissToast(toast, this.toastList) }
+            this.toastList.unshift(toast)
+
+            toast.Display()
+
+            this.AlignItems()
+            
+            return toast
+      }
+
+      SetProgress(toast, progress) {
+
+      }
+
+
+      DismissToast(toast, toastList) {
+            toast.Dismiss()
+
+            const toastIndex = toastList.indexOf(toast)
+            toastList.splice(toastIndex, 1)
+
+            this.AlignItems()
+      }
+
+
+      AlignItems() {
+            for (let i = 0; i < this.toastList.length; i++) {
+                  let element = this.toastList[i]
+
+                  setTimeout(() => {
+                        element.toastElem.style.bottom = 60 * (i + 1) - 40 + "px"
+                  }, 25 * (i + 1));
+            }
+      }
+
+
+      ToastNotification = class ToastNotification {
+            text = ""
+            toastElem
+            container
+            progressBar
+            onAction = () => { }
+
+            constructor(text, container, progressBar) {
+                  this.container = container
+                  this.text = text
+                  this.progressBar = progressBar
+            }
+
+            Dismiss() {
+                  this.toastElem.style.transform = "translateX(500px)"
+
+                  setTimeout(() => {
+                        this.toastElem.remove()
+                  }, 500);
+            }
+
+            Display() {
+                  const domParser = new DOMParser()
+
+                  // Create toast from HTML string
+                  this.toastElem = domParser.parseFromString(`
+      <div class="toast" id="toast">
+      <div class="toast-border"></div>
+            <div class="toast-body" style="display: flex;flex-direction: row;padding: 12px;height: 20px;">
+                  <div class="toast-text-overflow">
+                        <div class="toast-text-overflow-gradient" style="left: 0px; transform: rotate(180deg); opacity: 0;" id="overflowLeft"></div>
+                        <p class="toast-text" id="toastText">${this.text}</p>
+                        <div class="toast-text-overflow-gradient" style="right: 0px; opacity: 0;" id="overflowRight"></div>
+                  </div>
+                  <button class="toast-action" id="toastAction">
+                        <svg fill="none" width="18" viewBox="0 0 24 24" height="18"
+                              style="color: rgb(255, 255, 255); pointer-events: none;">
+                              <path class="toast-action-icon" fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M4.293 4.293a1 1 0 0 1 1.414 0L12 10.586l6.293-6.293a1 1 0 1 1 1.414 1.414L13.414 12l6.293 6.293a1 1 0 0 1-1.414 1.414L12 13.414l-6.293 6.293a1 1 0 0 1-1.414-1.414L10.586 12 4.293 5.707a1 1 0 0 1 0-1.414Z">
+                              </path>
+                        </svg>
+                  </button>
+            </div>
+            <div id="loadingBar" class="loading-bar">
+            </div>
+      </div>`, "text/html").getElementById("toast")
+                  
+                  /*this.#progressCircle = new ProgressBar.Circle(this.#progressCircleElem, {
+                        strokeWidth: 10,
+                        color: "#f1f3f5ff",
+                        trailColor: "#f1f3f534"
+                  });*/
+
+                  // Add click event to dismiss button
+                  let toastAction = this.toastElem.querySelector('[id="toastAction"]')
+                  toastAction.addEventListener("click", this.onAction)
+
+                  // Add to main document
+                  this.container.appendChild(this.toastElem)
+
+
+                  // Get text element
+                  const textElem = this.toastElem.querySelector('[id="toastText"]')
+
+                  // Get computed sizes to compare
+                  const textComputedStyle = window.getComputedStyle(textElem)
+                  const divComputedStyle = window.getComputedStyle(textElem.parentElement)
+
+                  // Get with as float
+                  const textWidth = parseFloat(textComputedStyle.width)
+                  const divWidth = parseFloat(divComputedStyle.width)
+
+                  const overflowAmount = textWidth - divWidth
+                  const scrollTime = overflowAmount * 0.03 // time for scrolling in seconds, higher multiplyer = slower movement
+
+                  // Text is wider than div
+                  if (overflowAmount > 0) {
+                        textElem.style.transition = `transform linear ${scrollTime}s`
+
+                        // Get gradient elements next to toast text
+                        let overflowLeft = textElem.parentElement.querySelector('[id="overflowLeft"]')
+                        let overflowRight = textElem.parentElement.querySelector('[id="overflowRight"]')
+
+                        // Show right gradient
+                        overflowRight.style.opacity = 1
+
+                        let firstRun = true
+                        let bool = true
+
+                        const scroll = (bool) => {
+                              if (bool) {
+                                    // Move text right
+                                    overflowLeft.style.opacity = 1
+                                    textElem.style.transform = `translateX(-${overflowAmount}px)`
+                                    setTimeout(() => {
+                                          overflowRight.style.opacity = 0
+                                    }, scrollTime * 1000)
+                              }
+                              else {
+                                    // Move text left
+                                    overflowRight.style.opacity = 1
+                                    textElem.style.transform = `translateX(0px)`
+                                    setTimeout(() => {
+                                          overflowLeft.style.opacity = 0
+                                    }, scrollTime * 1000)
+                              }
+                        }
+
+                        setTimeout(() => {
+                              setInterval(() => {
+                                    bool = !bool
+                                    scroll(bool)
+                              }, scrollTime * 1000.0 + 1500)
+
+                              scroll(bool)
+                        }, 1500)
+                  }
             }
       }
 }

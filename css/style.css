@@ -64,11 +64,117 @@
 }
 
 .onboarding-image {
-  border: solid #208BFE 0px;
+  border: solid rgb(15, 115, 255) 0px;
   position: absolute;
   overflow: visible;
   z-index: 1000;
   border-radius: 12px;
   pointer-events: none;
   top: 0;
+}
+
+.alt-button-left {
+  left: 16px !important;
+  right: unset !important;
+}
+
+.toast-container {
+  position: fixed;
+  right: 0px;
+  bottom: 0px;
+  height: fit-content;
+  z-index: 10000;
+  padding: 25px;
+}
+
+.toast {
+  background-color: rgb(34, 46, 63);
+  right: 25px;
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 10px;
+  border-width: 0px;
+  overflow: hidden;
+  bottom: -50px;
+  position: fixed;
+  transition:
+    bottom ease 0.3s,
+    transform ease 0.3s;
+}
+
+.toast-border {
+  top: 0px;
+  left: 0px;
+  bottom: 0px;
+  right: 0px;
+  position: absolute;
+  border-radius: 8px;
+  margin: 0;
+  pointer-events: none;
+}
+
+.toast:hover .toast-border {
+  box-shadow: inset 0px 0px 0px 2px rgb(34, 58, 78);
+}
+
+.toast-body {
+  display: flex;
+  flex-direction: row;
+  padding: 12px;
+  height: 20px;
+}
+
+.toast-text {
+  user-select: none;
+  line-height: 18px;
+  margin: auto;
+  margin-left: 0;
+  color: white;
+  white-space: nowrap;
+  position: relative;
+}
+
+.toast-text-overflow {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  width: fit-content;
+  max-width: 90%;
+  margin-right: auto;
+}
+
+.toast-text-overflow-gradient {
+  height: 100%;
+  width: 20px;
+  position: absolute;
+  z-index: 10;
+  background-image: linear-gradient(to left, rgb(34, 46, 63), transparent);
+  transition: opacity linear 0.1s;
+}
+
+.toast-action {
+  all: unset;
+  margin-top: auto;
+  margin-bottom: auto;
+  cursor: pointer;
+}
+
+.toast-action-icon {
+  fill: #6f839f;
+}
+
+.toast:hover .toast-action-icon {
+  fill: #c3cdda;
+}
+
+.loading-bar {
+  width: 50%;
+  height: 2px;
+  margin-top: -5px;
+  background-color: rgb(15, 115, 255);
+  left: 0px;
+  position: relative;
 }

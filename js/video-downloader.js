@@ -42,6 +42,40 @@ class VideoDownloader {
             }
       }
 
+
+      downloadImage(url, fileName, onProgress = () => { }) {
+            browser.downloads.download({ filename: fileName, url: url }).then(id => {
+                  browser.downloads.search({ id: id }).then(downloadItems => {
+
+                        if (downloadItems.length > 0) {
+                              const downloadItem = downloadItems[0]
+
+                              const _onProgress = ((interval) => {
+                                    if (downloadItem.error)
+                                          throw new Error(downloadItem.error)
+
+                                    this.progress = (downloadItem.totalBytes == -1 ? 1 : downloadItem.bytesReceived / downloadItem.totalBytes) * 100
+                                    console.log(" progress: " + this.progress)
+
+                                    onProgress(this.progress, downloadItem.error)
+
+                                    if (this.progress >= 100)
+                                          clearInterval(interval)
+                              })
+
+                              const interval = setInterval(() => {
+                                    _onProgress(interval)
+                              }, 100)
+                              _onProgress(interval)
+                        }
+
+                        else {
+                              onProgress(0, "Download object lost")
+                        }
+                  });
+            })
+      }
+
       async #download() {
             const currentItem = this.#queue.shift()
 
@@ -76,12 +110,9 @@ class VideoDownloader {
                   else {
                         let fileURL = URL.createObjectURL(fileBlob)
 
-                        const a = document.createElement('a');
-                        a.download = fileName + ".mp4";
-                        a.href = fileURL;
-                        a.click();
-
-                        window.URL.revokeObjectURL(fileURL);
+                        browser.downloads.download({
+                              url: fileURL, filename: fileName
+                        })
                         this.#setProgress(100)
                   }
 

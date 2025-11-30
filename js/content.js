@@ -2,6 +2,7 @@
 let onboardingStatus
 let onboardingElements = { image: [], video: [] }
 let onboardingHasRun = { video: false, image: false }
+const toastManager = new ToastManager()
 
 const mobileDevice = Downloadbutton.DetectMobileDevice()
 
