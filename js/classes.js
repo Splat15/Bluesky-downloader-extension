@@ -93,6 +93,7 @@ class Downloadbutton {
       #progressCircle = null
       #progressCircleElem = null
       #toastManager = new ToastManager()
+      #toast
 
 
       #username
@@ -205,7 +206,7 @@ class Downloadbutton {
                               fileName = url.match(/\w+(?=\.\w+$)/)[0]
                         }
 
-                        this.#toastManager.DisplayToast(fileName + (this.type == Downloadbutton.Video ? ".mp4" : (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")))
+                        this.#toast = this.#toastManager.DisplayToast(fileName + (this.type == Downloadbutton.Video ? ".mp4" : (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")))
 
                         // Image download
                         if (this.type != Downloadbutton.Video) {
@@ -216,8 +217,10 @@ class Downloadbutton {
                                     // Get local URL
                                     const file = await fetch(url)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
+                                    this.#toastManager.SetProgress(this.#toast, 0.5)
                                     const fileBlob = await file.blob()
                                     this.#progressCircle.animate(1, { duration: 300 })
+                                    this.#toastManager.SetProgress(this.#toast, 1)
                                     const fileURL = URL.createObjectURL(fileBlob)
 
                                     // Download file
@@ -263,7 +266,9 @@ class Downloadbutton {
                                                       throw new Error(message.error)
                                                 }
 
-                                                this.#progressCircle.animate(message.progress / 100)
+                                                const progress = message.progress / 100
+                                                this.#progressCircle.animate(progress, { duration: 300 })
+                                                this.#toastManager.SetProgress(this.#toast, progress)
 
                                                 // Download is finished
                                                 if (message.progress >= 100) {
@@ -320,7 +325,9 @@ class Downloadbutton {
                                           }
 
                                           // Progress update
-                                          this.#progressCircle.animate(message.progress / 100, { duration: 300 })
+                                          const progress = message.progress / 100
+                                          this.#progressCircle.animate(progress, { duration: 300 })
+                                          this.#toastManager.SetProgress(this.#toast, progress)
 
                                           // Download done
                                           if (message.progress == 100) {
@@ -399,6 +406,10 @@ class Downloadbutton {
       #DestroyProgressCircle() {
             this.#progressCircle.destroy()
             this.#progressCircle = null;
+
+            setTimeout(() => {
+                  this.#toastManager.DismissToast(this.#toast, this.#toastManager.toastList)
+            }, 500);
       }
 
       /** Returns the nth parent of an element */
@@ -610,20 +621,23 @@ class ToastManager {
             toast.Display()
 
             this.AlignItems()
-            
+
             return toast
       }
 
       SetProgress(toast, progress) {
-
+            toast.progressBar.animate(progress, { duration: 400 })
       }
 
 
       DismissToast(toast, toastList) {
-            toast.Dismiss()
+            try {
+                  toast.Dismiss()
 
-            const toastIndex = toastList.indexOf(toast)
-            toastList.splice(toastIndex, 1)
+                  const toastIndex = toastList.indexOf(toast)
+                  toastList.splice(toastIndex, 1)
+            }
+            catch{}
 
             this.AlignItems()
       }
@@ -686,12 +700,16 @@ class ToastManager {
             <div id="loadingBar" class="loading-bar">
             </div>
       </div>`, "text/html").getElementById("toast")
-                  
-                  /*this.#progressCircle = new ProgressBar.Circle(this.#progressCircleElem, {
-                        strokeWidth: 10,
-                        color: "#f1f3f5ff",
-                        trailColor: "#f1f3f534"
-                  });*/
+
+                  // Add progress bar
+                  if (this.progressBar) {
+                        let progressbarElem = this.toastElem.querySelector('[id="loadingBar"]')
+                        this.progressBar = new ProgressBar.Line(progressbarElem, {
+                              strokeWidth: 10,
+                              color: "rgb(15, 115, 255)",
+                              trailColor: "transparent"
+                        });
+                  }
 
                   // Add click event to dismiss button
                   let toastAction = this.toastElem.querySelector('[id="toastAction"]')
