@@ -24,6 +24,9 @@
       "js": ["lib/progressbar.min.js", "js/classes.js", "js/content.js"]
     }
   ],
+  "browser_action": {
+    "default_popup": "settings/settings.html"
+  },
   "web_accessible_resources": ["data/*", "lib/*", "icons/*"],
   "content_security_policy": "script-src 'self';"
 }

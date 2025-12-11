@@ -8,7 +8,6 @@ if (!onboardingStatus) onboardingStatus = { image: true, video: true }
 else onboardingStatus = JSON.parse(onboardingStatus)
 
 let settings = localStorage.getItem("settings")
-//if (!settings) settings = { downloadPathPrefix: "test/%username%/test/%type%/%file%" } // for testing purposes (!)
 if (!settings) settings = { downloadPathPrefix: "%file%" }
 else settings = JSON.parse(settings)
 

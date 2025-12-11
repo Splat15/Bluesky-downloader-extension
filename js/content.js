@@ -43,7 +43,7 @@ new NodeObserver(
             // Create download button
             {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
+                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager)
 
                         if (!onboardingStatus.image && !onboardingHasRun.image) {
                               if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
@@ -91,7 +91,7 @@ new NodeObserver(
                               }
                         }).then(() => {
                               try {
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
+                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, toastManager)
 
                                     // Onboarding procedure
                                     if (!onboardingStatus.video && !onboardingHasRun.video) {
@@ -111,7 +111,7 @@ new NodeObserver(
                   // Create download button
                   {
                         try {
-                              new Downloadbutton(Downloadbutton.GIF, element, element.src)
+                              new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager)
                         }
                         catch (error) {
                               console.error(error)
@@ -147,7 +147,7 @@ function InstallCleanup() {
             .filter(element => /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) && !element.hasAttribute("draggable"))
             .forEach(element => {
                   try {
-                        let downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src)
+                        let downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager)
 
                         if (!onboardingStatus.image && !onboardingHasRun.image) {
                               if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
@@ -169,7 +169,7 @@ function InstallCleanup() {
                   downloadElements.forEach(downloadElement => {
                         if (downloadElement) {
                               try {
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster)
+                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, toastManager)
 
                                     // Onboarding procedure
                                     if (!onboardingStatus.video && !onboardingHasRun.video) {

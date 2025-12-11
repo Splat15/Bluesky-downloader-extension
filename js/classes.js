@@ -10,19 +10,27 @@ class NodeObserver {
       #observer = null
       #stopped = false
       constructor(
-            Test,
-            Callback,
+            test,
+            callback,
             singleUse = false,
-            node = document
+            node = document,
+            testDeep = true
       ) {
-            this.#Observe(Test,
-                  Callback,
-                  singleUse,
-                  node)
+            if (this.#observer) this.#observer.disconnect()
+
+            this.#observer = new MutationObserver((mutations) => {
+                  for (const mutation of mutations) {
+                        for (const node of mutation.addedNodes) {
+                              this.#TestNodeDeep(test, node, callback, singleUse, testDeep)
+                        }
+                  }
+            });
+
+            this.#observer.observe(node, { childList: true, subtree: true });
       }
 
       // Recursively test addedd nodes against condition
-      #TestNodeDeep(Test, node, Callback, singleUse) {
+      #TestNodeDeep(Test, node, Callback, singleUse, testDeep) {
             // If mutation is an added node and Test is true
             if (node.nodeType === Node.ELEMENT_NODE && Test(node)) {
                   Callback(node);
@@ -30,7 +38,7 @@ class NodeObserver {
                         this.Stop()
                   }
             }
-            if (!this.#stopped && node.childNodes.length > 0) {
+            if (testDeep && !this.#stopped && node.childNodes.length > 0) {
                   const childNodeArr = Array.from(node.childNodes) // Prevents recursive behaviour
                   for (let i = 0; i < childNodeArr.length; i++) {
                         const child = childNodeArr[i]
@@ -39,28 +47,6 @@ class NodeObserver {
                         }
                   }
             }
-
-            return this
-      }
-
-      // Creates and starts the node observer
-      #Observe(
-            Test,
-            Callback,
-            singleUse = false,
-            node = document
-      ) {
-            if (this.#observer) this.#observer.disconnect()
-
-            this.#observer = new MutationObserver((mutations) => {
-                  for (const mutation of mutations) {
-                        for (const node of mutation.addedNodes) {
-                              this.#TestNodeDeep(Test, node, Callback, singleUse)
-                        }
-                  }
-            });
-
-            this.#observer.observe(node, { childList: true, subtree: true });
 
             return this
       }
@@ -92,17 +78,19 @@ class Downloadbutton {
       #downloadButtonDiv = null
       #progressCircle = null
       #progressCircleElem = null
-      #toastManager = new ToastManager()
+      #toastManager
       #toast
+      #isMouseOnToast = false
 
 
       #username
       #did
       #downloading = false
 
-      constructor(type, element, url) {
+      constructor(type, element, url, toastManager) {
             this.url = url
             this.type = type
+            this.#toastManager = toastManager
 
             // Get user id
             this.#did = url.replace(/%3A/g, ":").match(/\/(did:plc:\w+)\//)
@@ -180,34 +168,32 @@ class Downloadbutton {
                   this.#CreateProgressCircle()
                   this.#progressCircle.set(0.01)
 
-                  // Purely cosmetic, delays download for 300ms to let the opacity transitions progress
+                  let fileName
+                  if (this.type != Downloadbutton.GIF) {
+                        if (!this.#username) {
+                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
+                              const responseBody = JSON.parse(await response.text())
+                              this.#username = responseBody.handle
+                        }
+
+                        fileName = this.#username + "-" + this.#GenerateHash(url).toString().slice(6)
+                  }
+                  else {
+                        fileName = url.match(/\w+(?=\.\w+$)/)[0]
+                  }
+
+                  this.#toast = this.#toastManager.DisplayToast(fileName + (this.type == Downloadbutton.Video ? ".mp4" : (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")))
+
+
+                  // Purely cosmetic, delays download for 200ms to let the transition progress
                   await new Promise((resolve) => {
                         setTimeout(() => {
                               this.#progressCircleElem.style.opacity = 1
-
-                              setTimeout(() => {
-                                    resolve()
-                              }, 100);
+                              resolve()
                         }, 200);
                   })
 
                   try {
-                        let fileName
-                        if (this.type != Downloadbutton.GIF) {
-                              if (!this.#username) {
-                                    const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
-                                    const responseBody = JSON.parse(await response.text())
-                                    this.#username = responseBody.handle
-                              }
-
-                              fileName = this.#username + "-" + this.#generateHash(url).toString().slice(6)
-                        }
-                        else {
-                              fileName = url.match(/\w+(?=\.\w+$)/)[0]
-                        }
-
-                        this.#toast = this.#toastManager.DisplayToast(fileName + (this.type == Downloadbutton.Video ? ".mp4" : (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")))
-
                         // Image download
                         if (this.type != Downloadbutton.Video) {
 
@@ -407,9 +393,33 @@ class Downloadbutton {
             this.#progressCircle.destroy()
             this.#progressCircle = null;
 
-            setTimeout(() => {
-                  this.#toastManager.DismissToast(this.#toast, this.#toastManager.toastList)
-            }, 500);
+            // Dismiss toast some time after mouse left
+            if (this.#toast) {
+                  const toast = this.#toast
+                  let timeout = null
+
+                  // Mouse was NOT on element before
+                  if (!toast.mouseOn)
+                        timeout = setTimeout(() => {
+                              this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
+                        }, 2500);
+
+                  // Mouse enters element
+                  toast.onMouseEnter = () => {
+                        if (timeout) {
+                              clearTimeout(timeout)
+                              timeout = null
+                        }
+                  }
+
+                  // Mouse leaves element
+                  toast.onMouseLeave = () => {
+                        if (!timeout)
+                              timeout = setTimeout(() => {
+                                    this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
+                              }, 2000);
+                  }
+            }
       }
 
       /** Returns the nth parent of an element */
@@ -425,7 +435,7 @@ class Downloadbutton {
       /** Adds downloaded URL to local storage */
       #AddURLToHistory(url) {
             try {
-                  const hash = this.#generateHash(url)
+                  const hash = this.#GenerateHash(url)
 
                   let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
                   if (_storage == null) _storage = []
@@ -440,7 +450,7 @@ class Downloadbutton {
       /** Checks if URL is present in local storage */
       #GetURLFromHistory(url) {
             try {
-                  const hash = this.#generateHash(url)
+                  const hash = this.#GenerateHash(url)
                   let _storage = []
                   try {
                         _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
@@ -475,7 +485,7 @@ class Downloadbutton {
             });
       }
 
-      #generateHash = (string) => {
+      #GenerateHash = (string) => {
             let hash = 0;
             for (const char of string) {
                   hash = (hash << 5) - hash + char.charCodeAt(0);
@@ -593,10 +603,11 @@ class FlashingBorder {
       }
 }
 
-
+// Displays and manages toast notifications
 class ToastManager {
       toastList = []
       toastContainer
+      mobileLayout = window.innerHeight > window.innerWidth
 
       constructor() {
             this.toastContainer = document.getElementById("bskyDownloaderToastContainer")
@@ -606,6 +617,24 @@ class ToastManager {
                   this.toastContainer.id = "bskyDownloaderToastContainer"
                   document.body.appendChild(this.toastContainer)
             }
+
+            window.addEventListener("resize", () => {
+                  const mobileLayout = window.innerHeight > window.innerWidth
+
+                  if (this.mobileLayout != mobileLayout) {
+                        this.mobileLayout = mobileLayout
+
+                        this.toastList.forEach(toast => {
+                              toast.mobileLayout = this.mobileLayout
+                              if (mobileLayout)
+                                    toast.toastElem.classList.add("toast-mobile")
+                              else
+                                    toast.toastElem.classList.remove("toast-mobile")
+                        })
+
+                        this.AlignItems()
+                  }
+            })
       }
 
       Destroy() {
@@ -614,11 +643,9 @@ class ToastManager {
       }
 
       DisplayToast(text, progressBar = true) {
-            let toast = new this.ToastNotification(text, this.toastContainer, progressBar)
+            let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout)
             toast.onAction = () => { this.DismissToast(toast, this.toastList) }
             this.toastList.unshift(toast)
-
-            toast.Display()
 
             this.AlignItems()
 
@@ -627,17 +654,22 @@ class ToastManager {
 
       SetProgress(toast, progress) {
             toast.progressBar.animate(progress, { duration: 400 })
-      }
 
+            // Make progress bar transparent, revealing green background
+            if (progress == 1)
+                  setTimeout(() => {
+                        toast.toastElem.querySelector("div.loading-bar>svg").style.opacity = 0
+                  }, 400);
+      }
 
       DismissToast(toast, toastList) {
             try {
-                  toast.Dismiss()
-
                   const toastIndex = toastList.indexOf(toast)
+
+                  toast.Dismiss(toastIndex == 0)
                   toastList.splice(toastIndex, 1)
             }
-            catch{}
+            catch { }
 
             this.AlignItems()
       }
@@ -648,8 +680,26 @@ class ToastManager {
                   let element = this.toastList[i]
 
                   setTimeout(() => {
-                        element.toastElem.style.bottom = 60 * (i + 1) - 40 + "px"
-                  }, 25 * (i + 1));
+                        if (this.mobileLayout) {
+                              element.toastElem.style.top = 60 * (i + 1) - 40 + "px"
+                              element.toastElem.style.bottom = ""
+                        }
+                        else {
+                              element.toastElem.style.bottom = 60 * (i + 1) - 40 + "px"
+                              element.toastElem.style.top = ""
+                        }
+                        if (i == 0) {
+                              setTimeout(() => {
+                                    element.toastElem.style.zIndex = 30
+                              }, 50)
+
+                              element.toastElem.style.transform = "scale(1)"
+                              element.toastElem.style.opacity = 1
+                        }
+                        else if (i == 1) {
+                              element.toastElem.style.zIndex = 40
+                        }
+                  }, 25 * i);
             }
       }
 
@@ -659,29 +709,47 @@ class ToastManager {
             toastElem
             container
             progressBar
-            onAction = () => { }
+            mouseOn = false
+            onMouseEnter
+            onMouseLeave
+            onAction
+            mobileLayout
 
-            constructor(text, container, progressBar) {
+            constructor(text, container, progressBar, firstToast, mobileLayout) {
                   this.container = container
                   this.text = text
                   this.progressBar = progressBar
+                  this.mobileLayout = mobileLayout
+                  this.Display(firstToast)
+
+                  this.toastElem.addEventListener("mouseenter", () => {
+                        this.mouseOn = true
+                        if (this.onMouseEnter) this.onMouseEnter()
+                  })
+                  this.toastElem.addEventListener("mouseleave", () => {
+                        this.mouseOn = false
+                        if (this.onMouseEnter) this.onMouseLeave()
+                  })
             }
 
-            Dismiss() {
-                  this.toastElem.style.transform = "translateX(500px)"
+            Dismiss(firstElement) {
+                  this.toastElem.style.transition = "transform ease-in 0.2s, opacity ease-in 0.2s"
+                  this.toastElem.style.zIndex = 20
+                  this.toastElem.style.transform = `translateY(${this.mobileLayout ? "-" : "" }${firstElement ? 2.2 : 60}px) scale(0.9)`
+                  this.toastElem.style.opacity = 0
 
                   setTimeout(() => {
                         this.toastElem.remove()
-                  }, 500);
+                  }, 200);
             }
 
-            Display() {
+            Display(firstToast) {
                   const domParser = new DOMParser()
 
                   // Create toast from HTML string
                   this.toastElem = domParser.parseFromString(`
-      <div class="toast" id="toast">
-      <div class="toast-border"></div>
+      <div class="toast${this.mobileLayout ? " toast-mobile" : ""}" id="toast" style="transform: scale(${firstToast ? 0 : 0.7}); transition: transform ease ${firstToast ? 0.2 : 0.1}s, bottom ease 0.3s, top ease 0.3s;">
+            <div class="toast-border"></div>
             <div class="toast-body" style="display: flex;flex-direction: row;padding: 12px;height: 20px;">
                   <div class="toast-text-overflow">
                         <div class="toast-text-overflow-gradient" style="left: 0px; transform: rotate(180deg); opacity: 0;" id="overflowLeft"></div>
@@ -697,9 +765,16 @@ class ToastManager {
                         </svg>
                   </button>
             </div>
-            <div id="loadingBar" class="loading-bar">
-            </div>
+            <div id="loadingBar" class="loading-bar"></div>
       </div>`, "text/html").getElementById("toast")
+
+
+                  // Add click event to dismiss button
+                  let toastAction = this.toastElem.querySelector('[id="toastAction"]')
+                  toastAction.addEventListener("click", () => { this.onAction() })
+
+                  // Add to main document
+                  this.container.appendChild(this.toastElem)
 
                   // Add progress bar
                   if (this.progressBar) {
@@ -707,17 +782,9 @@ class ToastManager {
                         this.progressBar = new ProgressBar.Line(progressbarElem, {
                               strokeWidth: 10,
                               color: "rgb(15, 115, 255)",
-                              trailColor: "transparent"
+                              trailColor: "rgb(34, 46, 63);"
                         });
                   }
-
-                  // Add click event to dismiss button
-                  let toastAction = this.toastElem.querySelector('[id="toastAction"]')
-                  toastAction.addEventListener("click", this.onAction)
-
-                  // Add to main document
-                  this.container.appendChild(this.toastElem)
-
 
                   // Get text element
                   const textElem = this.toastElem.querySelector('[id="toastText"]')
@@ -744,7 +811,6 @@ class ToastManager {
                         // Show right gradient
                         overflowRight.style.opacity = 1
 
-                        let firstRun = true
                         let bool = true
 
                         const scroll = (bool) => {

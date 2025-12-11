@@ -83,7 +83,7 @@
   right: 0px;
   bottom: 0px;
   height: fit-content;
-  z-index: 10000;
+  z-index: 100;
   padding: 25px;
 }
 
@@ -97,11 +97,13 @@
   border-radius: 10px;
   border-width: 0px;
   overflow: hidden;
-  bottom: -50px;
   position: fixed;
-  transition:
-    bottom ease 0.3s,
-    transform ease 0.3s;
+  opacity: 0;
+  z-index: 20;
+}
+
+.toast-mobile{
+    right: calc(50% - 150px);
 }
 
 .toast-border {
@@ -176,4 +178,15 @@
   margin-top: -5px;
   left: 0px;
   position: relative;
+  transition: filter;
+  background-color: rgb(16, 185, 16);
+}
+
+.loading-bar-done {
+  filter: hue-rotate(250deg) brightness(1.5) saturate(0.8);
+}
+
+div.loading-bar > svg {
+  transition: opacity ease 0.5s;
+  background-color: rgb(34, 46, 63);
 }
