@@ -1,24 +1,3 @@
-/*let settings = localStorage.getItem("settings")
-if (!settings) settings = { downloadPathPrefix: "%file%" }
-else settings = JSON.parse(settings)*/
-
-// Testdata
-let settings = [
-      // Sections
-      [
-            // Settings
-            { value: true, id: "vidDownload", type: "toggle", name: "Video download", description: "Placeholder" },
-            { value: true, id: "imgDownload", type: "toggle", name: "Image download", description: "Placeholder" },
-            { value: true, id: "gifDownload", type: "toggle", name: "GIF download", description: "Placeholder" }
-      ],
-      [
-            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
-      ],
-      [
-            { value: "test/%file%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
-      ]
-]
-
 // Handles the display and function of different kinds of settings
 class Setting {
       container
@@ -29,6 +8,7 @@ class Setting {
       settingId
       description
       settings
+      pathVarMenuExpanded
 
       constructor(value, type, name, description, settingId, container, settings) {
             this.value = value
@@ -38,11 +18,12 @@ class Setting {
             this.container = container
             this.settingId = settingId
             this.settings = settings
+            this.pathVarMenuExpanded = false
+            const domParser = new DOMParser()
 
             // Checkbox style setting
             if (this.type == "toggle") {
                   // Parse setting HTML
-                  const domParser = new DOMParser()
                   this.element = domParser.parseFromString(`
                   <div class="setting setting-${this.value ? "" : "in"}active">
                         <div type="checkbox" class="checkbox">
@@ -65,6 +46,8 @@ class Setting {
                               this.element.classList.replace("setting-inactive", "setting-active")
                         else
                               this.element.classList.replace("setting-active", "setting-inactive")
+
+                        SetSetting(this.settingId, this.value, this.settings)
                   })
 
                   // Add element to given container
@@ -73,7 +56,79 @@ class Setting {
 
             // Special case for download path input
             else if (this.type == "pathInput") {
+                  this.element = domParser.parseFromString(`
+                  <div class="setting path-setting">
+                        <p class="path-input-desc">Download path</p>
+                        <div class="path-input-container">
+                              <input value="${this.value}" id="pathInput" class="path-input" type="text">
+                              <p class="path-input-ext" type="text">.mp4</p>
+                        </div>
+                        <div class="path-actions path-input-vars-container">
+                              <p id="pathActionInsert" class="path-input-action-label path-input-vars">Variables</p>
+                              <div id="pathVarsMenu" class="path-input-vars-menu">
+                                    <div id="pathVarList" class="path-input-menu-var-list">
+                                          <p id="pathVar" class="path-var">test</p>
+                                          <p id="pathVar" class="path-var">test</p>
+                                          <p id="pathVar" class="path-var">test</p>
+                                          <p id="pathVar" class="path-var">test</p>
+                                          <p id="pathVar" class="path-var">test</p>
+                                          <p id="pathVar" class="path-var">test</p>
+                                    </div>
+                                    <div class="path-input-menu-right-panel">
+                                          <div class="path-input-menu-var-desc">
+                                                <p class="path-input-menu-var-desc-text">
+                                                      this is a very long test of descriptions d d f f d s s s s w
+                                                      wdakmsondwa ndlmaslkdlkw aksjdlk aslkd lkawd s dlkwjak
+                                                      ldjsalkd alkdjs lkdjklaw lkjsalkdjklaj ldwl
+                                                </p>
+                                          </div>
+                                          <p id="pathVarInsert" class="path-input-menu-var-insert">Insert</p>
+                                    </div>
+                              </div>
+                        </div>
+                        <div class="path-actions">
+                              <div class="path-input-action path-input-help">
+                                    <p id="pathActionHelp" class="path-input-action-label">Help</p>
+                              </div>
+                              <div class="path-input-action path-input-reset">
+                                    <p id="pathActionReset" class="path-input-action-label">Reset</p>
+                              </div>
+                        </div>
+                  </div>`, "text/html").getElementsByClassName("setting")[0]
 
+                  const varList = this.element.querySelector("#pathVarList")
+                  const pathVarInsert = this.element.querySelector("#pathVarInsert")
+                  const pathVarsMenu = this.element.querySelector("#pathVarsMenu")
+
+                  const pathInput = this.element.querySelector("#pathInput")
+
+                  const pathActionInsert = this.element.querySelector("#pathActionInsert")
+                  const pathActionHelp = this.element.querySelector("#pathActionHelp")
+                  const pathActionReset = this.element.querySelector("#pathActionReset")
+
+                  // Handle toggeling
+                  pathActionInsert.addEventListener("click", () => {
+                        this.pathVarMenuExpanded = !this.pathVarMenuExpanded
+
+                        if (this.pathVarMenuExpanded)
+                              pathVarsMenu.classList.add("path-input-vars-menu-opened")
+                        else
+                              pathVarsMenu.classList.remove("path-input-vars-menu-opened")
+                  })
+
+                  pathActionReset.addEventListener("click", () => {
+                        pathInput.value = "%file%"
+                        this.value = pathInput.value
+                        SetSetting(this.settingId, this.value, this.settings)
+                  })
+
+                  pathInput.addEventListener("change", () => {
+                        this.value = pathInput.value
+                        SetSetting(this.settingId, this.value, this.settings)
+                  })
+
+                  // Add element to given container
+                  this.container.appendChild(this.element)
             }
 
             // Invalid type
@@ -105,6 +160,10 @@ class Setting {
 }
 
 
+
+let settings = JSON.parse(localStorage.getItem("settings"))
+
+
 const settingsContainer = document.getElementById("settings")
 for (let i = 0; i < settings.length; i++) {
       const categoryElem = document.createElement("div")
@@ -121,5 +180,19 @@ for (let i = 0; i < settings.length; i++) {
       for (let j = 0; j < settings[i].length; j++) {
             const setting = settings[i][j]
             new Setting(setting.value, setting.type, setting.name, setting.description, setting.id, categoryElem, settings)
+      }
+}
+
+
+function SetSetting(settingId, value, settings) {
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+                  if (setting.id == settingId) {
+                        setting.value = value;
+                        localStorage.setItem("settings", JSON.stringify(settings))
+                        return
+                  }
+            }
       }
 }

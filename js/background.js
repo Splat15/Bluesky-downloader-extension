@@ -8,8 +8,27 @@ if (!onboardingStatus) onboardingStatus = { image: true, video: true }
 else onboardingStatus = JSON.parse(onboardingStatus)
 
 let settings = localStorage.getItem("settings")
-if (!settings) settings = { downloadPathPrefix: "%file%" }
+if (!settings) {
+      // Standard configuration
+      settings = [
+            // Sections
+            [
+                  // Settings
+                  { value: true, id: "vidDownload", type: "toggle", name: "Video download", description: "Placeholder" },
+                  { value: true, id: "imgDownload", type: "toggle", name: "Image download", description: "Placeholder" },
+                  { value: true, id: "gifDownload", type: "toggle", name: "GIF download", description: "Placeholder" }
+            ],
+            [
+                  { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
+            ],
+            [
+                  { value: "%file%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
+            ]
+      ]
+      localStorage.setItem("settings", JSON.stringify(settings))
+}
 else settings = JSON.parse(settings)
+
 
 browser.runtime.onInstalled.addListener((details) => {
       if (details.reason == "install") {
@@ -65,8 +84,17 @@ browser.runtime.onMessage.addListener((message, sender) => {
             }
       }
 
+      // Settings get requests
+      else if (message.type == "get-settings") {
+            browser.tabs.sendMessage(sender.tab.id, { settings: settings })
+      }
 
-      // Listener for installTime request
+      // Setting set requests
+      else if (message.type == "set-setting") {
+            SetSetting(message.settingId, message.value, settings) 
+      }
+
+      // Install time request
       else if (message.type == "init") {
             const uptime = Date.now() - startTime
             browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus })
@@ -95,7 +123,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 });
 
 function GetFilePath(postType, userName, fileName, fileExt) {
-      let path = settings.downloadPathPrefix
+      let path = GetSetting("downloadPath").value
 
       path = path.replaceAll(/%(posttype|type)%/gi, postType)
             .replaceAll(/%(username|user|poster)%/gi, userName)
@@ -103,6 +131,32 @@ function GetFilePath(postType, userName, fileName, fileExt) {
       path += fileExt
 
       return path
+}
+
+
+function SetSetting(settingId, value, settings) {
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+                  if (setting.id == settingId) {
+                        setting.value = value;
+                        localStorage.setItem("settings", JSON.stringify(settings))
+                        return
+                  }
+            }
+      }
+}
+
+
+function GetSetting(settingId) {
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+                  if (setting.id == settingId) {
+                        return setting
+                  }
+            }
+      }
 }
 
 const downloader = new VideoDownloader();

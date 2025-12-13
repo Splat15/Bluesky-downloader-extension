@@ -1,8 +1,11 @@
+html{
+  background-color: #151d28;
+}
+
 body {
   width: 300px;
-  height: 500px;
-  border: solid 5px red;
-  margin-left: auto;
+  height: fit-content;
+  margin: auto;
   font-family:
     InterVariable,
     system-ui,
@@ -24,7 +27,16 @@ body {
   color: rgb(255, 255, 255);
   text-align: left;
   font-weight: 400;
-  background-color: #151d28;
+}
+
+.header{
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  font-size: 25px;
+  font-weight: bolder;
+  padding-top: 20px;
+  padding-bottom: 10px;
 }
 
 .category {
@@ -34,9 +46,7 @@ body {
 }
 
 .settings {
-  padding-left: 20px;
-  padding-right: 20px;
-  padding-top: 12px;
+  padding: 12px 20px;
 }
 
 .setting {
@@ -110,8 +120,38 @@ body {
   height: 40px;
   padding: 0px 5px 0px 10px;
   width: inherit;
-  border: none;
   color: white;
+  border: solid transparent 0;
+  border-width: 2px 0px 2px 2px;
+  border-radius: 10px 0 0 10px;
+  transition-property: border-color;
+  transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
+  transition-duration: 100ms;
+  outline: none;
+}
+
+.path-input-ext {
+  margin: 0;
+  width: 40px;
+  height: auto;
+  background-color: rgb(49, 64, 86);
+  color: rgb(189, 189, 189);
+  vertical-align: middle;
+  line-height: 37px;
+  padding: 0px 10px 0px 5px;
+  border: solid transparent 0;
+  border-radius: 0 10px 10px 0;
+  border-width: 2px 2px 2px 0;
+}
+
+.path-input-container {
+  display: flex;
+  width: 100%;
+  overflow: hidden;
+}
+
+.path-input-container:hover .path-input {
+  border-color: rgb(44, 58, 78);
 }
 
 .path-input-desc {
@@ -124,28 +164,41 @@ body {
   gap: 4px !important;
 }
 
-.path-input-actions {
+.path-actions {
   display: flex;
   flex-direction: row;
   justify-content: space-between;
   width: 100%;
-  height: 30px;
+  height: fit-content;
   gap: 5px;
   margin-top: 2px;
   text-align: center;
+  z-index: 10;
 }
 
 .path-input-action {
-  all: unset;
   background-color: rgb(0, 119, 255);
   border-radius: 10px;
   display: block;
-  width: 50%;
+  width: 100%;
+  height: 30px;
   border-radius: 10px;
-  padding-bottom: 2px;
   transition-property: background-color;
   transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
   transition-duration: 100ms;
+  position: relative;
+}
+
+.path-input-action-label {
+  position: relative;
+  margin: auto;
+  height: 100%;
+  line-height: 28px;
+  top: 0;
+  height: 30px;
+  width: 100%;
+  background-color: inherit;
+  border-radius: 10px;
 }
 
 .path-input-help {
@@ -164,28 +217,93 @@ body {
   background-color: rgb(203, 41, 41);
 }
 
-.path-input-container {
+.path-input-vars {
+  background-color: rgb(78, 95, 131) !important;
+}
+
+.path-input-vars:hover {
+  background-color: rgb(68, 82, 112) !important;
+}
+
+.path-input-vars-container {
+  flex-direction: column !important;
+  gap:0 !important;
+}
+
+.path-input-vars-menu {
   display: flex;
-  width: 100%;
-  border: solid transparent 2px;
+  flex-direction: row;
+  height: 0px;
   border-radius: 10px;
+  background-color: rgb(34, 46, 63);
+  width: 100%;
+  padding-top: 30px;
+  margin-top: -30px;
   overflow: hidden;
-  transition-property: border-color;
-  transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
-  transition-duration: 100ms;
+  transition: height ease 0.2s
 }
 
-.path-input-container:hover {
-  border-color: rgb(44, 58, 78);
+.path-input-vars-menu-opened{
+  height: 140px;
 }
 
-.path-input-ext {
-  margin: 0;
-  width: 40px;
-  height: auto;
+.path-input-menu-var-list {
+  overflow-y: scroll;
+  width: fit-content;
+  padding: 0 5px;
+  margin: 5px;
   background-color: rgb(49, 64, 86);
-  color: rgb(189, 189, 189);
-  vertical-align: middle;
-  line-height: 37px;
-  padding: 0px 10px 0px 5px;
+  border-radius: 7px;
+  scrollbar-width: none;
+}
+
+.path-input-menu-right-panel {
+  flex-grow: 1;
+  height: auto;
+  display: flex;
+  margin: 5px;
+  margin-left: 0;
+  flex-direction: column;
+  flex-shrink: 100000;
+}
+
+.path-var {
+  margin: 5px 0;
+  padding: 0 5px 2px 5px;
+  background-color: rgb(78, 95, 131);
+  border-radius: 5px;
+}
+
+.path-input-menu-var-insert {
+  height: 25px;
+  line-height: 23px;
+  border-radius: 7px;
+  margin-top: 5px;
+  margin-bottom: 0;
+  background-color: rgb(15, 115, 255);
+}
+
+.path-input-menu-var-insert:hover {
+  background-color: rgb(6, 97, 224);
+}
+
+.path-input-menu-var-desc {
+  background-color: rgb(49, 64, 86);
+  border-radius: 7px;
+  flex-grow: 1;
+  height: auto;
+  margin-left: 0;
+  width: auto;
+  overflow-y: scroll;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+
+.path-input-menu-var-desc-text {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  text-align: start;
+  padding: 5px;
+  text-wrap: wrap;
 }
