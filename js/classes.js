@@ -38,7 +38,7 @@ class NodeObserver {
                         this.Stop()
                   }
             }
-            if (testDeep && !this.#stopped && node.childNodes.length > 0) {
+            if (this.#TestNodeDeep && !this.#stopped && node.childNodes.length > 0) {
                   const childNodeArr = Array.from(node.childNodes) // Prevents recursive behaviour
                   for (let i = 0; i < childNodeArr.length; i++) {
                         const child = childNodeArr[i]
