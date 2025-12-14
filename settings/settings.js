@@ -9,6 +9,7 @@ class Setting {
       description
       settings
       pathVarMenuExpanded
+      originalValue
 
       constructor(value, type, name, description, settingId, container, settings) {
             this.value = value
@@ -19,6 +20,7 @@ class Setting {
             this.settingId = settingId
             this.settings = settings
             this.pathVarMenuExpanded = false
+            this.originalValue = value
             const domParser = new DOMParser()
 
             // Checkbox style setting
@@ -57,48 +59,51 @@ class Setting {
             // Special case for download path input
             else if (this.type == "pathInput") {
                   this.element = domParser.parseFromString(`
-                  <div class="setting path-setting">
-                        <p class="path-input-desc">Download path</p>
-                        <div class="path-input-container">
-                              <input value="${this.value}" id="pathInput" class="path-input" type="text">
-                              <p class="path-input-ext" type="text">.mp4</p>
-                        </div>
-                        <div class="path-actions path-input-vars-container">
-                              <p id="pathActionInsert" class="path-input-action-label path-input-vars">Variables</p>
-                              <div id="pathVarsMenu" class="path-input-vars-menu">
-                                    <div id="pathVarList" class="path-input-menu-var-list">
-                                          <p id="pathVar" class="path-var">test</p>
-                                          <p id="pathVar" class="path-var">test</p>
-                                          <p id="pathVar" class="path-var">test</p>
-                                          <p id="pathVar" class="path-var">test</p>
-                                          <p id="pathVar" class="path-var">test</p>
-                                          <p id="pathVar" class="path-var">test</p>
+                        <div class="setting path-setting">
+                              <div class="path-input-desc">
+                                    <p style="margin: auto 0;">Download path</p>
+                                    <input id="pathUndoButton" class="path-undo-button" type="button">
+                              </div>
+                              <div id="pathInputContainer" class="path-input-container-container">
+                                    <div class="path-input-container">
+                                          <span contentEditable=true id="pathInput" class="path-input" onchange="() => {console.log('testing')}" spellcheck="false">${this.value}</span>
+                                          <p class="path-input-suggestion" id="varSuggestion"></p>
                                     </div>
-                                    <div class="path-input-menu-right-panel">
-                                          <div class="path-input-menu-var-desc">
-                                                <p class="path-input-menu-var-desc-text">
-                                                      this is a very long test of descriptions d d f f d s s s s w
-                                                      wdakmsondwa ndlmaslkdlkw aksjdlk aslkd lkawd s dlkwjak
-                                                      ldjsalkd alkdjs lkdjklaw lkjsalkdjklaj ldwl
-                                                </p>
+                                    <p class="path-input-ext" type="text">.mp4</p>
+                              </div>
+                              <div class="path-actions path-input-vars-container">
+                                    <p id="pathActionInsert" class="path-input-action-label path-input-vars">Variables</p>
+                                    <div id="pathVarMenu" class="path-input-vars-menu">
+                                          <div id="varList" class="path-input-menu-var-list">
                                           </div>
-                                          <p id="pathVarInsert" class="path-input-menu-var-insert">Insert</p>
+                                          <div class="path-input-menu-right-panel">
+                                                <div class="path-input-menu-var-desc">
+                                                      <p id="pathVarDesc" class="path-input-menu-var-desc-text">
+                                                            Select a variable
+                                                      </p>
+                                                </div>
+                                                <p id="pathVarInsert" class="path-input-menu-var-insert path-input-menu-var-insert-locked">Insert</p>
+                                          </div>
                                     </div>
                               </div>
-                        </div>
-                        <div class="path-actions">
-                              <div class="path-input-action path-input-help">
-                                    <p id="pathActionHelp" class="path-input-action-label">Help</p>
+                              <div class="path-actions">
+                                    <div class="path-input-action path-input-help">
+                                          <p id="pathActionHelp" class="path-input-action-label">Help</p>
+                                    </div>
+                                    <div class="path-input-action path-input-reset">
+                                          <p id="pathActionReset" class="path-input-action-label">Reset</p>
+                                    </div>
                               </div>
-                              <div class="path-input-action path-input-reset">
-                                    <p id="pathActionReset" class="path-input-action-label">Reset</p>
-                              </div>
-                        </div>
-                  </div>`, "text/html").getElementsByClassName("setting")[0]
+                        </div>`, "text/html")
+                        .getElementsByClassName("setting")[0];
 
-                  const varList = this.element.querySelector("#pathVarList")
+                  const varList = this.element.querySelector("#varList")
                   const pathVarInsert = this.element.querySelector("#pathVarInsert")
-                  const pathVarsMenu = this.element.querySelector("#pathVarsMenu")
+                  const pathVarMenu = this.element.querySelector("#pathVarMenu")
+                  const pathVarDesc = this.element.querySelector("#pathVarDesc")
+                  const pathUndoButton = this.element.querySelector("#pathUndoButton")
+                  const pathInputContainer = this.element.querySelector("#pathInputContainer")
+                  const varSuggestion = this.element.querySelector("#varSuggestion")
 
                   const pathInput = this.element.querySelector("#pathInput")
 
@@ -106,29 +111,107 @@ class Setting {
                   const pathActionHelp = this.element.querySelector("#pathActionHelp")
                   const pathActionReset = this.element.querySelector("#pathActionReset")
 
-                  // Handle toggeling
+                  // Add variables to list
+                  pathVars.forEach(variable => {
+                        const element = document.createElement("p")
+                        element.classList.add("path-var")
+                        element.textContent = variable.name
+
+                        varList.appendChild(element)
+
+                        element.addEventListener("click", () => {
+                              // Cleanup
+                              Array.from(varList.getElementsByClassName("path-var-active"))
+                                    .forEach(element => element.classList.remove("path-var-active"));
+
+                              element.classList.add("path-var-active")
+
+                              pathVarDesc.textContent = variable.desc
+                              pathVarInsert.currentVar = variable.name
+                              pathVarInsert.classList.remove("path-input-menu-var-insert-locked");
+
+                              varSuggestion.textContent = `%${variable.name}%`
+
+                              this.FocusPathInput()
+                        })
+                  })
+
+                  // Insert selected variable into input
+                  pathVarInsert.addEventListener("click", () => {
+                        if (pathVarInsert.currentVar) {
+                              this.ChangePathVal(this.value + `%${pathVarInsert.currentVar}%`)
+                              this.HandleUndoButton()
+                              varSuggestion.textContent = `%${pathVarInsert.currentVar}%`
+                              this.FocusPathInput()
+                        }
+                  })
+
+                  // Focus input if surrounding elements are clicked
+                  pathInputContainer.addEventListener("click", () => {
+                        varSuggestion.textContent = ""
+                        pathInput.parentElement.scroll(10000000, 0)
+                        this.FocusPathInput()
+                  })
+
+                  // Stop focus changes if input is clicked
+                  pathInput.addEventListener("click", (e) => {
+                        e.stopPropagation()
+                        varSuggestion.textContent = ""
+                  })
+
+                  // Accept suggested vars
+                  varSuggestion.addEventListener("click", () => {
+                        this.ChangePathVal(pathInput.textContent + varSuggestion.textContent)
+                        this.HandleUndoButton()
+                        varSuggestion.textContent = ""
+                        this.FocusPathInput()
+                  })
+
+                  // Handle var menu toggeling
                   pathActionInsert.addEventListener("click", () => {
                         this.pathVarMenuExpanded = !this.pathVarMenuExpanded
 
                         if (this.pathVarMenuExpanded)
-                              pathVarsMenu.classList.add("path-input-vars-menu-opened")
+                              pathVarMenu.classList.add("path-input-vars-menu-opened")
                         else
-                              pathVarsMenu.classList.remove("path-input-vars-menu-opened")
+                              pathVarMenu.classList.remove("path-input-vars-menu-opened")
                   })
 
+                  // Reset input
                   pathActionReset.addEventListener("click", () => {
-                        pathInput.value = "%file%"
-                        this.value = pathInput.value
-                        SetSetting(this.settingId, this.value, this.settings)
+                        this.ChangePathVal("%file%")
+                        varSuggestion.textContent = ""
+                        this.HandleUndoButton()
+                        this.FocusPathInput()
                   })
 
-                  pathInput.addEventListener("change", () => {
-                        this.value = pathInput.value
-                        SetSetting(this.settingId, this.value, this.settings)
+                  // Automatically save input to settings
+                  new MutationObserver((mutations) => {
+                        for (const mutation of mutations) {
+                              if (mutation.type == "characterData") {
+                                    varSuggestion.textContent = ""
+
+                                    this.value = pathInput.textContent
+                                    SetSetting(this.settingId, this.value, this.settings)
+
+                                    this.HandleUndoButton()
+
+                                    return
+                              }
+                        }
+                  }).observe(pathInput, { characterData: true, subtree: true });
+
+                  // Handle undoing of changes
+                  pathUndoButton.addEventListener("click", () => {
+                        this.ChangePathVal(this.originalValue)
+                        varSuggestion.textContent = ""
+                        this.HandleUndoButton()
+                        this.FocusPathInput()
                   })
 
-                  // Add element to given container
+                  // Add element to container
                   this.container.appendChild(this.element)
+                  this.FocusPathInput()
             }
 
             // Invalid type
@@ -136,7 +219,6 @@ class Setting {
                   throw new Error("Error: setting type \"" + type + "\" not found")
             }
       }
-
 
       // Change a setting from a given setting object
       ChangeSetting(value) {
@@ -157,11 +239,38 @@ class Setting {
             }
 
       }
+
+      HandleUndoButton() {
+            if (this.value == this.originalValue)
+                  pathUndoButton.classList.remove("path-undo-button-active")
+            else
+                  pathUndoButton.classList.add("path-undo-button-active")
+      }
+
+      ChangePathVal(value) {
+            pathInput.textContent = value
+            this.value = value
+            SetSetting(this.settingId, this.value, this.settings)
+
+      }
+
+      FocusPathInput() {
+            window.getSelection().selectAllChildren(pathInput)
+            window.getSelection().collapseToEnd()
+            pathInput.focus();
+            pathInput.parentElement.scroll(10000000, 0)
+      }
 }
 
 
-
 let settings = JSON.parse(localStorage.getItem("settings"))
+const pathVars = [
+      { name: "filename", desc: "Username of the poster and the hash of the file URL." },
+      { name: "username", desc: "Username of the poster." },
+      { name: "displayname", desc: "Display name of the poster." },
+      { name: "hash", desc: "Hash of the file URL." },
+      { name: "type", desc: "Media type of the post." }
+]
 
 
 const settingsContainer = document.getElementById("settings")

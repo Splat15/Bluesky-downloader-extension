@@ -1,9 +1,35 @@
-html{
-  background-color: #151d28;
+html {
+  --text: rgb(255, 255, 255);
+  --text-suggestion: rgba(255, 255, 255, 0.497);
+  --text-locked: rgb(189, 189, 189);
+  --bg: rgb(21, 29, 40);
+  --surface-1: rgb(34, 46, 63);
+  --surface-2: rgb(49, 64, 86);
+
+  --checkbox-bg: rgb(28, 39, 54);
+  --checkbox-border: rgb(44, 58, 78);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(57, 73, 96);
+
+  --separator-border: var(--checkbox-border);
+
+  --button-grey: rgb(78, 95, 131);
+  --button-grey-hover: rgb(68, 82, 112);
+  --button-grey-active: rgb(86, 102, 137);
+
+  --button-red: rgb(244, 38, 38);
+  --button-red-hover: rgb(203, 41, 41);
+  --button-red-active: rgb(255, 66, 66);
+
+  --button-blue: rgb(15, 115, 255);
+  --button-blue-hover: rgb(7, 103, 238);
+  --button-blue-active: rgb(29, 123, 255);
+
+  background-color: var(--bg);
 }
 
 body {
-  width: 300px;
+  width: 350px;
   height: fit-content;
   margin: auto;
   font-family:
@@ -24,12 +50,12 @@ body {
   font-variant: no-contextual;
   letter-spacing: 0px;
   user-select: none;
-  color: rgb(255, 255, 255);
+  color: var(--text);
   text-align: left;
   font-weight: 400;
 }
 
-.header{
+.header {
   margin: 0;
   width: 100%;
   text-align: center;
@@ -77,23 +103,23 @@ body {
 }
 
 .setting-inactive .checkbox {
-  background-color: rgb(28, 39, 54);
-  border-color: rgb(44, 58, 78);
+  background-color: var(--checkbox-bg);
+  border-color: var(--checkbox-border);
 }
 
 .setting-inactive:hover .checkbox {
-  background-color: rgb(34, 46, 63);
-  border-color: rgb(57, 73, 96);
+  background-color: var(--checkbox-hover-bg);
+  border-color: var(--checkbox-hover-border);
 }
 
 .setting-active .checkbox {
-  background-color: rgb(15, 115, 255);
-  border-color: rgb(15, 115, 255);
+  background-color: var(--button-blue);
+  border-color: var(--button-blue);
 }
 
 .setting-active:hover .checkbox {
-  background-color: rgb(6, 97, 224);
-  border-color: rgb(6, 97, 224);
+  background-color: var(--button-blue-hover);
+  border-color: var(--button-blue-hover);
 }
 
 .checkbox > svg {
@@ -110,32 +136,54 @@ body {
 .category-separator {
   width: 100%;
   height: 0.6667px;
-  border-top: solid 1px rgb(44, 58, 78);
+  border-top: solid 1px var(--separator-border);
   margin-top: 8px;
   margin-bottom: 8px;
 }
 
 .path-input {
-  background-color: rgb(34, 46, 63);
+  padding: 0 0 0 10px;
+  flex-shrink: 2;
+  outline: none;
+  background: none;
+  color: var(--text);
+  border: none;
+  width: fit-content;
+  line-height: 40px;
+  text-wrap: nowrap;
+}
+
+.path-input-suggestion {
+  margin: auto 0;
+  color: var(--text-suggestion);
+  cursor: pointer;
+  padding-right: 10px;
+}
+
+.path-input-container {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  background-color: var(--surface-1);
   height: 40px;
-  padding: 0px 5px 0px 10px;
   width: inherit;
-  color: white;
+  max-width: calc(100% - 55px);
+  color: var(--text);
   border: solid transparent 0;
   border-width: 2px 0px 2px 2px;
   border-radius: 10px 0 0 10px;
   transition-property: border-color;
   transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
   transition-duration: 100ms;
-  outline: none;
+  overflow: scroll;
 }
 
 .path-input-ext {
   margin: 0;
   width: 40px;
   height: auto;
-  background-color: rgb(49, 64, 86);
-  color: rgb(189, 189, 189);
+  background-color: var(--surface-2);
+  color: var(--text-locked);
   vertical-align: middle;
   line-height: 37px;
   padding: 0px 10px 0px 5px;
@@ -144,19 +192,50 @@ body {
   border-width: 2px 2px 2px 0;
 }
 
-.path-input-container {
+.path-input-container-container {
   display: flex;
   width: 100%;
   overflow: hidden;
+  font-size: 14px;
+  cursor: text;
 }
 
 .path-input-container:hover .path-input {
-  border-color: rgb(44, 58, 78);
+  border-color: var(--surface-2);
 }
 
 .path-input-desc {
   margin: 0;
-  margin-right: auto;
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.path-undo-button {
+  all: unset;
+  height: 30px;
+  width: 30px;
+  border-radius: 10000px;
+  background-color: var(--button-grey);
+  background-image: url(../icons/undo.svg);
+  background-repeat: no-repeat;
+  background-size: 15px;
+  background-position: 7.5px 6px;
+  opacity: 0;
+  transition: opacity ease 100ms;
+}
+
+.path-undo-button-active {
+  opacity: 1 !important;
+  cursor: pointer !important;
+}
+
+.path-undo-button:hover {
+  background-color: var(--button-grey-hover);
+}
+
+.path-undo-button:active {
+  background-color: var(--button-grey-active);
 }
 
 .path-setting {
@@ -174,10 +253,11 @@ body {
   margin-top: 2px;
   text-align: center;
   z-index: 10;
+  cursor: pointer;
+  transition: background-color ease 50ms;
 }
 
 .path-input-action {
-  background-color: rgb(0, 119, 255);
   border-radius: 10px;
   display: block;
   width: 100%;
@@ -199,35 +279,48 @@ body {
   width: 100%;
   background-color: inherit;
   border-radius: 10px;
+  transition: inherit;
 }
 
 .path-input-help {
-  background-color: rgb(15, 115, 255);
+  background-color: var(--button-blue);
 }
 
 .path-input-help:hover {
-  background-color: rgb(6, 97, 224);
+  background-color: var(--button-blue-hover);
+}
+
+.path-input-help:active {
+  background-color: var(--button-blue-active);
 }
 
 .path-input-reset {
-  background-color: rgb(244, 38, 38);
+  background-color: var(--button-red);
 }
 
 .path-input-reset:hover {
-  background-color: rgb(203, 41, 41);
+  background-color: var(--button-red-hover);
+}
+
+.path-input-reset:active {
+  background-color: var(--button-red-active);
 }
 
 .path-input-vars {
-  background-color: rgb(78, 95, 131) !important;
+  background-color: var(--button-grey) !important;
 }
 
 .path-input-vars:hover {
-  background-color: rgb(68, 82, 112) !important;
+  background-color: var(--button-grey-hover) !important;
+}
+
+.path-input-vars:active {
+  background-color: var(--button-grey-active) !important;
 }
 
 .path-input-vars-container {
   flex-direction: column !important;
-  gap:0 !important;
+  gap: 0 !important;
 }
 
 .path-input-vars-menu {
@@ -235,15 +328,16 @@ body {
   flex-direction: row;
   height: 0px;
   border-radius: 10px;
-  background-color: rgb(34, 46, 63);
+  background-color: var(--surface-1);
   width: 100%;
   padding-top: 30px;
   margin-top: -30px;
   overflow: hidden;
-  transition: height ease 0.2s
+  transition: height ease 0.2s;
+  cursor: auto;
 }
 
-.path-input-vars-menu-opened{
+.path-input-vars-menu-opened {
   height: 140px;
 }
 
@@ -252,7 +346,7 @@ body {
   width: fit-content;
   padding: 0 5px;
   margin: 5px;
-  background-color: rgb(49, 64, 86);
+  background-color: var(--surface-2);
   border-radius: 7px;
   scrollbar-width: none;
 }
@@ -270,25 +364,63 @@ body {
 .path-var {
   margin: 5px 0;
   padding: 0 5px 2px 5px;
-  background-color: rgb(78, 95, 131);
+  background-color: var(--button-grey);
   border-radius: 5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.path-var:hover {
+  background-color: var(--button-grey-hover);
+}
+
+.path-var:active {
+  background-color: var(--button-grey-active);
+}
+
+.path-var-active {
+  background-color: var(--button-blue);
+}
+
+.path-var-active:hover {
+  background-color: var(--button-blue-hover);
+}
+
+.path-var-active:active {
+  background-color: var(--button-blue-active);
 }
 
 .path-input-menu-var-insert {
+  transition: background-color ease 50ms;
+  overflow: hidden;
   height: 25px;
   line-height: 23px;
   border-radius: 7px;
   margin-top: 5px;
   margin-bottom: 0;
-  background-color: rgb(15, 115, 255);
+  background-color: var(--button-blue);
+  cursor: pointer;
+  transition: ease 200ms;
+  transition-property: all;
 }
 
 .path-input-menu-var-insert:hover {
-  background-color: rgb(6, 97, 224);
+  background-color: var(--button-blue-hover);
+}
+
+.path-input-menu-var-insert:active {
+  background-color: var(--button-blue-active);
+}
+
+.path-input-menu-var-insert-locked {
+  height: 0px !important;
+  margin: 0 !important;
+  opacity: 0;
+  line-height: 0px;
 }
 
 .path-input-menu-var-desc {
-  background-color: rgb(49, 64, 86);
+  background-color: var(--surface-2);
   border-radius: 7px;
   flex-grow: 1;
   height: auto;
@@ -301,8 +433,6 @@ body {
 
 .path-input-menu-var-desc-text {
   margin: 0;
-  width: 100%;
-  height: 100%;
   text-align: start;
   padding: 5px;
   text-wrap: wrap;
