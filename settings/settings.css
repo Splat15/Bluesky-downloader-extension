@@ -272,6 +272,7 @@ body {
 .path-input-action-label {
   position: relative;
   margin: auto;
+  text-align: center;  
   height: 100%;
   line-height: 28px;
   top: 0;
