@@ -611,12 +611,12 @@ class ToastManager {
 
       constructor() {
             this.toastContainer = document.getElementById("bskyDownloaderToastContainer")
-            if (!this.toastContainer) {
-                  this.toastContainer = document.createElement("div")
-                  this.toastContainer.classList.add("toast-container")
-                  this.toastContainer.id = "bskyDownloaderToastContainer"
-                  document.body.appendChild(this.toastContainer)
-            }
+            if (this.toastContainer) this.toastContainer.remove()
+
+            this.toastContainer = document.createElement("div")
+            this.toastContainer.classList.add("toast-container")
+            this.toastContainer.id = "bskyDownloaderToastContainer"
+            document.body.appendChild(this.toastContainer)
 
             window.addEventListener("resize", () => {
                   const mobileLayout = window.innerHeight > window.innerWidth
