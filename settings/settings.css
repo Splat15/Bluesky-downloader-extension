@@ -142,13 +142,35 @@ body {
 }
 
 .path-input {
-  padding: 0 0 0 10px;
+  font: inherit;
+  padding: 0 10px 0 10px;
   flex-shrink: 2;
   outline: none;
   background: none;
   color: var(--text);
   border: none;
-  width: fit-content;
+  min-width:calc(100% - 20px);
+  line-height: 40px;
+  text-wrap: nowrap;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+}
+
+.path-input-suggestion-container{
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  height: 100%;
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  pointer-events: none;
+}
+
+.path-input-hidden{
+  opacity: 0;
+  padding-left: 10px;
   line-height: 40px;
   text-wrap: nowrap;
 }
@@ -158,16 +180,14 @@ body {
   color: var(--text-suggestion);
   cursor: pointer;
   padding-right: 10px;
+  pointer-events: all;
 }
 
 .path-input-container {
-  display: flex;
-  flex-direction: row;
-  justify-content: left;
+  position: relative;
   background-color: var(--surface-1);
   height: 40px;
   width: inherit;
-  max-width: calc(100% - 55px);
   color: var(--text);
   border: solid transparent 0;
   border-width: 2px 0px 2px 2px;

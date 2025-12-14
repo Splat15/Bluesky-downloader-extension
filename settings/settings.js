@@ -66,8 +66,11 @@ class Setting {
                               </div>
                               <div id="pathInputContainer" class="path-input-container-container">
                                     <div class="path-input-container">
-                                          <span contentEditable=true id="pathInput" class="path-input" onchange="() => {console.log('testing')}" spellcheck="false">${this.value}</span>
-                                          <p class="path-input-suggestion" id="varSuggestion"></p>
+                                          <input id="pathInput" type="text" value="${this.value}" spellcheck="false" class="path-input">
+                                          <div class="path-input-suggestion-container">
+                                                <span contentEditable=true id="pathInputHidden" class="path-input-hidden" spellcheck="false">${this.value}</span>
+                                                <p class="path-input-suggestion" id="varSuggestion"></p>
+                                          </div>
                                     </div>
                                     <p class="path-input-ext" type="text">.mp4</p>
                               </div>
@@ -97,6 +100,7 @@ class Setting {
                         </div>`, "text/html")
                         .getElementsByClassName("setting")[0];
 
+
                   const varList = this.element.querySelector("#varList")
                   const pathVarInsert = this.element.querySelector("#pathVarInsert")
                   const pathVarMenu = this.element.querySelector("#pathVarMenu")
@@ -106,10 +110,12 @@ class Setting {
                   const varSuggestion = this.element.querySelector("#varSuggestion")
 
                   const pathInput = this.element.querySelector("#pathInput")
+                  const pathInputHidden = this.element.querySelector("#pathInputHidden")
 
                   const pathActionInsert = this.element.querySelector("#pathActionInsert")
                   const pathActionHelp = this.element.querySelector("#pathActionHelp")
                   const pathActionReset = this.element.querySelector("#pathActionReset")
+
 
                   // Add variables to list
                   pathVars.forEach(variable => {
@@ -146,11 +152,9 @@ class Setting {
                         }
                   })
 
-                  // Focus input if surrounding elements are clicked
-                  pathInputContainer.addEventListener("click", () => {
-                        varSuggestion.textContent = ""
-                        pathInput.parentElement.scroll(10000000, 0)
-                        this.FocusPathInput()
+                  // Show variable suggestion when hovered even if it has been cleared
+                  pathVarInsert.addEventListener("mouseenter", () => {
+                        varSuggestion.textContent = `%${pathVarInsert.currentVar}%`
                   })
 
                   // Stop focus changes if input is clicked
@@ -161,7 +165,7 @@ class Setting {
 
                   // Accept suggested vars
                   varSuggestion.addEventListener("click", () => {
-                        this.ChangePathVal(pathInput.textContent + varSuggestion.textContent)
+                        this.ChangePathVal(pathInput.value + varSuggestion.textContent)
                         this.HandleUndoButton()
                         varSuggestion.textContent = ""
                         this.FocusPathInput()
@@ -186,20 +190,16 @@ class Setting {
                   })
 
                   // Automatically save input to settings
-                  new MutationObserver((mutations) => {
-                        for (const mutation of mutations) {
-                              if (mutation.type == "characterData") {
-                                    varSuggestion.textContent = ""
+                  pathInput.addEventListener("input", () => {
+                        this.value = pathInput.value
+                        SetSetting(this.settingId, this.value, this.settings)
 
-                                    this.value = pathInput.textContent
-                                    SetSetting(this.settingId, this.value, this.settings)
-
-                                    this.HandleUndoButton()
-
-                                    return
-                              }
-                        }
-                  }).observe(pathInput, { characterData: true, subtree: true });
+                        varSuggestion.textContent = ""
+                        pathInputHidden.textContent = pathInput.value
+                        pathInput.style.width = window.getComputedStyle(pathInputHidden).width
+                        
+                        this.HandleUndoButton()
+                  })
 
                   // Handle undoing of changes
                   pathUndoButton.addEventListener("click", () => {
@@ -248,17 +248,24 @@ class Setting {
       }
 
       ChangePathVal(value) {
-            pathInput.textContent = value
+            pathInput.value = value
             this.value = value
             SetSetting(this.settingId, this.value, this.settings)
 
+            pathInputHidden.textContent = pathInput.value
+            pathInput.style.width = window.getComputedStyle(pathInputHidden).width
       }
 
       FocusPathInput() {
+            pathInputHidden.textContent = pathInput.value
+            pathInput.style.width = window.getComputedStyle(pathInputHidden).width
+            
             window.getSelection().selectAllChildren(pathInput)
             window.getSelection().collapseToEnd()
             pathInput.focus();
-            pathInput.parentElement.scroll(10000000, 0)
+            pathInput.setSelectionRange(pathInput.value.length, pathInput.value.length);
+
+            pathInput.parentElement.scrollTo({left: 1000, behaviour: "smooth"})
       }
 }
 
