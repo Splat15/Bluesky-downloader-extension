@@ -87,7 +87,7 @@ class Downloadbutton {
       #did
       #downloading = false
 
-      constructor(type, element, url, toastManager) {
+      constructor(type, element, url, toastManager, hidden) {
             this.url = url
             this.type = type
             this.#toastManager = toastManager
@@ -101,7 +101,7 @@ class Downloadbutton {
                   this.url = this.url.replace("/feed_thumbnail/", "/feed_fullsize/")
 
                   element.downloadButton = true
-                  this.#GetDownloadButton(this.url)
+                  this.#GetDownloadButton(this.url, hidden)
                   element.parentElement.appendChild(this.#downloadButtonDiv)
 
                   let altTextButtons = Array.from(element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
@@ -114,12 +114,12 @@ class Downloadbutton {
                   this.url = this.url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
                   element.downloadButton = true
-                  this.#GetDownloadButton(this.url)
+                  this.#GetDownloadButton(this.url, hidden)
                   element.parentElement.insertBefore(this.#downloadButtonDiv, element)
             }
             else if (this.type == Downloadbutton.GIF) {
                   element.downloadButton = true
-                  this.#GetDownloadButton(this.url)
+                  this.#GetDownloadButton(this.url, hidden)
                   element.parentElement.appendChild(this.#downloadButtonDiv)
 
                   let altTextButtons = Array.from(element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
@@ -133,16 +133,30 @@ class Downloadbutton {
             }
       }
 
+      SetVisibility(visibility) {
+            if (visibility) this.Show()
+            else this.Hide()
+      }
+
+      Hide() {
+            this.#downloadButtonDiv.style.display = "none"
+      }
+
+      Show() {
+            this.#downloadButtonDiv.style.display = "block"
+      }
+
       /** Assembles the html element structure */
-      #GetDownloadButton(url) {
+      #GetDownloadButton(url, hidden) {
             const domParser = new DOMParser()
             const downloadButton = domParser.parseFromString(`
-                  <div class="download-button-div${this.type != Downloadbutton.Video ? ` download-button-div-image` : ``}" id="download-button-div"${this.#mobileDevice ? ` style="opacity: 1"` : ``}>
-                  ${this.type != Downloadbutton.Video ? `<div class="dropshadow" id="dropshadow"></div>` : ``}
-                  <button class="download-button" id="download-button">
-                  <img id="download-button-static" class="download-icon" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
-                  </button>
-                  </div>`.replace(/\s{2,}/g, " "), "text/html")
+                  <div class="download-button-div${this.type != Downloadbutton.Video ? ' download-button-div-image' : ''}" id="download-button-div" style="${this.#mobileDevice ? 'opacity: 1; ' : ''} display: ${hidden ? "none" : "block"};">
+                        ${this.type != Downloadbutton.Video ? '<div class="dropshadow" id="dropshadow"></div>' : ''}
+                        <button class="download-button" id="download-button">
+                        <img id="download-button-static" class="download-icon" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
+                        </button>
+                  </div>
+                  `.replace(/\s{2,}/g, " "), "text/html")
 
             this.#downloadButtonDiv = downloadButton.getElementById("download-button-div")
             this.downloadButton = downloadButton.getElementById("download-button")
@@ -735,7 +749,7 @@ class ToastManager {
             Dismiss(firstElement) {
                   this.toastElem.style.transition = "transform ease-in 0.2s, opacity ease-in 0.2s"
                   this.toastElem.style.zIndex = 20
-                  this.toastElem.style.transform = `translateY(${this.mobileLayout ? "-" : "" }${firstElement ? 2.2 : 60}px) scale(0.9)`
+                  this.toastElem.style.transform = `translateY(${this.mobileLayout ? "-" : ""}${firstElement ? 2.2 : 60}px) scale(0.9)`
                   this.toastElem.style.opacity = 0
 
                   setTimeout(() => {

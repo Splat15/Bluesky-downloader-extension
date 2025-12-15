@@ -42,7 +42,8 @@ class Setting {
                   // Handle toggeling
                   this.element.addEventListener("click", () => {
                         // Invert value and sync with settings
-                        this.ChangeSetting(!this.value)
+                        
+                        this.value = !this.value
 
                         if (this.value)
                               this.element.classList.replace("setting-inactive", "setting-active")
@@ -220,26 +221,6 @@ class Setting {
             }
       }
 
-      // Change a setting from a given setting object
-      ChangeSetting(value) {
-            this.value = value
-
-            // Iterate through the different sections / categories
-            for (let i = 0; i < this.settings.length; i++) {
-
-                  // Iterate through the different settings
-                  for (let j = 0; j < this.settings[i].length; j++) {
-
-                        // Check setting against given ID
-                        if (this.settings[i][j].id == this.settingId) {
-                              this.settings[i][j].value = this.value
-                              return
-                        }
-                  }
-            }
-
-      }
-
       HandleUndoButton() {
             if (this.value == this.originalValue)
                   pathUndoButton.classList.remove("path-undo-button-active")
@@ -299,14 +280,19 @@ for (let i = 0; i < settings.length; i++) {
       }
 }
 
+browser.runtime.onMessage.addListener(message => {
+      if (message.type == "settings-update")
+            settings = message.settings
+})
+
 
 function SetSetting(settingId, value, settings) {
+      browser.runtime.sendMessage({ type: "set-setting", settingId: settingId, value: value })
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
                   if (setting.id == settingId) {
                         setting.value = value;
-                        localStorage.setItem("settings", JSON.stringify(settings))
                         return
                   }
             }

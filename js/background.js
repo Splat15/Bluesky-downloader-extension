@@ -29,8 +29,6 @@ if (!settings) {
 }
 else settings = JSON.parse(settings)
 
-console.log(JSON.stringify(settings))
-
 browser.runtime.onInstalled.addListener((details) => {
       if (details.reason == "install") {
             onboardingStatus = { image: false, video: false }
@@ -40,7 +38,7 @@ browser.runtime.onInstalled.addListener((details) => {
 
 // Add listeners for messages from content scripts
 browser.runtime.onMessage.addListener((message, sender) => {
-      tabIDs.push(sender.tab.id)
+      if (sender.tab) tabIDs.push(sender.tab.id)
 
       // Downloads
       if (message.type == "bsky-download") {
@@ -98,7 +96,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Install time request
       else if (message.type == "init") {
             const uptime = Date.now() - startTime
-            browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus })
+            browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus, settings: settings })
       }
 
       // Onboarding status updates
@@ -136,14 +134,22 @@ function GetFilePath(postType, userName, fileName, fileExt) {
 
 
 function SetSetting(settingId, value, settings) {
-      settings = JSON.parse(localStorage.getItem("settings"))
-
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
                   if (setting.id == settingId) {
                         setting.value = value;
                         localStorage.setItem("settings", JSON.stringify(settings))
+
+                        for (let i = 0; i < tabIDs.length; i++) {
+                              const tabID = tabIDs[i]
+                              try {
+                                    // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
+                                    // Content script is tasked with repeating the message for the popup window
+                                    browser.tabs.sendMessage(tabID, { type: "settings-update", settings: settings, repeat: i == 0 })
+                              }
+                              catch { }
+                        }
                         return
                   }
             }
@@ -152,8 +158,6 @@ function SetSetting(settingId, value, settings) {
 
 
 function GetSetting(settingId) {
-      settings = JSON.parse(localStorage.getItem("settings"))
-
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]

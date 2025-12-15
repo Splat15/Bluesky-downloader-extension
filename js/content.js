@@ -2,17 +2,60 @@
 let onboardingStatus
 let onboardingElements = { image: [], video: [] }
 let onboardingHasRun = { video: false, image: false }
+let downloadButtons = { video: [], image: [], gif: [] }
+let settings
+let onInit = []
+let init = false
 const toastManager = new ToastManager()
+let mediaElements = [] // Prevents duplicate application of download buttons and onboarding elements
 
-const mobileDevice = Downloadbutton.DetectMobileDevice()
+const mobileDevice = Downloadbutton.DetectMobileDevice() // Detect browser based on user agent for compatibility and layout
 
-const minUptime = 1000
+const minUptime = 1000 // Max. ms amount of time since install of extension for cleanup to be executed
+
 browser.runtime.onMessage.addListener((message) => {
+
+      // Response to init request
       if (message.type == "init") {
+            if (init) return
+
+            init = true
+
+            console.log(message.setting)
+
             onboardingStatus = message.onboardingStatus
+            settings = message.settings
 
             if (message.uptime < minUptime) InstallCleanup()
+
+
+            onInit.forEach(element => {
+                  element()
+            });
       }
+
+      // Settings updates
+      else if (message.type == "settings-update") {
+            // Workaround
+            // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
+            if (message.repeat)
+                  browser.runtime.sendMessage({ type: "setting-update", settings: settings })
+
+            settings = message.settings
+
+            console.log(settings)
+
+
+            let img = GetSetting("imgDownload").value
+            let vid = GetSetting("vidDownload").value
+            let gif = GetSetting("gifDownload").value
+
+            downloadButtons.image.forEach(downloadButton => downloadButton.SetVisibility(img))
+            downloadButtons.video.forEach(downloadButton => downloadButton.SetVisibility(vid))
+            downloadButtons.gif.forEach(downloadButton => downloadButton.SetVisibility(gif))
+      }
+
+      // Updates for the status of unboarding
       else if (message.type == "onboarding-update") {
             onboardingStatus = message.onboardingStatus
             if (onboardingStatus.image) {
@@ -33,8 +76,8 @@ new NodeObserver(
 
       element => {
             if (element.downloadButton == true) return
-            // exact tests
-            // logic for image elements
+
+            // Image elements
             if (element.tagName == "IMG" &&
                   element.draggable == true &&
                   element.hasAttribute("alt") &&
@@ -43,18 +86,30 @@ new NodeObserver(
             // Create download button
             {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager)
+                        const func = () => {
+                              if (mediaElements.includes(element)) return
+                              mediaElements.push(element)
 
-                        if (!onboardingStatus.image && !onboardingHasRun.image) {
-                              if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
-                              else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
-                              onboardingHasRun.image = true
+                              const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager, !GetSetting("imgDownload").value)
+                              downloadButtons.image.push(downloadButton)
+
+                              // Show flashing borders tutorial
+                              if (!onboardingStatus.image && !onboardingHasRun.image) {
+                                    if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
+                                    else CreateFlashingBorders(element, downloadButton, Downloadbutton.Image)
+                                    onboardingHasRun.image = true
+                              }
                         }
+
+                        if (init)
+                              func()
+                        else
+                              onInit.push(func)
                   }
                   catch (error) { console.error(error) }
             }
 
-            // logic for video elements
+            // Video element posts
             else if (element.tagName == "VIDEO" && element.hasAttribute("playsinline")) {
 
                   // Video posts
@@ -70,7 +125,6 @@ new NodeObserver(
                                           !element2.parentElement.hasAttribute("aria-label"),
                                     // Create download button
                                     element2 => {
-                                          //new Downloadbutton(Downloadbutton.Video, element2, element.poster)
                                           downloadElement = element2
                                           resolve()
                                     },
@@ -84,34 +138,53 @@ new NodeObserver(
 
                                     // Stop node observer from triggering
                                     observer.Stop()
-                                    // Create download button
-                                    //new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster)
                                     downloadElement = element2
                                     resolve()
                               }
                         }).then(() => {
                               try {
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, toastManager)
+                                    const func = () => {
+                                          if (mediaElements.includes(element)) return
+                                          mediaElements.push(element)
 
-                                    // Onboarding procedure
-                                    if (!onboardingStatus.video && !onboardingHasRun.video) {
-                                          if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Video)
-                                          else CreateFlashingBorders(element, downloadButton, Downloadbutton.Video)
-                                          onboardingHasRun.video = true
+                                          const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, toastManager, !GetSetting("vidDownload").value)
+                                          downloadButtons.video.push(downloadButton)
+
+                                          // Show flashing borders tutorial
+                                          if (!onboardingStatus.video && !onboardingHasRun.video) {
+                                                if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Video)
+                                                else CreateFlashingBorders(element, downloadButton, Downloadbutton.Video)
+                                                onboardingHasRun.video = true
+                                          }
                                     }
+
+                                    if (init)
+                                          func()
+                                    else
+                                          onInit.push(func)
 
                               }
                               catch (error) { console.error(error) }
                         })
                   }
 
-                  // tenor GIF posts (actually webm)
+                  // GIF posts (webm)
                   else if (element.preload == "auto" &&
-                        element.downloadButton !== true)
-                  // Create download button
-                  {
+                        element.downloadButton !== true) {
                         try {
-                              new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager)
+                              // Create download button
+                              const func = () => {
+                                    if (mediaElements.includes(element)) return
+                                    mediaElements.push(element)
+
+                                    const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager, !GetSetting("gifDownload").value)
+                                    downloadButtons.gif.push(downloadButton)
+                              }
+
+                              if (init)
+                                    func()
+                              else
+                                    onInit.push(func)
                         }
                         catch (error) {
                               console.error(error)
@@ -147,7 +220,8 @@ function InstallCleanup() {
             .filter(element => /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) && !element.hasAttribute("draggable"))
             .forEach(element => {
                   try {
-                        let downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager)
+                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager, !GetSetting("imgDownload").value)
+                        downloadButtons.image.push(downloadButton)
 
                         if (!onboardingStatus.image && !onboardingHasRun.image) {
                               if (mobileDevice) CreateFlashingBordersMobile(element, downloadButton, Downloadbutton.Image)
@@ -169,7 +243,8 @@ function InstallCleanup() {
                   downloadElements.forEach(downloadElement => {
                         if (downloadElement) {
                               try {
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, toastManager)
+                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, toastManager, !GetSetting("vidDownload").value)
+                                    downloadButtons.video.push(downloadButton)
 
                                     // Onboarding procedure
                                     if (!onboardingStatus.video && !onboardingHasRun.video) {
@@ -190,7 +265,8 @@ function InstallCleanup() {
       Array.from(document.querySelectorAll("video[playsinline][preload='auto']"))
             .forEach(element => {
                   try {
-                        new Downloadbutton(Downloadbutton.GIF, element, element.src)
+                        const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager, !GetSetting("gifDownload").value)
+                        downloadButtons.gif.push(downloadButton)
                   }
                   catch (error) {
                         console.error(error)
@@ -202,6 +278,8 @@ function InstallCleanup() {
 
 function CreateFlashingBorders(element, downloadButton, type) {
       let flashingBorders = []
+
+      // Create individual border segments
       for (let i = 0; i < 3; i++) {
             const border = new FlashingBorder(
                   element.parentElement,
@@ -211,8 +289,8 @@ function CreateFlashingBorders(element, downloadButton, type) {
                   800
             )
             border.Start()
-
             flashingBorders.push(border)
+
             if (type == Downloadbutton.Video) onboardingElements.video.push(border)
             else onboardingElements.image.push(border)
       }
@@ -347,4 +425,16 @@ function CreateFlashingBordersMobile(element, downloadButton, type) {
                   browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
             }, 2400)
       })
+}
+
+
+function GetSetting(settingId) {
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+                  if (setting.id == settingId) {
+                        return setting
+                  }
+            }
+      }
 }
