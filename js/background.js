@@ -29,6 +29,7 @@ if (!settings) {
 }
 else settings = JSON.parse(settings)
 
+console.log(JSON.stringify(settings))
 
 browser.runtime.onInstalled.addListener((details) => {
       if (details.reason == "install") {
@@ -91,7 +92,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Setting set requests
       else if (message.type == "set-setting") {
-            SetSetting(message.settingId, message.value, settings) 
+            SetSetting(message.settingId, message.value, settings)
       }
 
       // Install time request
@@ -135,6 +136,8 @@ function GetFilePath(postType, userName, fileName, fileExt) {
 
 
 function SetSetting(settingId, value, settings) {
+      settings = JSON.parse(localStorage.getItem("settings"))
+
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
@@ -149,6 +152,8 @@ function SetSetting(settingId, value, settings) {
 
 
 function GetSetting(settingId) {
+      settings = JSON.parse(localStorage.getItem("settings"))
+
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
