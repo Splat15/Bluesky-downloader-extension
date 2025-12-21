@@ -138,6 +138,10 @@
   position: relative;
 }
 
+.toast-text-loading {
+  color: rgb(103, 103, 103) !important;
+}
+
 .toast-text-overflow {
   position: relative;
   display: flex;

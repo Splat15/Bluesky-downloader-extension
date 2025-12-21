@@ -21,8 +21,6 @@ browser.runtime.onMessage.addListener((message) => {
 
             init = true
 
-            console.log(message.setting)
-
             onboardingStatus = message.onboardingStatus
             settings = message.settings
 
@@ -169,7 +167,8 @@ new NodeObserver(
                   }
 
                   // GIF posts (webm)
-                  else if (element.preload == "auto" &&
+                  else if (element.getAttribute("playsinline") === "" &&
+                        element.getAttribute("loop") === "" &&
                         element.downloadButton !== true) {
                         try {
                               // Create download button
@@ -262,7 +261,7 @@ function InstallCleanup() {
             })
 
       // GIFs
-      Array.from(document.querySelectorAll("video[playsinline][preload='auto']"))
+      Array.from(document.querySelectorAll("video[playsinline][loop]"))
             .forEach(element => {
                   try {
                         const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager, !GetSetting("gifDownload").value)

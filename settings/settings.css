@@ -183,6 +183,16 @@ body {
   pointer-events: all;
 }
 
+.path-example{
+  padding: 0 10px;
+  margin: 0;
+  text-align: left;
+  width: calc(100% - 20px);
+  text-wrap: auto;
+  word-break: break-word;
+  color: rgb(181, 181, 181);
+}
+
 .path-input-container {
   position: relative;
   background-color: var(--surface-1);

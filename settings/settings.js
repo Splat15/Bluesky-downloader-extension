@@ -42,7 +42,7 @@ class Setting {
                   // Handle toggeling
                   this.element.addEventListener("click", () => {
                         // Invert value and sync with settings
-                        
+
                         this.value = !this.value
 
                         if (this.value)
@@ -75,6 +75,7 @@ class Setting {
                                     </div>
                                     <p class="path-input-ext" type="text">.mp4</p>
                               </div>
+                              <p class="path-example" id="pathExample"></p>
                               <div class="path-actions path-input-vars-container">
                                     <p id="pathActionInsert" class="path-input-action-label path-input-vars">Variables</p>
                                     <div id="pathVarMenu" class="path-input-vars-menu">
@@ -113,6 +114,8 @@ class Setting {
                   const pathInput = this.element.querySelector("#pathInput")
                   const pathInputHidden = this.element.querySelector("#pathInputHidden")
 
+                  const pathExample = this.element.querySelector("#pathExample")
+
                   const pathActionInsert = this.element.querySelector("#pathActionInsert")
                   const pathActionHelp = this.element.querySelector("#pathActionHelp")
                   const pathActionReset = this.element.querySelector("#pathActionReset")
@@ -134,10 +137,10 @@ class Setting {
                               element.classList.add("path-var-active")
 
                               pathVarDesc.textContent = variable.desc
-                              pathVarInsert.currentVar = variable.name
+                              pathVarInsert.currentVar = variable.tags[0]
                               pathVarInsert.classList.remove("path-input-menu-var-insert-locked");
 
-                              varSuggestion.textContent = `%${variable.name}%`
+                              varSuggestion.textContent = `%${variable.tags[0]}%`
 
                               this.FocusPathInput()
                         })
@@ -147,8 +150,7 @@ class Setting {
                   pathVarInsert.addEventListener("click", () => {
                         if (pathVarInsert.currentVar) {
                               this.ChangePathVal(this.value + `%${pathVarInsert.currentVar}%`)
-                              this.HandleUndoButton()
-                              varSuggestion.textContent = `%${pathVarInsert.currentVar}%`
+                              varSuggestion.textContent = ``
                               this.FocusPathInput()
                         }
                   })
@@ -158,16 +160,9 @@ class Setting {
                         varSuggestion.textContent = `%${pathVarInsert.currentVar}%`
                   })
 
-                  // Stop focus changes if input is clicked
-                  pathInput.addEventListener("click", (e) => {
-                        e.stopPropagation()
-                        varSuggestion.textContent = ""
-                  })
-
                   // Accept suggested vars
                   varSuggestion.addEventListener("click", () => {
                         this.ChangePathVal(pathInput.value + varSuggestion.textContent)
-                        this.HandleUndoButton()
                         varSuggestion.textContent = ""
                         this.FocusPathInput()
                   })
@@ -186,7 +181,6 @@ class Setting {
                   pathActionReset.addEventListener("click", () => {
                         this.ChangePathVal("%file%")
                         varSuggestion.textContent = ""
-                        this.HandleUndoButton()
                         this.FocusPathInput()
                   })
 
@@ -198,21 +192,24 @@ class Setting {
                         varSuggestion.textContent = ""
                         pathInputHidden.textContent = pathInput.value
                         pathInput.style.width = window.getComputedStyle(pathInputHidden).width
-                        
+
                         this.HandleUndoButton()
+                        
+                        this.UpdatePathExample()
                   })
 
                   // Handle undoing of changes
                   pathUndoButton.addEventListener("click", () => {
                         this.ChangePathVal(this.originalValue)
                         varSuggestion.textContent = ""
-                        this.HandleUndoButton()
                         this.FocusPathInput()
                   })
 
                   // Add element to container
                   this.container.appendChild(this.element)
                   this.FocusPathInput()
+                  
+                  this.UpdatePathExample()
             }
 
             // Invalid type
@@ -233,31 +230,45 @@ class Setting {
             this.value = value
             SetSetting(this.settingId, this.value, this.settings)
 
+            this.HandleUndoButton()
+
+            this.UpdatePathExample()
+
             pathInputHidden.textContent = pathInput.value
             pathInput.style.width = window.getComputedStyle(pathInputHidden).width
+      }
+
+      UpdatePathExample() {
+            const url = "https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:z72i7hdynmk6r22z27h6tvur/bafkreifihgfy33x5mxc6metbzi42iv53i2s3fkxm4c3cehg6xuq7ce4hfm@jpeg"
+            const hash = GenerateHash(url)
+            const username = "bsky.app"
+            const displayName = "Bluesky"
+            const type = Downloadbutton.Image.name
+
+            pathExample.textContent = GetFilePath(hash, type, username, displayName, this.value) + ".mp4"
       }
 
       FocusPathInput() {
             pathInputHidden.textContent = pathInput.value
             pathInput.style.width = window.getComputedStyle(pathInputHidden).width
-            
+
             window.getSelection().selectAllChildren(pathInput)
             window.getSelection().collapseToEnd()
             pathInput.focus();
             pathInput.setSelectionRange(pathInput.value.length, pathInput.value.length);
 
-            pathInput.parentElement.scrollTo({left: 1000, behaviour: "smooth"})
+            pathInput.parentElement.scrollTo({ left: 1000, behaviour: "smooth" })
       }
 }
 
 
 let settings = JSON.parse(localStorage.getItem("settings"))
 const pathVars = [
-      { name: "filename", desc: "Username of the poster and the hash of the file URL." },
-      { name: "username", desc: "Username of the poster." },
-      { name: "displayname", desc: "Display name of the poster." },
-      { name: "hash", desc: "Hash of the file URL." },
-      { name: "type", desc: "Media type of the post." }
+      { name: "File name", desc: "Username of the poster and the hash of the file URL.", tags: ["filename", "file"] },
+      { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag"] },
+      { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
+      { name: "Hash", desc: "Hash of the file URL.", tags: ["hash", "id"] },
+      { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "medium", "format"] }
 ]
 
 
@@ -284,17 +295,3 @@ browser.runtime.onMessage.addListener(message => {
       if (message.type == "settings-update")
             settings = message.settings
 })
-
-
-function SetSetting(settingId, value, settings) {
-      browser.runtime.sendMessage({ type: "set-setting", settingId: settingId, value: value })
-      for (let i = 0; i < settings.length; i++) {
-            for (let j = 0; j < settings[i].length; j++) {
-                  const setting = settings[i][j]
-                  if (setting.id == settingId) {
-                        setting.value = value;
-                        return
-                  }
-            }
-      }
-}

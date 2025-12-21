@@ -50,10 +50,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
             }
 
             // Video downloads
-            if (message.fileType == "video") {
+            if (message.fileType == "Video") {
                   // Start download
-                  let fileName = GetFilePath("Videos", message.username, message.fileName, ".mp4")
-                  downloader.download(message.url, fileName, (progress, error, fileBlob = null) => {
+                  downloader.download(message.url, message.filePath, (progress, error, fileBlob = null) => {
 
                         // Send progress messages to sender
                         let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }
@@ -65,9 +64,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
             // Image downloads
             else {
-                  let fileName = GetFilePath((message.fileType == "gif" ? "GIFs" : "Photos"), message.username, message.fileName, (message.fileType == "gif" ? ".webm" : ".jpg"))
                   try {
-                        downloader.downloadImage(message.url, fileName, ((progress, error) => {
+                        downloader.downloadImage(message.url, message.filePath, ((progress, error) => {
                               if (error)
                                     throw new Error(error)
 

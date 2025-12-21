@@ -1,4 +1,3 @@
-// Observes an element for added subnodes
 /**
  * Observes an element for added subnodes and executes the **`Callback`** if the **`Test`** returns `true`.
  * 
@@ -67,9 +66,9 @@ class Downloadbutton {
             Done: browser.runtime.getURL("../icons/checkbox.svg"),
             Error: browser.runtime.getURL("../icons/error.svg")
       }
-      static Image = 0
-      static Video = 1
-      static GIF = 2
+      static Image = { name: "Image", ext: ".jpg" }
+      static Video = { name: "Video", ext: ".mp4" }
+      static GIF = { name: "GIF", ext: ".webm" }
 
       #mobileDevice = Downloadbutton.DetectMobileDevice()
 
@@ -80,17 +79,23 @@ class Downloadbutton {
       #progressCircleElem = null
       #toastManager
       #toast
-      #isMouseOnToast = false
-
-
-      #username
       #did
       #downloading = false
+
+
+      #hash
+      #displayName
+      #fileExtension
+      #fileName
+      #filePath
+      #username
+      #element
 
       constructor(type, element, url, toastManager, hidden) {
             this.url = url
             this.type = type
             this.#toastManager = toastManager
+            this.#element = element
 
             // Get user id
             this.#did = url.replace(/%3A/g, ":").match(/\/(did:plc:\w+)\//)
@@ -100,33 +105,33 @@ class Downloadbutton {
             if (this.type == Downloadbutton.Image) {
                   this.url = this.url.replace("/feed_thumbnail/", "/feed_fullsize/")
 
-                  element.downloadButton = true
+                  this.#element.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  element.parentElement.appendChild(this.#downloadButtonDiv)
+                  this.#element.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  let altTextButtons = Array.from(this.#element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.style.left = "16px !important")
 
-                  element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.#element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.#element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
             else if (this.type == Downloadbutton.Video) {
                   this.url = this.url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
-                  element.downloadButton = true
+                  this.#element.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  element.parentElement.insertBefore(this.#downloadButtonDiv, element)
+                  this.#element.parentElement.insertBefore(this.#downloadButtonDiv, this.#element)
             }
             else if (this.type == Downloadbutton.GIF) {
-                  element.downloadButton = true
+                  this.#element.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  element.parentElement.appendChild(this.#downloadButtonDiv)
+                  this.#element.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  let altTextButtons = Array.from(this.#element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.classList.add("alt-button-left"))
 
-                  element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.#element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.#element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
             else {
                   throw new Error("Invalid download button type: " + this.type)
@@ -182,21 +187,49 @@ class Downloadbutton {
                   this.#CreateProgressCircle()
                   this.#progressCircle.set(0.01)
 
-                  let fileName
+                  this.#toast = this.#toastManager.DisplayToast()
+
+                  this.#fileExtension = this.type.ext
+                  this.#hash = GenerateHash(url).toString()
+
                   if (this.type != Downloadbutton.GIF) {
                         if (!this.#username) {
                               const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
                               const responseBody = JSON.parse(await response.text())
                               this.#username = responseBody.handle
+                              this.#displayName = responseBody.displayName
                         }
 
-                        fileName = this.#username + "-" + this.#GenerateHash(url).toString().slice(6)
+                        this.#filePath = this.#GetFilePath()
+                        this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
                   }
                   else {
-                        fileName = url.match(/\w+(?=\.\w+$)/)[0]
+                        if (!this.#username) {
+                              let profileElems = GetNthParent(this.#element, 9).querySelectorAll("a[href]")
+
+                              for (let i = 0; i < profileElems.length; i++) {
+                                    let href = profileElems[i].href
+                                    let username = href.match(/(?<=\/profile\/)[^\/ ]+/)
+
+                                    if (username) {
+                                          this.#username = username[0]
+                                          break
+                                    }
+                              }
+
+                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#username)
+                              const responseBody = JSON.parse(await response.text())
+                              this.#displayName = responseBody.displayName
+                        }
+
+                        this.#filePath = this.#GetFilePath()
+                        this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
                   }
 
-                  this.#toast = this.#toastManager.DisplayToast(fileName + (this.type == Downloadbutton.Video ? ".mp4" : (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")))
+                  this.#filePath += this.type.ext
+
+
+                  this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
 
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
@@ -225,7 +258,7 @@ class Downloadbutton {
 
                                     // Download file
                                     const a = document.createElement('a')
-                                    a.download = fileName + (this.type == Downloadbutton.GIF ? ".webm" : ".jpg")
+                                    a.download = this.#fileName + this.#fileExtension
                                     a.href = fileURL
                                     a.click()
 
@@ -294,9 +327,8 @@ class Downloadbutton {
                                           type: "bsky-download",
                                           id: id,
                                           url: url,
-                                          fileType: (this.fileType == Downloadbutton.GIF ? "gif" : "image"),
-                                          username: this.#username,
-                                          fileName: fileName
+                                          fileType: this.type.name,
+                                          filePath: this.#filePath
                                     })
                               }
                         }
@@ -337,7 +369,7 @@ class Downloadbutton {
                                                 if (message.fileBlob !== null) {
                                                       let fileURL = URL.createObjectURL(message.fileBlob)
                                                       const a = document.createElement('a');
-                                                      a.download = fileName + ".mp4";
+                                                      a.download = this.#fileName + ".mp4";
                                                       a.href = fileURL;
 
                                                       a.click();
@@ -364,9 +396,9 @@ class Downloadbutton {
                                     type: "bsky-download",
                                     id: id,
                                     url: url,
-                                    fileType: "video",
+                                    fileType: this.type.name,
                                     username: this.#username,
-                                    fileName: fileName
+                                    filePath: this.#filePath
                               })
                         }
                   }
@@ -436,20 +468,10 @@ class Downloadbutton {
             }
       }
 
-      /** Returns the nth parent of an element */
-      #GetNthParent(element, n) {
-            while (n > 0) {
-                  element = element.parentElement
-                  n--
-            }
-
-            return element
-      }
-
       /** Adds downloaded URL to local storage */
       #AddURLToHistory(url) {
             try {
-                  const hash = this.#GenerateHash(url)
+                  const hash = GenerateHash(url)
 
                   let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
                   if (_storage == null) _storage = []
@@ -464,7 +486,7 @@ class Downloadbutton {
       /** Checks if URL is present in local storage */
       #GetURLFromHistory(url) {
             try {
-                  const hash = this.#GenerateHash(url)
+                  const hash = GenerateHash(url)
                   let _storage = []
                   try {
                         _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
@@ -499,14 +521,77 @@ class Downloadbutton {
             });
       }
 
-      #GenerateHash = (string) => {
-            let hash = 0;
-            for (const char of string) {
-                  hash = (hash << 5) - hash + char.charCodeAt(0);
-                  hash |= 0; // Constrain to 32bit integer
+      #GetFilePath() {
+            return GetFilePath(this.#hash, this.type.name, this.#username, this.#displayName)
+      }
+}
+
+function GenerateHash(string) {
+      let hash = 0;
+      for (const char of string) {
+            hash = (hash << 5) - hash + char.charCodeAt(0);
+            hash |= 0; // Constrain to 32bit integer
+      }
+      return hash;
+};
+
+function GetFilePath(hash, type, username = "empty", displayName = "empty", pathTemplate = null) {
+      try {
+            if (pathTemplate === null) pathTemplate = GetSetting("downloadPath").value
+
+            pathTemplate = pathTemplate.replaceAll(/%(filename|file)%/gi, username + "-" + hash)
+                  .replaceAll(/%(username|user|tag)%/gi, username)
+                  .replaceAll(/%(displayname|poster|name)%/gi, displayName)
+                  .replaceAll(/%(hash|id)%/gi, hash)
+                  .replaceAll(/%(type|media|medium|format|posttype|mediatype)%/gi, type)
+
+            // Sanitize path for compatibility
+            pathTemplate = pathTemplate.replaceAll(/[^\\\/\w+-]+(?=$|\/)/gi, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
+                  .replaceAll(/[^\\\/\w+-.]/gi, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
+                  .replaceAll(/(?<=^|\/)[^/]{0}(?=$|\/)/gi, "empty") // Deal with empty folders / file names "/files/" => "empty/files/empty"
+                  .replaceAll(/(?<=^|\/)\.+/gi, "") // Remove leading dots ".files/.file" => "files/file"
+
+            return pathTemplate
+      }
+      catch (e) {
+            console.error(e)
+            console.error("Invalid file path")
+            return "error"
+      }
+}
+
+/** Returns the nth parent of an element */
+function GetNthParent(element, n) {
+      while (n > 0) {
+            element = element.parentElement
+            n--
+      }
+
+      return element
+}
+
+function GetSetting(settingId) {
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+                  if (setting.id == settingId) {
+                        return setting
+                  }
             }
-            return hash;
-      };
+      }
+}
+
+function SetSetting(settingId, value, settings) {
+      browser.runtime.sendMessage({ type: "set-setting", settingId: settingId, value: value })
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+                  if (setting.id == settingId) {
+                        setting.value = value;
+                        return
+                  }
+            }
+      }
 }
 
 class FlashingBorder {
@@ -532,10 +617,7 @@ class FlashingBorder {
             this.#element = element
             if (typeof initialState === undefined) initialState = new FlashingBorder.BorderState(0, 0, 0)
             this.#borderStates = [initialState, lowState, highState]
-            this.#lowState = lowState
-            this.#highState = highState
             this.#intervalTime = intervalTime
-            this.#initialState = initialState
 
             this.borderElement = document.createElement("div")
             this.borderElement.classList.add("onboarding-image")
@@ -676,6 +758,10 @@ class ToastManager {
                   }, 400);
       }
 
+      SetText(toast, text) {
+            toast.SetText(text)
+      }
+
       DismissToast(toast, toastList) {
             try {
                   const toastIndex = toastList.indexOf(toast)
@@ -721,6 +807,7 @@ class ToastManager {
       ToastNotification = class ToastNotification {
             text = ""
             toastElem
+            textElem
             container
             progressBar
             mouseOn = false
@@ -736,6 +823,8 @@ class ToastManager {
                   this.mobileLayout = mobileLayout
                   this.Display(firstToast)
 
+                  if (this.text) this.SetText(this.text)
+
                   this.toastElem.addEventListener("mouseenter", () => {
                         this.mouseOn = true
                         if (this.onMouseEnter) this.onMouseEnter()
@@ -744,6 +833,66 @@ class ToastManager {
                         this.mouseOn = false
                         if (this.onMouseEnter) this.onMouseLeave()
                   })
+            }
+
+            SetText(text) {
+                  this.textElem.classList.remove("toast-text-loading")
+
+                  this.textElem.textContent = text
+
+                  // Get computed sizes to compare
+                  const textComputedStyle = window.getComputedStyle(this.textElem)
+                  const divComputedStyle = window.getComputedStyle(this.textElem.parentElement)
+
+                  // Get with as float
+                  const textWidth = parseFloat(textComputedStyle.width)
+                  const divWidth = parseFloat(divComputedStyle.width)
+
+                  const overflowAmount = textWidth - divWidth
+                  const scrollTime = overflowAmount * 0.02 // time for scrolling in seconds, higher multiplyer = slower movement
+
+                  // Text is wider than div
+                  if (overflowAmount > 0) {
+                        this.textElem.style.transition = `transform linear ${scrollTime}s`
+
+                        // Get gradient elements next to toast text
+                        let overflowLeft = this.textElem.parentElement.querySelector('[id="overflowLeft"]')
+                        let overflowRight = this.textElem.parentElement.querySelector('[id="overflowRight"]')
+
+                        // Show right gradient
+                        overflowRight.style.opacity = 1
+
+                        let bool = true
+
+                        const scroll = (bool) => {
+                              if (bool) {
+                                    // Move text right
+                                    overflowLeft.style.opacity = 1
+                                    this.textElem.style.transform = `translateX(-${overflowAmount}px)`
+                                    setTimeout(() => {
+                                          overflowRight.style.opacity = 0
+                                    }, scrollTime * 1000)
+                              }
+                              else {
+                                    // Move text left
+                                    overflowRight.style.opacity = 1
+                                    this.textElem.style.transform = `translateX(0px)`
+                                    setTimeout(() => {
+                                          overflowLeft.style.opacity = 0
+                                    }, scrollTime * 1000)
+                              }
+                        }
+
+                        setTimeout(() => {
+                              setInterval(() => {
+                                    bool = !bool
+                                    scroll(bool)
+                              }, scrollTime * 1000.0 + 1500)
+
+                              scroll(bool)
+                        }, 1500)
+                  }
+
             }
 
             Dismiss(firstElement) {
@@ -767,7 +916,7 @@ class ToastManager {
             <div class="toast-body" style="display: flex;flex-direction: row;padding: 12px;height: 20px;">
                   <div class="toast-text-overflow">
                         <div class="toast-text-overflow-gradient" style="left: 0px; transform: rotate(180deg); opacity: 0;" id="overflowLeft"></div>
-                        <p class="toast-text" id="toastText">${this.text}</p>
+                        <p class="toast-text${this.text ? "" : " toast-text-loading"}" id="toastText">${this.text ? this.text : "Loading..."}</p>
                         <div class="toast-text-overflow-gradient" style="right: 0px; opacity: 0;" id="overflowRight"></div>
                   </div>
                   <button class="toast-action" id="toastAction">
@@ -782,6 +931,7 @@ class ToastManager {
             <div id="loadingBar" class="loading-bar"></div>
       </div>`, "text/html").getElementById("toast")
 
+                  this.textElem = this.toastElem.querySelector('[id="toastText"]')
 
                   // Add click event to dismiss button
                   let toastAction = this.toastElem.querySelector('[id="toastAction"]')
@@ -798,62 +948,6 @@ class ToastManager {
                               color: "rgb(15, 115, 255)",
                               trailColor: "rgb(34, 46, 63);"
                         });
-                  }
-
-                  // Get text element
-                  const textElem = this.toastElem.querySelector('[id="toastText"]')
-
-                  // Get computed sizes to compare
-                  const textComputedStyle = window.getComputedStyle(textElem)
-                  const divComputedStyle = window.getComputedStyle(textElem.parentElement)
-
-                  // Get with as float
-                  const textWidth = parseFloat(textComputedStyle.width)
-                  const divWidth = parseFloat(divComputedStyle.width)
-
-                  const overflowAmount = textWidth - divWidth
-                  const scrollTime = overflowAmount * 0.03 // time for scrolling in seconds, higher multiplyer = slower movement
-
-                  // Text is wider than div
-                  if (overflowAmount > 0) {
-                        textElem.style.transition = `transform linear ${scrollTime}s`
-
-                        // Get gradient elements next to toast text
-                        let overflowLeft = textElem.parentElement.querySelector('[id="overflowLeft"]')
-                        let overflowRight = textElem.parentElement.querySelector('[id="overflowRight"]')
-
-                        // Show right gradient
-                        overflowRight.style.opacity = 1
-
-                        let bool = true
-
-                        const scroll = (bool) => {
-                              if (bool) {
-                                    // Move text right
-                                    overflowLeft.style.opacity = 1
-                                    textElem.style.transform = `translateX(-${overflowAmount}px)`
-                                    setTimeout(() => {
-                                          overflowRight.style.opacity = 0
-                                    }, scrollTime * 1000)
-                              }
-                              else {
-                                    // Move text left
-                                    overflowRight.style.opacity = 1
-                                    textElem.style.transform = `translateX(0px)`
-                                    setTimeout(() => {
-                                          overflowLeft.style.opacity = 0
-                                    }, scrollTime * 1000)
-                              }
-                        }
-
-                        setTimeout(() => {
-                              setInterval(() => {
-                                    bool = !bool
-                                    scroll(bool)
-                              }, scrollTime * 1000.0 + 1500)
-
-                              scroll(bool)
-                        }, 1500)
                   }
             }
       }

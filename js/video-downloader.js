@@ -32,10 +32,10 @@ class VideoDownloader {
             this.#onProgress = () => { }
       }
 
-      download(url, fileName, onProgress = () => { }) {
+      download(url, filePath, onProgress = () => { }) {
             if (this.#queue.find(element => element.url == url)) return
 
-            this.#queue.push({ url: url, fileName: fileName, onProgress: onProgress, tries: 0 })
+            this.#queue.push({ url: url, filePath: filePath, onProgress: onProgress, tries: 0 })
             if (this.#downloadReady) {
                   this.#downloadReady = false
                   this.#download()
@@ -43,8 +43,8 @@ class VideoDownloader {
       }
 
 
-      downloadImage(url, fileName, onProgress = () => { }) {
-            browser.downloads.download({ filename: fileName, url: url }).then(id => {
+      downloadImage(url, filePath, onProgress = () => { }) {
+            browser.downloads.download({ filename: filePath, url: url }).then(id => {
                   browser.downloads.search({ id: id }).then(downloadItems => {
 
                         if (downloadItems.length > 0) {
@@ -81,7 +81,7 @@ class VideoDownloader {
 
             const tries = currentItem.tries
             const url = currentItem.url
-            const fileName = currentItem.fileName
+            const filePath = currentItem.filePath
             this.#onProgress = currentItem.onProgress
 
             this.#downloadReady = false
@@ -111,7 +111,7 @@ class VideoDownloader {
                         let fileURL = URL.createObjectURL(fileBlob)
 
                         browser.downloads.download({
-                              url: fileURL, filename: fileName
+                              url: fileURL, filename: filePath
                         })
                         this.#setProgress(100)
                   }
