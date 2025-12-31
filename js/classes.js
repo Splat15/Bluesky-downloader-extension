@@ -70,7 +70,8 @@ class Downloadbutton {
       static Video = { name: "Video", ext: ".mp4" }
       static GIF = { name: "GIF", ext: ".webm" }
 
-      #mobileDevice = Downloadbutton.DetectMobileDevice()
+      #mobileDevice = DetectMobileDevice()
+      #inputMethod
 
       downloadButton = null
       #downloadIcon = null
@@ -89,13 +90,16 @@ class Downloadbutton {
       #fileName
       #filePath
       #username
-      #element
+      element
+      videoElement
 
-      constructor(type, element, url, toastManager, hidden) {
+      constructor(type, element, url, toastManager, hidden, inputMethod, videoElement = null) {
             this.url = url
             this.type = type
             this.#toastManager = toastManager
-            this.#element = element
+            this.element = element
+            this.#inputMethod = inputMethod
+            this.videoElement = videoElement
 
             // Get user id
             this.#did = url.replace(/%3A/g, ":").match(/\/(did:plc:\w+)\//)
@@ -105,34 +109,37 @@ class Downloadbutton {
             if (this.type == Downloadbutton.Image) {
                   this.url = this.url.replace("/feed_thumbnail/", "/feed_fullsize/")
 
-                  this.#element.downloadButton = true
+                  this.element.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.#element.parentElement.appendChild(this.#downloadButtonDiv)
+                  this.element.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.#element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  let altTextButtons = Array.from(this.element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.style.left = "16px !important")
 
-                  this.#element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.#element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
+
             else if (this.type == Downloadbutton.Video) {
                   this.url = this.url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
-                  this.#element.downloadButton = true
+                  this.element.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.#element.parentElement.insertBefore(this.#downloadButtonDiv, this.#element)
+                  this.element.parentElement.insertBefore(this.#downloadButtonDiv, this.element)
             }
-            else if (this.type == Downloadbutton.GIF) {
-                  this.#element.downloadButton = true
-                  this.#GetDownloadButton(this.url, hidden)
-                  this.#element.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.#element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+            else if (this.type == Downloadbutton.GIF) {
+                  this.element.downloadButton = true
+                  this.#GetDownloadButton(this.url, hidden)
+                  this.element.parentElement.appendChild(this.#downloadButtonDiv)
+
+                  let altTextButtons = Array.from(this.element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.classList.add("alt-button-left"))
 
-                  this.#element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.#element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
+
             else {
                   throw new Error("Invalid download button type: " + this.type)
             }
@@ -155,7 +162,7 @@ class Downloadbutton {
       #GetDownloadButton(url, hidden) {
             const domParser = new DOMParser()
             const downloadButton = domParser.parseFromString(`
-                  <div class="download-button-div${this.type != Downloadbutton.Video ? ' download-button-div-image' : ''}" id="download-button-div" style="${this.#mobileDevice ? 'opacity: 1; ' : ''} display: ${hidden ? "none" : "block"};">
+                  <div class="download-button-div${this.type != Downloadbutton.Video ? ' download-button-div-image' : ''}" id="download-button-div" style="display: ${hidden ? "none" : "block"};">
                         ${this.type != Downloadbutton.Video ? '<div class="dropshadow" id="dropshadow"></div>' : ''}
                         <button class="download-button" id="download-button">
                         <img id="download-button-static" class="download-icon" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
@@ -167,6 +174,8 @@ class Downloadbutton {
             this.downloadButton = downloadButton.getElementById("download-button")
             this.#downloadIcon = downloadButton.getElementById("download-button-static")
 
+            this.SetInputSupport(this.#inputMethod)
+
             this.downloadButton.addEventListener(
                   "click",
                   (event) => {
@@ -175,6 +184,12 @@ class Downloadbutton {
                   })
 
             return downloadButton
+      }
+
+      // Set sstyling for touch devices
+      SetInputSupport(inputMethod) {
+            this.#inputMethod = inputMethod
+            this.#downloadButtonDiv.style.opacity = this.#inputMethod == "touch" ? "1" : ""
       }
 
       /** Downloads the url based on type of button */
@@ -205,7 +220,7 @@ class Downloadbutton {
                   }
                   else {
                         if (!this.#username) {
-                              let profileElems = GetNthParent(this.#element, 9).querySelectorAll("a[href]")
+                              let profileElems = GetNthParent(this.element, 9).querySelectorAll("a[href]")
 
                               for (let i = 0; i < profileElems.length; i++) {
                                     let href = profileElems[i].href
@@ -258,7 +273,7 @@ class Downloadbutton {
 
                                     // Download file
                                     const a = document.createElement('a')
-                                    a.download = this.#fileName + this.#fileExtension
+                                    a.download = this.#filePath
                                     a.href = fileURL
                                     a.click()
 
@@ -305,6 +320,25 @@ class Downloadbutton {
 
                                                 // Download is finished
                                                 if (message.progress >= 100) {
+                                                      // Warn Librewolf users of promptless downloads
+                                                      if (!this.#mobileDevice) {
+                                                            const time = Date.now()
+                                                            window.addEventListener("blur", () => {
+                                                                  if (Date.now() - time > 200) return
+
+                                                                  browser.runtime.onMessage.addListener((message) => {
+                                                                        if (message.type == "librewolf-warning" && message.value !== true) {
+                                                                              browser.runtime.sendMessage({ type: "set-librewolf-warning" })
+                                                                              toastManager.DisplayToast("Your browser may not support promptless downloads", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#3rd-party-firefox-versions")
+                                                                        }
+                                                                  })
+
+                                                                  browser.runtime.sendMessage({ type: "get-librewolf-warning" })
+                                                            })
+                                                      }
+
+                                                      this.#AddURLToHistory(url)
+
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Done
 
                                                       setTimeout(() => {
@@ -315,8 +349,6 @@ class Downloadbutton {
                                                                   this.#DestroyProgressCircle()
                                                             }, 100);
                                                       }, 800)
-
-                                                      this.#AddURLToHistory(url)
                                                 }
                                           }
 
@@ -363,6 +395,23 @@ class Downloadbutton {
 
                                           // Download done
                                           if (message.progress == 100) {
+                                                // Warn Librewolf users of promptless downloads
+                                                if (!this.#mobileDevice) {
+                                                      const time = Date.now()
+                                                      window.addEventListener("blur", () => {
+                                                            if (Date.now() - time > 200) return
+
+                                                            browser.runtime.onMessage.addListener((message) => {
+                                                                  if (message.type == "librewolf-warning" && message.value !== true) {
+                                                                        browser.runtime.sendMessage({ type: "set-librewolf-warning" })
+                                                                        toastManager.DisplayToast("Your browser may not support promptless downloads", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#3rd-party-firefox-versions")
+                                                                  }
+                                                            })
+
+                                                            browser.runtime.sendMessage({ type: "get-librewolf-warning" })
+                                                      })
+                                                }
+
                                                 // Save URL to history
                                                 this.#AddURLToHistory(url)
 
@@ -503,27 +552,31 @@ class Downloadbutton {
             }
       }
 
-      /** Detect if a mobile device is used in the least intrusive way
-       */
-      static DetectMobileDevice() {
-            const toMatch = [
-                  /Android/i,
-                  /webOS/i,
-                  /iPhone/i,
-                  /iPad/i,
-                  /iPod/i,
-                  /BlackBerry/i,
-                  /Windows Phone/i
-            ];
-
-            return toMatch.some((toMatchItem) => {
-                  return navigator.userAgent.match(toMatchItem);
-            });
-      }
-
       #GetFilePath() {
             return GetFilePath(this.#hash, this.type.name, this.#username, this.#displayName)
       }
+}
+
+/** Detect if a mobile device is used in the least intrusive way.
+ * 
+ * This method is used strictly for compatibility. 
+ * 
+ * Bypasses will break download functionality.
+ */
+function DetectMobileDevice() {
+      const toMatch = [
+            /Android/i,
+            /webOS/i,
+            /iPhone/i,
+            /iPad/i,
+            /iPod/i,
+            /BlackBerry/i,
+            /Windows Phone/i
+      ];
+
+      return toMatch.some((toMatchItem) => {
+            return navigator.userAgent.match(toMatchItem);
+      });
 }
 
 function GenerateHash(string) {
@@ -535,21 +588,35 @@ function GenerateHash(string) {
       return hash;
 };
 
+const pathVars = [
+      { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag"] },
+      { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
+      { name: "File name", desc: "Username of the poster and the hash of the file URL.", tags: ["filename", "file"] },
+      { name: "Hash", desc: "Hash of the file URL.", tags: ["hash", "id"] },
+      { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "mediatype", "posttype", "format"] }
+]
+
 function GetFilePath(hash, type, username = "empty", displayName = "empty", pathTemplate = null) {
       try {
             if (pathTemplate === null) pathTemplate = GetSetting("downloadPath").value
 
-            pathTemplate = pathTemplate.replaceAll(/%(filename|file)%/gi, username + "-" + hash)
-                  .replaceAll(/%(username|user|tag)%/gi, username)
-                  .replaceAll(/%(displayname|poster|name)%/gi, displayName)
-                  .replaceAll(/%(hash|id)%/gi, hash)
-                  .replaceAll(/%(type|media|medium|format|posttype|mediatype)%/gi, type)
+            if (DetectMobileDevice()) pathTemplate = pathTemplate.replaceAll(/[\/\\]+/gi, "")
+
+            pathTemplate = pathTemplate
+                  .replaceAll(new RegExp(`%(${pathVars[0].tags.join("|")})%`, "gi"), username)
+                  .replaceAll(new RegExp(`%(${pathVars[1].tags.join("|")})%`, "gi"), displayName)
+                  .replaceAll(new RegExp(`%(${pathVars[2].tags.join("|")})%`, "gi"), username + "-" + hash)
+                  .replaceAll(new RegExp(`%(${pathVars[3].tags.join("|")})%`, "gi"), hash)
+                  .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), type)
 
             // Sanitize path for compatibility
-            pathTemplate = pathTemplate.replaceAll(/[^\\\/\w+-]+(?=$|\/)/gi, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
-                  .replaceAll(/[^\\\/\w+-.]/gi, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
-                  .replaceAll(/(?<=^|\/)[^/]{0}(?=$|\/)/gi, "empty") // Deal with empty folders / file names "/files/" => "empty/files/empty"
-                  .replaceAll(/(?<=^|\/)\.+/gi, "") // Remove leading dots ".files/.file" => "files/file"
+            pathTemplate = pathTemplate.replaceAll(/\\\\/g, "/") // Replace double backslashes with forward slashes
+                  .replaceAll(/[^\/\w+-]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
+                  .replaceAll(/[^\/\w+-.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
+                  .replaceAll(/(?<=^|\/)\.+/g, "") // Remove leading dots ".files/.file" => "files/file"
+                  .replaceAll(/\.(?=.+\/)/g, "_") // Remove dots in folder names "file.test/test" => "file_test/test"
+                  .replaceAll(/(?<=^|\/)[^/]{0}(?=$|\/)/g, "empty") // Deal with empty folders / file names "/files/" => "empty/files/empty"
+
 
             return pathTemplate
       }
@@ -704,8 +771,10 @@ class ToastManager {
       toastList = []
       toastContainer
       mobileLayout = window.innerHeight > window.innerWidth
+      #inputMethod
 
-      constructor() {
+      constructor(inputMethod) {
+            this.#inputMethod = inputMethod
             this.toastContainer = document.getElementById("bskyDownloaderToastContainer")
             if (this.toastContainer) this.toastContainer.remove()
 
@@ -733,13 +802,20 @@ class ToastManager {
             })
       }
 
+      SetInputMethod(inputMethod) {
+            if (inputMethod == this.#inputMethod) return
+
+            this.#inputMethod = inputMethod
+            this.toastList.forEach(toast => toast.SetInputMethod(this.#inputMethod))
+      }
+
       Destroy() {
             let containers = Array.from(document.querySelectorAll("bskyDownloaderToastContainer"))
             containers.forEach(container => container.remove())
       }
 
-      DisplayToast(text, progressBar = true) {
-            let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout)
+      DisplayToast(text, progressBar = true, helpLink = null) {
+            let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout, helpLink)
             toast.onAction = () => { this.DismissToast(toast, this.toastList) }
             this.toastList.unshift(toast)
 
@@ -808,6 +884,8 @@ class ToastManager {
             text = ""
             toastElem
             textElem
+            textElemDiv
+            helpLink
             container
             progressBar
             mouseOn = false
@@ -815,12 +893,15 @@ class ToastManager {
             onMouseLeave
             onAction
             mobileLayout
+            #toastAction
+            dismissed = false
 
-            constructor(text, container, progressBar, firstToast, mobileLayout) {
+            constructor(text, container, progressBar, firstToast, mobileLayout, helpLink) {
                   this.container = container
                   this.text = text
                   this.progressBar = progressBar
                   this.mobileLayout = mobileLayout
+                  this.helpLink = helpLink
                   this.Display(firstToast)
 
                   if (this.text) this.SetText(this.text)
@@ -840,9 +921,11 @@ class ToastManager {
 
                   this.textElem.textContent = text
 
+                  // Handle overflowing width
+                  // Will not work at document creation, needs some delay
                   // Get computed sizes to compare
-                  const textComputedStyle = window.getComputedStyle(this.textElem)
-                  const divComputedStyle = window.getComputedStyle(this.textElem.parentElement)
+                  const textComputedStyle = window.getComputedStyle(this.textElemDiv)
+                  const divComputedStyle = window.getComputedStyle(this.textElemDiv.parentElement)
 
                   // Get with as float
                   const textWidth = parseFloat(textComputedStyle.width)
@@ -853,11 +936,11 @@ class ToastManager {
 
                   // Text is wider than div
                   if (overflowAmount > 0) {
-                        this.textElem.style.transition = `transform linear ${scrollTime}s`
+                        this.textElemDiv.style.transition = `transform linear ${scrollTime}s`
 
                         // Get gradient elements next to toast text
-                        let overflowLeft = this.textElem.parentElement.querySelector('[id="overflowLeft"]')
-                        let overflowRight = this.textElem.parentElement.querySelector('[id="overflowRight"]')
+                        let overflowLeft = this.textElemDiv.parentElement.querySelector('[id="overflowLeft"]')
+                        let overflowRight = this.textElemDiv.parentElement.querySelector('[id="overflowRight"]')
 
                         // Show right gradient
                         overflowRight.style.opacity = 1
@@ -868,7 +951,7 @@ class ToastManager {
                               if (bool) {
                                     // Move text right
                                     overflowLeft.style.opacity = 1
-                                    this.textElem.style.transform = `translateX(-${overflowAmount}px)`
+                                    this.textElemDiv.style.transform = `translateX(-${overflowAmount}px)`
                                     setTimeout(() => {
                                           overflowRight.style.opacity = 0
                                     }, scrollTime * 1000)
@@ -876,7 +959,7 @@ class ToastManager {
                               else {
                                     // Move text left
                                     overflowRight.style.opacity = 1
-                                    this.textElem.style.transform = `translateX(0px)`
+                                    this.textElemDiv.style.transform = `translateX(0px)`
                                     setTimeout(() => {
                                           overflowLeft.style.opacity = 0
                                     }, scrollTime * 1000)
@@ -895,7 +978,16 @@ class ToastManager {
 
             }
 
+            SetInputMethod(method) {
+                  if (method == "touch")
+                        this.#toastAction.classList.add("toast-action-icon-touch")
+                  else
+                        this.#toastAction.classList.remove("toast-action-icon-touch")
+            }
+
             Dismiss(firstElement) {
+                  this.dismissed = true
+
                   this.toastElem.style.transition = "transform ease-in 0.2s, opacity ease-in 0.2s"
                   this.toastElem.style.zIndex = 20
                   this.toastElem.style.transform = `translateY(${this.mobileLayout ? "-" : ""}${firstElement ? 2.2 : 60}px) scale(0.9)`
@@ -916,7 +1008,10 @@ class ToastManager {
             <div class="toast-body" style="display: flex;flex-direction: row;padding: 12px;height: 20px;">
                   <div class="toast-text-overflow">
                         <div class="toast-text-overflow-gradient" style="left: 0px; transform: rotate(180deg); opacity: 0;" id="overflowLeft"></div>
-                        <p class="toast-text${this.text ? "" : " toast-text-loading"}" id="toastText">${this.text ? this.text : "Loading..."}</p>
+                        <div id="toastTextDiv" class="toast-text-div">
+                              <p class="toast-text${this.text ? "" : " toast-text-loading"}" id="toastText">${this.text ? this.text : "Loading..."}</p>
+                              ${this.helpLink ? `<a class="toast-text toast-help-link" href="${this.helpLink}">Learn more</a>` : ""}
+                        </div>
                         <div class="toast-text-overflow-gradient" style="right: 0px; opacity: 0;" id="overflowRight"></div>
                   </div>
                   <button class="toast-action" id="toastAction">
@@ -928,14 +1023,15 @@ class ToastManager {
                         </svg>
                   </button>
             </div>
-            <div id="loadingBar" class="loading-bar"></div>
+            <div id="loadingBar" ${this.progressBar ? "" : 'style="background: none"'} class="loading-bar"></div>
       </div>`, "text/html").getElementById("toast")
 
                   this.textElem = this.toastElem.querySelector('[id="toastText"]')
+                  this.textElemDiv = this.toastElem.querySelector('[id="toastTextDiv"]')
 
                   // Add click event to dismiss button
-                  let toastAction = this.toastElem.querySelector('[id="toastAction"]')
-                  toastAction.addEventListener("click", () => { this.onAction() })
+                  this.#toastAction = this.toastElem.querySelector('[id="toastAction"]')
+                  this.#toastAction.addEventListener("click", () => { this.onAction() })
 
                   // Add to main document
                   this.container.appendChild(this.toastElem)

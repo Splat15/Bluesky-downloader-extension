@@ -11,7 +11,7 @@ class Setting {
       pathVarMenuExpanded
       originalValue
 
-      constructor(value, type, name, description, settingId, container, settings) {
+      constructor(value, type, name, description, settingId, container, settings, isMobile) {
             this.value = value
             this.type = type
             this.name = name
@@ -70,7 +70,7 @@ class Setting {
                                           <input id="pathInput" type="text" value="${this.value}" spellcheck="false" class="path-input">
                                           <div class="path-input-suggestion-container">
                                                 <span contentEditable=true id="pathInputHidden" class="path-input-hidden" spellcheck="false">${this.value}</span>
-                                                <p class="path-input-suggestion" id="varSuggestion"></p>
+                                                <p class="path-input-suggestion" id="varSuggestion" style="display:none;"></p>
                                           </div>
                                     </div>
                                     <p class="path-input-ext" type="text">.mp4</p>
@@ -122,13 +122,27 @@ class Setting {
 
 
                   // Add variables to list
-                  pathVars.forEach(variable => {
+                  for (let i = 0; i < pathVars.length; i++) {
+                        const variable = pathVars[i]
+
                         const element = document.createElement("p")
                         element.classList.add("path-var")
                         element.textContent = variable.name
 
                         varList.appendChild(element)
 
+                        // Focus first variable
+                        if (i == 0) {
+                              element.classList.add("path-var-active")
+
+                              pathVarDesc.textContent = variable.desc
+                              pathVarInsert.currentVar = variable.tags[0]
+                              pathVarInsert.classList.remove("path-input-menu-var-insert-locked");
+
+                              varSuggestion.textContent = `%${variable.tags[0]}%`
+                        }
+
+                        // On selection of variable
                         element.addEventListener("click", () => {
                               // Cleanup
                               Array.from(varList.getElementsByClassName("path-var-active"))
@@ -144,7 +158,7 @@ class Setting {
 
                               this.FocusPathInput()
                         })
-                  })
+                  }
 
                   // Insert selected variable into input
                   pathVarInsert.addEventListener("click", () => {
@@ -158,6 +172,7 @@ class Setting {
                   // Show variable suggestion when hovered even if it has been cleared
                   pathVarInsert.addEventListener("mouseenter", () => {
                         varSuggestion.textContent = `%${pathVarInsert.currentVar}%`
+                        this.FocusPathInput()
                   })
 
                   // Accept suggested vars
@@ -171,21 +186,32 @@ class Setting {
                   pathActionInsert.addEventListener("click", () => {
                         this.pathVarMenuExpanded = !this.pathVarMenuExpanded
 
-                        if (this.pathVarMenuExpanded)
+                        if (this.pathVarMenuExpanded) {
                               pathVarMenu.classList.add("path-input-vars-menu-opened")
-                        else
+                              varSuggestion.style.display = "block"
+                              this.FocusPathInput()
+                        }
+                        else {
                               pathVarMenu.classList.remove("path-input-vars-menu-opened")
+                              varSuggestion.style.display = "none"
+                              this.FocusPathInput()
+                        }
                   })
 
                   // Reset input
                   pathActionReset.addEventListener("click", () => {
-                        this.ChangePathVal("%file%")
+                        this.ChangePathVal("%filename%")
                         varSuggestion.textContent = ""
                         this.FocusPathInput()
                   })
 
                   // Automatically save input to settings
                   pathInput.addEventListener("input", () => {
+                        if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
+                              // Only display warning if no warning is present
+                              if (!mobilePathWarning || mobilePathWarning.dismissed) mobilePathWarning = toastManager.DisplayToast("Your browser doesn't support setting a download path", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android")
+                              pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
+                        }
                         this.value = pathInput.value
                         SetSetting(this.settingId, this.value, this.settings)
 
@@ -194,7 +220,7 @@ class Setting {
                         pathInput.style.width = window.getComputedStyle(pathInputHidden).width
 
                         this.HandleUndoButton()
-                        
+
                         this.UpdatePathExample()
                   })
 
@@ -208,7 +234,7 @@ class Setting {
                   // Add element to container
                   this.container.appendChild(this.element)
                   this.FocusPathInput()
-                  
+
                   this.UpdatePathExample()
             }
 
@@ -218,6 +244,7 @@ class Setting {
             }
       }
 
+      // Handle when to show the undo button
       HandleUndoButton() {
             if (this.value == this.originalValue)
                   pathUndoButton.classList.remove("path-undo-button-active")
@@ -225,7 +252,13 @@ class Setting {
                   pathUndoButton.classList.add("path-undo-button-active")
       }
 
+      // Set path input value manually
       ChangePathVal(value) {
+            if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
+                  // Only display warning if no warning is present
+                  if (!mobilePathWarning || mobilePathWarning.dismissed) mobilePathWarning = toastManager.DisplayToast("Your browser doesn't support setting a download path", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android")
+                  pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
+            }
             pathInput.value = value
             this.value = value
             SetSetting(this.settingId, this.value, this.settings)
@@ -238,6 +271,7 @@ class Setting {
             pathInput.style.width = window.getComputedStyle(pathInputHidden).width
       }
 
+      // Simulate an example file path using example data
       UpdatePathExample() {
             const url = "https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:z72i7hdynmk6r22z27h6tvur/bafkreifihgfy33x5mxc6metbzi42iv53i2s3fkxm4c3cehg6xuq7ce4hfm@jpeg"
             const hash = GenerateHash(url)
@@ -248,6 +282,7 @@ class Setting {
             pathExample.textContent = GetFilePath(hash, type, username, displayName, this.value) + ".mp4"
       }
 
+      // Set focus to path input field
       FocusPathInput() {
             pathInputHidden.textContent = pathInput.value
             pathInput.style.width = window.getComputedStyle(pathInputHidden).width
@@ -257,19 +292,20 @@ class Setting {
             pathInput.focus();
             pathInput.setSelectionRange(pathInput.value.length, pathInput.value.length);
 
-            pathInput.parentElement.scrollTo({ left: 1000, behaviour: "smooth" })
+            pathInput.parentElement.scrollTo({ left: 1000000, behaviour: "smooth" })
       }
 }
 
+let lightMode = localStorage.getItem("lightMode") == "true"
+if (lightMode)
+      document.documentElement.classList.add("light-mode")
+else
+      document.documentElement.classList.add("dark-mode")
 
+let isMobile = DetectMobileDevice()
 let settings = JSON.parse(localStorage.getItem("settings"))
-const pathVars = [
-      { name: "File name", desc: "Username of the poster and the hash of the file URL.", tags: ["filename", "file"] },
-      { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag"] },
-      { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
-      { name: "Hash", desc: "Hash of the file URL.", tags: ["hash", "id"] },
-      { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "medium", "format"] }
-]
+let toastManager = new ToastManager()
+let mobilePathWarning;
 
 
 const settingsContainer = document.getElementById("settings")
@@ -287,11 +323,26 @@ for (let i = 0; i < settings.length; i++) {
 
       for (let j = 0; j < settings[i].length; j++) {
             const setting = settings[i][j]
-            new Setting(setting.value, setting.type, setting.name, setting.description, setting.id, categoryElem, settings)
+            new Setting(setting.value, setting.type, setting.name, setting.description, setting.id, categoryElem, settings, isMobile)
       }
 }
 
 browser.runtime.onMessage.addListener(message => {
       if (message.type == "settings-update")
             settings = message.settings
+
+      if (message.type == "set-light-mode") {
+            lightMode = message.lightMode
+
+            if (lightMode) {
+                  document.documentElement.classList.remove("dark-mode")
+                  document.documentElement.classList.add("light-mode")
+
+            }
+            else {
+                  document.documentElement.classList.remove("light-mode")
+                  document.documentElement.classList.add("dark-mode")
+
+            }
+      }
 })

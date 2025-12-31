@@ -2,6 +2,12 @@ let installTime = 0
 const startTime = Date.now()
 
 let tabIDs = []
+let lightMode = localStorage.getItem("lightMode") == "true"
+
+let librewolfWarning = localStorage.getItem("librewolfWarning") == "true"
+
+let inputMethod = localStorage.getItem("inputMethod")
+if (!inputMethod) inputMethod = "mouse"
 
 let onboardingStatus = localStorage.getItem("onboarding-status")
 if (!onboardingStatus) onboardingStatus = { image: true, video: true }
@@ -22,7 +28,7 @@ if (!settings) {
                   { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
             ],
             [
-                  { value: "%file%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
+                  { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
             ]
       ]
       localStorage.setItem("settings", JSON.stringify(settings))
@@ -88,13 +94,43 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Setting set requests
       else if (message.type == "set-setting") {
-            SetSetting(message.settingId, message.value, settings)
+            SetSetting(message.settingId, message.value)
+      }
+
+      // Light mode status set requests
+      else if (message.type == "set-light-mode") {
+            lightMode = message.value
+            localStorage.setItem("lightMode", lightMode)
+      }
+
+      // Light mode status get requests
+      else if (message.type == "get-light-mode") {
+            browser.tabs.sendMessage(sender.tab.id, { value: lightMode, type: "light-mode" })
+      }
+
+      // Input method set requests
+      else if (message.type == "set-input-method") {
+            if (message.value == inputMethod) return
+            inputMethod = message.value
+            localStorage.setItem("inputMethod", inputMethod)
+      }
+
+      // Librewolf warning status get request
+      else if (message.type == "get-librewolf-warning") {
+            browser.tabs.sendMessage(sender.tab.id, { value: librewolfWarning, type: "librewolf-warning" })
+      }
+
+      // Librewolf warning status set request
+      else if (message.type == "set-librewolf-warning") {
+            librewolfWarning = true
+            localStorage.setItem("librewolfWarning", librewolfWarning)
       }
 
       // Install time request
       else if (message.type == "init") {
             const uptime = Date.now() - startTime
-            browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus, settings: settings })
+            onboardingStatus = { image: false, video: false }
+            browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus, settings: settings, lightMode: lightMode, inputMethod: inputMethod })
       }
 
       // Onboarding status updates
@@ -131,7 +167,10 @@ function GetFilePath(postType, userName, fileName, fileExt) {
 }
 
 
-function SetSetting(settingId, value, settings) {
+function SetSetting(settingId, value) {
+      if (GetSetting(settingId).value == value)
+            return
+
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]

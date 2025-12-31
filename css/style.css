@@ -1,3 +1,21 @@
+.dark-mode {
+  --text-loading: rgb(103, 103, 103);
+  --text-color: rgb(255, 255, 255);
+  --toast-surface: rgb(34, 46, 63);
+  --toast-border-hover: rgb(34, 58, 78);
+  --toast-action: rgb(111, 131, 159);
+  --toast-action-hover: rgb(195, 205, 218);
+}
+
+.light-mode {
+  --text-loading: rgb(103, 103, 103);
+  --text-color: rgb(0, 0, 0);
+  --toast-surface: rgb(239, 242, 246);
+  --toast-border-hover: rgb(220, 226, 234);
+  --toast-action: rgb(102, 123, 153);
+  --toast-action-hover: rgb(49, 63, 84);
+}
+
 .download-button-div-image {
   position: absolute;
   opacity: 0;
@@ -88,7 +106,7 @@
 }
 
 .toast {
-  background-color: rgb(34, 46, 63);
+  background-color: var(--toast-surface);
   right: 25px;
   width: 300px;
   display: flex;
@@ -102,8 +120,8 @@
   z-index: 20;
 }
 
-.toast-mobile{
-    right: calc(50% - 150px);
+.toast-mobile {
+  right: calc(50% - 150px);
 }
 
 .toast-border {
@@ -118,7 +136,8 @@
 }
 
 .toast:hover .toast-border {
-  box-shadow: inset 0px 0px 0px 2px rgb(34, 58, 78);
+  border-radius: 10px;
+  box-shadow: inset 0px 0px 0px 2px var(--toast-border-hover);
 }
 
 .toast-body {
@@ -128,18 +147,29 @@
   height: 20px;
 }
 
+.toast-text-div {
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  gap: 5px;
+}
+
 .toast-text {
   user-select: none;
   line-height: 18px;
   margin: auto;
   margin-left: 0;
-  color: white;
+  color: var(--text-color);
   white-space: nowrap;
   position: relative;
 }
 
 .toast-text-loading {
-  color: rgb(103, 103, 103) !important;
+  color: var(--text-loading) !important;
+}
+
+.toast-help-link{
+  color: rgb(0, 106, 255)
 }
 
 .toast-text-overflow {
@@ -157,7 +187,7 @@
   width: 20px;
   position: absolute;
   z-index: 10;
-  background-image: linear-gradient(to left, rgb(34, 46, 63), transparent);
+  background-image: linear-gradient(to left, var(--toast-surface), transparent);
   transition: opacity linear 0.1s;
 }
 
@@ -169,11 +199,15 @@
 }
 
 .toast-action-icon {
-  fill: #6f839f;
+  fill: var(--toast-action);
+}
+
+.toast-action-icon-touch {
+  fill: var(--toast-action-hover);
 }
 
 .toast:hover .toast-action-icon {
-  fill: #c3cdda;
+  fill: var(--toast-action-hover);
 }
 
 .loading-bar {
@@ -192,5 +226,5 @@
 
 div.loading-bar > svg {
   transition: opacity ease 0.5s;
-  background-color: rgb(34, 46, 63);
+  background-color: var(--toast-surface);
 }
