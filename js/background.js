@@ -25,6 +25,9 @@ if (!settings) {
                   { value: true, id: "gifDownload", type: "toggle", name: "GIF download", description: "Placeholder" }
             ],
             [
+                  { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm", description: "Placeholder" }
+            ],
+            [
                   { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
             ],
             [
@@ -44,7 +47,7 @@ browser.runtime.onInstalled.addListener((details) => {
 
 // Add listeners for messages from content scripts
 browser.runtime.onMessage.addListener((message, sender) => {
-      if (sender.tab) tabIDs.push(sender.tab.id)
+      if (sender.tab && !tabIDs.includes(sender.tab.id)) tabIDs.push(sender.tab.id)
 
       // Downloads
       if (message.type == "bsky-download") {
@@ -71,13 +74,24 @@ browser.runtime.onMessage.addListener((message, sender) => {
             // Image downloads
             else {
                   try {
-                        downloader.downloadImage(message.url, message.filePath, ((progress, error) => {
-                              if (error)
-                                    throw new Error(error)
+                        if (message.fileType == "GIF" && !GetSetting("gifsAsWEBM").value) {
+                              downloader.downloadGIF(message.url, message.filePath, ((progress, error) => {
+                                    if (error)
+                                          throw new Error(error)
 
-                              let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress }
-                              browser.tabs.sendMessage(sender.tab.id, response)
-                        }))
+                                    let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress }
+                                    browser.tabs.sendMessage(sender.tab.id, response)
+                              }))
+                        }
+                        else {
+                              downloader.downloadImage(message.url, message.filePath, ((progress, error) => {
+                                    if (error)
+                                          throw new Error(error)
+
+                                    let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress }
+                                    browser.tabs.sendMessage(sender.tab.id, response)
+                              }))
+                        }
                   }
 
                   catch (error) {

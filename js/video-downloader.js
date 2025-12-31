@@ -42,38 +42,83 @@ class VideoDownloader {
             }
       }
 
+      // Downloads for GIFs in .gif format
+      async downloadGIF(url, filePath, onProgress = () => { }) {
+            try {
+                  if (!this.#ffmpeg) {
 
-      downloadImage(url, filePath, onProgress = () => { }) {
-            browser.downloads.download({ filename: filePath, url: url }).then(id => {
-                  browser.downloads.search({ id: id }).then(downloadItems => {
+                        this.#ffmpeg = createFFmpeg({
+                              corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
+                              log: true,
+                              mainName: 'main'
+                        });
+                  }
+                  let ffmpegLoading = new Promise(resolve => this.#ffmpeg.load().then(resolve()))
 
-                        if (downloadItems.length > 0) {
-                              const downloadItem = downloadItems[0]
 
-                              const _onProgress = ((interval) => {
-                                    if (downloadItem.error)
-                                          throw new Error(downloadItem.error)
+                  const videoBlob = await this.#proccessPlaylist(url);
+                  await ffmpegLoading
 
-                                    this.progress = (downloadItem.totalBytes == -1 ? 1 : downloadItem.bytesReceived / downloadItem.totalBytes) * 100
-                                    console.log(" progress: " + this.progress)
+                  onProgress(40)
+                  let fileBlob = await this.#convertGIF(videoBlob)
 
-                                    onProgress(this.progress, downloadItem.error)
+                  onProgress(90)
+                  let fileURL = URL.createObjectURL(fileBlob)
 
-                                    if (this.progress >= 100)
-                                          clearInterval(interval)
-                              })
+                  browser.downloads.download({
+                        // replace .webm with .gif
+                        url: fileURL, filename: filePath
+                  })
 
-                              const interval = setInterval(() => {
+                  onProgress(100)
+                  
+            } catch (error) {
+                  console.error(error)
+                  onProgress(this.progress, error)
+            }
+
+            await this.#ffmpeg.exit()
+      }
+
+      // Downloads for GIFs in .webm format and images
+      async downloadImage(url, filePath, onProgress = () => { }) {
+            try {
+                  browser.downloads.download({ filename: filePath, url: url }).then(id => {
+                        browser.downloads.search({ id: id }).then(downloadItems => {
+
+                              if (downloadItems.length > 0) {
+                                    const downloadItem = downloadItems[0]
+
+                                    const _onProgress = ((interval) => {
+                                          if (downloadItem.error)
+                                                throw new Error(downloadItem.error)
+
+                                          this.progress = (downloadItem.totalBytes == -1 ? 1 : downloadItem.bytesReceived / downloadItem.totalBytes) * 100
+                                          console.log(" progress: " + this.progress)
+
+                                          onProgress(this.progress, downloadItem.error)
+
+                                          if (this.progress >= 100)
+                                                clearInterval(interval)
+                                    })
+
+                                    const interval = setInterval(() => {
+                                          _onProgress(interval)
+                                    }, 100)
                                     _onProgress(interval)
-                              }, 100)
-                              _onProgress(interval)
-                        }
+                              }
 
-                        else {
-                              onProgress(0, "Download object lost")
-                        }
-                  });
-            })
+                              else {
+                                    onProgress(0, "Download object lost")
+                              }
+                        });
+                  })
+
+            } catch (error) {
+                  console.error(error)
+                  this.#setProgress(0, error)
+
+            }
       }
 
       async #download() {
@@ -165,10 +210,50 @@ class VideoDownloader {
                   "0",
                   "-c",
                   "copy",
-                  "video.mp4"
+                  "output.mp4"
             );
 
-            const videoData = this.#ffmpeg.FS("readFile", `video.mp4`);
+            const videoData = this.#ffmpeg.FS("readFile", `output.mp4`);
+            const mp4Blob = new Blob([videoData.buffer], {
+                  type: "video/mp4",
+            });
+
+            return mp4Blob
+      }
+
+      async #convertGIF(videoBlob) {
+            if (!this.#ffmpeg) {
+
+                  this.#ffmpeg = createFFmpeg({
+                        corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
+                        log: true,
+                        mainName: 'main'
+                  });
+            }
+
+            if (!this.#ffmpeg.isLoaded()) {
+                  await this.#ffmpeg.load();
+            }
+
+            this.#ffmpeg.FS(
+                  "writeFile",
+                  "input.webm",
+                  await fetchFile(videoBlob)
+            );
+
+
+            await this.#ffmpeg.run(
+                  //ffmpeg -i test.webm -vf "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" test.gif -y
+                  "-i",
+                  "input.webm",
+                  "-map",
+                  "0",
+                  "-vf",
+                  "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                  "output.gif"
+            )
+
+            const videoData = this.#ffmpeg.FS("readFile", `output.gif`);
             const mp4Blob = new Blob([videoData.buffer], {
                   type: "video/mp4",
             });

@@ -239,13 +239,13 @@ class Downloadbutton {
 
                         this.#filePath = this.#GetFilePath()
                         this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
+
+                        // If gifs should be downloaded as .gif, change file extension. Rest of the logic is handled in the bg script
+                        if (!GetSetting("gifsAsWEBM").value) this.#fileExtension = ".gif"
                   }
 
-                  this.#filePath += this.type.ext
-
-
+                  this.#filePath += this.#fileExtension
                   this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
-
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
                   await new Promise((resolve) => {
