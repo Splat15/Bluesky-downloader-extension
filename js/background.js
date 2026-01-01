@@ -16,6 +16,9 @@ else onboardingStatus = JSON.parse(onboardingStatus)
 const standardSettings = [
       // Sections
       [
+            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
+      ],
+      [
             // Settings
             { value: true, id: "vidDownload", type: "toggle", name: "Video download", description: "Placeholder" },
             { value: true, id: "imgDownload", type: "toggle", name: "Image download", description: "Placeholder" },
@@ -26,9 +29,6 @@ const standardSettings = [
       ],
       [
             { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
-      ],
-      [
-            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
       ]
 ]
 

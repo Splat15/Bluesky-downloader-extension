@@ -62,7 +62,7 @@ class Setting {
                   this.element = domParser.parseFromString(`
                         <div class="setting path-setting">
                               <div class="path-input-desc">
-                                    <p style="margin: auto 0;">Download path</p>
+                                    <p style="margin: auto 0;">${isMobile ? "File name" : "Download path"}</p>
                                     <input id="pathUndoButton" class="path-undo-button" type="button">
                               </div>
                               <div id="pathInputContainer" class="path-input-container-container">
@@ -159,6 +159,11 @@ class Setting {
                               this.FocusPathInput()
                         })
                   }
+
+                  // Display help popup
+                  pathActionHelp.addEventListener("click", () => {
+                        helpPopupDiv.classList.add("help-popup-div-active")
+                  })
 
                   // Insert selected variable into input
                   pathVarInsert.addEventListener("click", () => {
@@ -297,15 +302,30 @@ class Setting {
 }
 
 let lightMode = localStorage.getItem("lightMode") == "true"
-if (lightMode)
-      document.documentElement.classList.add("light-mode")
-else
-      document.documentElement.classList.add("dark-mode")
+if (lightMode) document.documentElement.classList.add("light-mode")
+else document.documentElement.classList.add("dark-mode")
 
 let isMobile = DetectMobileDevice()
 let settings = JSON.parse(localStorage.getItem("settings"))
 let toastManager = new ToastManager()
 let mobilePathWarning;
+
+if (isMobile) {
+      document.getElementById("helpPopupTextMobile").style.display = "block"
+      document.getElementById("helpPopupText").style.display = "none"
+
+      document.getElementById("helpPopupTitle").textContent = "File name"
+}
+
+const helpPopup = document.getElementById("helpPopup")
+const helpPopupDismiss = document.getElementById("helpPopupDismiss")
+const helpPopupText = document.getElementById("helpPopupText")
+
+// Enable dismissing of help popup with dismiss button or by clicking the background
+helpPopupDiv.addEventListener("click", () => helpPopupDiv.classList.remove("help-popup-div-active"))
+helpPopupDismiss.addEventListener("click", () => helpPopupDiv.classList.remove("help-popup-div-active"))
+// Stop dismissing action when clicking help popup
+helpPopup.addEventListener("click", (e) => e.stopPropagation())
 
 
 const settingsContainer = document.getElementById("settings")
@@ -328,21 +348,21 @@ for (let i = 0; i < settings.length; i++) {
 }
 
 browser.runtime.onMessage.addListener(message => {
+      // Handle settings updates
       if (message.type == "settings-update")
             settings = message.settings
 
+      // Handle updates to theme
       if (message.type == "set-light-mode") {
             lightMode = message.lightMode
 
             if (lightMode) {
                   document.documentElement.classList.remove("dark-mode")
                   document.documentElement.classList.add("light-mode")
-
             }
             else {
                   document.documentElement.classList.remove("light-mode")
                   document.documentElement.classList.add("dark-mode")
-
             }
       }
 })

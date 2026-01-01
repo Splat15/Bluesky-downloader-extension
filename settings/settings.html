@@ -9,6 +9,31 @@
 </head>
 
 <body>
+      <div class="help-popup-div" id="helpPopupDiv">
+            <div class="help-popup" id="helpPopup">
+                  <div class="help-popup-header">
+                        <p class="help-popup-title" id="helpPopupTitle">Download path</p>
+                        <div type="button" id="helpPopupDismiss" class="help-popup-dismiss">
+                              <img class="help-popup-dismiss-icon" src="../icons/dismiss.svg" draggable="false">
+                        </div>
+                  </div>
+                  <p id="helpPopupTextMobile" style="display:none" class="help-popup-text">
+                        With this setting you can specify the name of downloaded files.<br />
+                        A preview of your file name is shown below the input.<br />
+                        Variables can be used to add extra data like the username of the author an more.<br />
+                        Click the Variables button to use them.
+                  </p>
+                  <p id="helpPopupText" class="help-popup-text">
+                        With this setting you can specify the location and name of downloaded files.<br />
+                        A preview of your path is shown below the input.<br />
+                        The file location can be changed relative to your downloads folder by using "/".<br />
+                        For example "bluesky/test" would produce the file "test.mp4" in the folder
+                        "downloads/bluesky".<br />
+                        Variables can be used to add data extra like the username of the author an more.<br />
+                        Click the Variables button to use them.
+                  </p>
+            </div>
+      </div>
       <p class="header">Bluesky Downloader</p>
       <div class="settings" id="settings">
       </div>

@@ -165,7 +165,7 @@ class Downloadbutton {
                   <div class="download-button-div${this.type != Downloadbutton.Video ? ' download-button-div-image' : ''}" id="download-button-div" style="display: ${hidden ? "none" : "block"};">
                         ${this.type != Downloadbutton.Video ? '<div class="dropshadow" id="dropshadow"></div>' : ''}
                         <button class="download-button" id="download-button">
-                        <img id="download-button-static" class="download-icon" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
+                        <img id="download-button-static" class="download-icon" draggable="false" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
                         </button>
                   </div>
                   `.replace(/\s{2,}/g, " "), "text/html")
@@ -598,6 +598,10 @@ const pathVars = [
 
 function GetFilePath(hash, type, username = "empty", displayName = "empty", pathTemplate = null) {
       try {
+            // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
+            username = username.replaceAll(/\/\\/gi, "#")
+            displayName = displayName.replaceAll(/\/\\/gi, "#")
+
             if (pathTemplate === null) pathTemplate = GetSetting("downloadPath").value
 
             if (DetectMobileDevice()) pathTemplate = pathTemplate.replaceAll(/[\/\\]+/gi, "")
@@ -610,7 +614,7 @@ function GetFilePath(hash, type, username = "empty", displayName = "empty", path
                   .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), type)
 
             // Sanitize path for compatibility
-            pathTemplate = pathTemplate.replaceAll(/\\\\/g, "/") // Replace double backslashes with forward slashes
+            pathTemplate = pathTemplate.replaceAll(/\\+/g, "/") // Replace backslashes with forward slashes
                   .replaceAll(/[^\/\w+-]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
                   .replaceAll(/[^\/\w+-.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
                   .replaceAll(/(?<=^|\/)\.+/g, "") // Remove leading dots ".files/.file" => "files/file"

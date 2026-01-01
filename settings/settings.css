@@ -1,68 +1,76 @@
 .dark-mode {
-    --text: rgb(255, 255, 255);
-    --text-suggestion: rgba(255, 255, 255, 0.497);
-    --text-locked: rgb(189, 189, 189);
-    --bg: rgb(21, 29, 40);
-    --surface-1: rgb(34, 46, 63);
-    --surface-2: rgb(49, 64, 86);
+  --text: rgb(255, 255, 255);
+  --text-suggestion: rgba(255, 255, 255, 0.497);
+  --text-locked: rgb(189, 189, 189);
+  --bg: rgb(21, 29, 40);
+  --surface-1: rgb(34, 46, 63);
+  --surface-2: rgb(49, 64, 86);
 
-    --checkbox-bg: rgb(28, 39, 54);
-    --checkbox-border: rgb(44, 58, 78);
-    --checkbox-hover-bg: var(--surface-1);
-    --checkbox-hover-border: rgb(57, 73, 96);
+  --checkbox-bg: rgb(28, 39, 54);
+  --checkbox-border: rgb(44, 58, 78);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(57, 73, 96);
 
-    --separator-border: var(--checkbox-border);
+  --separator-border: var(--checkbox-border);
 
-    --button-grey: rgb(18, 41, 73);
-    --button-grey-hover: rgb(18, 52, 100);
-    --button-grey-active: rgb(32, 66, 112);
-    --button-grey-text: rgb(77, 151, 255);
+  --button-grey: rgb(18, 41, 73);
+  --button-grey-hover: rgb(18, 52, 100);
+  --button-grey-active: rgb(32, 66, 112);
+  --button-grey-text: rgb(77, 151, 255);
 
-    --button-red: rgb(244, 38, 38);
-    --button-red-hover: rgb(203, 41, 41);
-    --button-red-active: rgb(255, 66, 66);
+  --button-red: rgb(244, 38, 38);
+  --button-red-hover: rgb(203, 41, 41);
+  --button-red-active: rgb(255, 66, 66);
 
-    --button-blue: rgb(15, 115, 255);
-    --button-blue-hover: rgb(7, 103, 238);
-    --button-blue-active: rgb(29, 123, 255);
+  --button-blue: rgb(15, 115, 255);
+  --button-blue-hover: rgb(7, 103, 238);
+  --button-blue-active: rgb(29, 123, 255);
 
-    background-color: var(--bg);
+  --help-popup-dismiss-filter: ;
+
+  background-color: var(--bg);
 }
 
 .light-mode {
-    --text: rgb(0, 0, 0);
-    --text-suggestion: rgb(102, 123, 153);
-    --text-locked: rgb(64, 81, 104);
-    --bg: rgb(255, 255, 255);
-    --surface-1: rgb(239, 242, 246);
-    --surface-2: rgb(206, 206, 206);
+  --text: rgb(0, 0, 0);
+  --text-suggestion: rgb(102, 123, 153);
+  --text-locked: rgb(64, 81, 104);
+  --bg: rgb(255, 255, 255);
+  --surface-1: rgb(239, 242, 246);
+  --surface-2: rgb(206, 206, 206);
 
-    --checkbox-bg: rgb(249, 250, 251);
-    --checkbox-border: rgb(220, 226, 234);
-    --checkbox-hover-bg: var(--surface-1);
-    --checkbox-hover-border: rgb(192, 202, 216);
+  --checkbox-bg: rgb(249, 250, 251);
+  --checkbox-border: rgb(220, 226, 234);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(192, 202, 216);
 
-    --separator-border: var(--checkbox-border);
+  --separator-border: var(--checkbox-border);
 
-    --button-grey: rgb(229, 240, 255);
-    --button-grey-hover: rgb(204, 225, 255);
-    --button-grey-active: rgb(240, 247, 255);
-    --button-grey-text: rgb(0, 89, 214);
+  --button-grey: rgb(229, 240, 255);
+  --button-grey-hover: rgb(204, 225, 255);
+  --button-grey-active: rgb(240, 247, 255);
+  --button-grey-text: rgb(0, 89, 214);
 
-    --button-red: rgb(244, 38, 38);
-    --button-red-hover: rgb(203, 41, 41);
-    --button-red-active: rgb(255, 66, 66);
+  --button-red: rgb(244, 38, 38);
+  --button-red-hover: rgb(203, 41, 41);
+  --button-red-active: rgb(255, 66, 66);
 
-    --button-blue: rgb(0, 106, 255);
-    --button-blue-hover: rgb(0, 89, 214);
-    --button-blue-active: rgb(35, 127, 255);
+  --button-blue: rgb(0, 106, 255);
+  --button-blue-hover: rgb(0, 89, 214);
+  --button-blue-active: rgb(35, 127, 255);
+  
+  --help-popup-dismiss-filter: brightness(40%);
 
-    background-color: var(--bg);
+  background-color: var(--bg);
+}
+
+p {
+  margin: 0;
 }
 
 body {
   width: calc(max(100vw, 300px));
-  max-width: 350px;
+  max-width: 500px;
   height: fit-content;
   margin: auto;
   font-family:
@@ -124,13 +132,14 @@ body {
 }
 
 .checkbox {
-  transition-property:
-    color, background-color, border-color, text-decoration-color, fill, stroke;
   border: solid 1px;
   height: 24px;
   width: 24px;
   border-radius: 6px;
-  transition-property: background-color border-color;
+  transition-property:
+    background-color border-color color,
+    background-color,
+    stroke;
   transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
   transition-duration: 100ms;
 }
@@ -224,6 +233,7 @@ body {
   text-wrap: auto;
   word-break: break-word;
   color: var(--text-locked);
+  font-size: 12px;
 }
 
 .path-input-container {
@@ -413,7 +423,7 @@ body {
   width: fit-content;
   padding: 0 5px;
   margin: 5px;
-  margin-left: 0;  
+  margin-left: 0;
   background-color: var(--surface-1);
   border-radius: 7px;
   scrollbar-width: none;
@@ -465,7 +475,7 @@ body {
 
 .path-var-active {
   background-color: var(--button-blue);
-  color:white
+  color: white;
 }
 
 .path-var-active:hover {
@@ -503,4 +513,84 @@ body {
   margin: 0 !important;
   opacity: 0;
   line-height: 0px;
+}
+
+.help-popup-div {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000000a8;
+  z-index: 100;
+  opacity: 0;
+  transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
+  transition-duration: 100ms;
+  transition-property: opacity;
+  pointer-events: none;
+}
+
+.help-popup-div-active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.help-popup {
+  position: absolute;
+  width: calc(100% - 80px);
+  max-width: 400px;
+  overflow: hidden;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  left: 50%;
+  background-color: var(--bg);
+  border-radius: 10px;
+  padding: 12px 20px;
+  user-select: text;
+}
+
+.help-popup-header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.help-popup-title {
+  font-weight: 600;
+  font-size: large;
+}
+
+.help-popup-dismiss {
+  all: unset;
+  width: 20px;
+  height: 20px;
+  opacity: 1;
+  border-radius: 10000px;
+  background-color: transparent;
+  transition: background-color ease 100ms;
+  transform: translateX(8px);
+  cursor: pointer;
+  user-select: none;
+  margin: auto 0;
+}
+
+.help-popup-dismiss:hover {
+  background-color: var(--button-grey-hover);
+}
+
+.help-popup-dismiss:active {
+  background-color: var(--button-grey-active);
+}
+
+.help-popup-dismiss-icon {
+  filter: var(--help-popup-dismiss-filter);
+  width: 60%;
+  height: 60%;
+  padding: 20%;
+}
+
+.help-popup-text {
+  max-height: 60%;
+  overflow: scroll;
 }
