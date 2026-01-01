@@ -13,30 +13,44 @@ let onboardingStatus = localStorage.getItem("onboarding-status")
 if (!onboardingStatus) onboardingStatus = { image: true, video: true }
 else onboardingStatus = JSON.parse(onboardingStatus)
 
+const standardSettings = [
+      // Sections
+      [
+            // Settings
+            { value: true, id: "vidDownload", type: "toggle", name: "Video download", description: "Placeholder" },
+            { value: true, id: "imgDownload", type: "toggle", name: "Image download", description: "Placeholder" },
+            { value: true, id: "gifDownload", type: "toggle", name: "GIF download", description: "Placeholder" }
+      ],
+      [
+            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm", description: "Placeholder" }
+      ],
+      [
+            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
+      ],
+      [
+            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
+      ]
+]
+
 let settings = localStorage.getItem("settings")
 if (!settings) {
       // Standard configuration
-      settings = [
-            // Sections
-            [
-                  // Settings
-                  { value: true, id: "vidDownload", type: "toggle", name: "Video download", description: "Placeholder" },
-                  { value: true, id: "imgDownload", type: "toggle", name: "Image download", description: "Placeholder" },
-                  { value: true, id: "gifDownload", type: "toggle", name: "GIF download", description: "Placeholder" }
-            ],
-            [
-                  { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm", description: "Placeholder" }
-            ],
-            [
-                  { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
-            ],
-            [
-                  { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
-            ]
-      ]
-      localStorage.setItem("settings", JSON.stringify(settings))
+      settings = standardSettings
 }
 else settings = JSON.parse(settings)
+
+for (let i = 0; i < standardSettings.length; i++) {
+      for (let j = 0; j < standardSettings[i].length; j++) {
+            const setting = standardSettings[i][j]
+
+            if (GetSetting(setting.id) == null) {
+                  settings[i].push(setting)
+            }
+      }
+}
+
+localStorage.setItem("settings", JSON.stringify(settings))
+
 
 browser.runtime.onInstalled.addListener((details) => {
       if (details.reason == "install") {
@@ -217,6 +231,8 @@ function GetSetting(settingId) {
                   }
             }
       }
+
+      return null
 }
 
 const downloader = new VideoDownloader();
