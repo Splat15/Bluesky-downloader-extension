@@ -261,7 +261,9 @@ class Downloadbutton {
 
                               // Old method without support for file paths
                               // Used on mobile devices without browser.downloads API
-                              if (this.#mobileDevice && this.type == Downloadbutton.Image) {
+                              if (this.#mobileDevice &&
+                                    (this.type == Downloadbutton.Image ||
+                                          (this.type == Downloadbutton.GIF && GetSetting("gifsAsWEBM").value))) {
                                     // Get local URL
                                     const file = await fetch(url)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
