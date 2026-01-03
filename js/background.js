@@ -156,7 +156,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Install time request
       else if (message.type == "init") {
             const uptime = Date.now() - startTime
-            onboardingStatus = { image: false, video: false }
             browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus, settings: settings, lightMode: lightMode, inputMethod: inputMethod })
       }
 
