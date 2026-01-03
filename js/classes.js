@@ -202,7 +202,7 @@ class Downloadbutton {
                   this.#CreateProgressCircle()
                   this.#progressCircle.set(0.01)
 
-                  this.#toast = this.#toastManager.DisplayToast()
+                  if (GetSetting("downloadToast").value) this.#toast = this.#toastManager.DisplayToast()
 
                   this.#fileExtension = this.type.ext
                   this.#hash = GenerateHash(url).toString()
@@ -245,7 +245,7 @@ class Downloadbutton {
                   }
 
                   this.#filePath += this.#fileExtension
-                  this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
+                  if(this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
                   await new Promise((resolve) => {
@@ -265,10 +265,10 @@ class Downloadbutton {
                                     // Get local URL
                                     const file = await fetch(url)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
-                                    this.#toastManager.SetProgress(this.#toast, 0.5)
+                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, 0.5)
                                     const fileBlob = await file.blob()
                                     this.#progressCircle.animate(1, { duration: 300 })
-                                    this.#toastManager.SetProgress(this.#toast, 1)
+                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, 1)
                                     const fileURL = URL.createObjectURL(fileBlob)
 
                                     // Download file
@@ -316,7 +316,7 @@ class Downloadbutton {
 
                                                 const progress = message.progress / 100
                                                 this.#progressCircle.animate(progress, { duration: 300 })
-                                                this.#toastManager.SetProgress(this.#toast, progress)
+                                                if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
 
                                                 // Download is finished
                                                 if (message.progress >= 100) {
@@ -402,7 +402,7 @@ class Downloadbutton {
                                           // Progress update
                                           const progress = message.progress / 100
                                           this.#progressCircle.animate(progress, { duration: 300 })
-                                          this.#toastManager.SetProgress(this.#toast, progress)
+                                          if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
 
                                           // Download done
                                           if (message.progress == 100) {
@@ -596,7 +596,7 @@ function GenerateHash(string) {
             hash = (hash << 5) - hash + char.charCodeAt(0);
             hash |= 0; // Constrain to 32bit integer
       }
-      return hash;
+      return Math.abs(hash);
 };
 
 const pathVars = [
@@ -625,7 +625,7 @@ function GetFilePath(hash, type, username = "empty", displayName = "empty", path
                   .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), type)
 
             // Sanitize path for compatibility
-            pathTemplate = pathTemplate.replaceAll(/\\+/g, "/") // Replace backslashes with forward slashes
+            pathTemplate = pathTemplate.replaceAll(/\\{1, 2}/g, "/") // Replace backslashes with forward slashes
                   .replaceAll(/[^\/\w+-]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
                   .replaceAll(/[^\/\w+-.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
                   .replaceAll(/(?<=^|\/)\.+/g, "") // Remove leading dots ".files/.file" => "files/file"
