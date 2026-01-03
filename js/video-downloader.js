@@ -32,10 +32,10 @@ class VideoDownloader {
             this.#onProgress = () => { }
       }
 
-      download(url, filePath, onProgress = () => { }) {
+      download(url, filePath, type, onProgress = () => { }) {
             if (this.#queue.find(element => element.url == url)) return
 
-            this.#queue.push({ url: url, filePath: filePath, onProgress: onProgress, tries: 0 })
+            this.#queue.push({ url: url, filePath: filePath, type: type, onProgress: onProgress, tries: 0 })
             if (this.#downloadReady) {
                   this.#downloadReady = false
                   this.#download()
@@ -43,47 +43,35 @@ class VideoDownloader {
       }
 
       // Downloads for GIFs in .gif format
-      async downloadGIF(url, filePath, onProgress = () => { }) {
+      async downloadGIF(url, filePath, ffmpegLoading) {
             try {
-                  if (!this.#ffmpeg) {
-                        this.#ffmpeg = createFFmpeg({
-                              corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
-                              log: true,
-                              mainName: 'main'
-                        });
-                  }
-                  let ffmpegLoading = new Promise(resolve => this.#ffmpeg.load().then(resolve()))
-
-
                   const videoBlob = await this.#proccessPlaylist(url);
-                  await ffmpegLoading
 
-                  onProgress(40)
+                  this.#setProgress(40)
+                  await ffmpegLoading
                   let fileBlob = await this.#convertGIF(videoBlob)
 
                   if (this.#mobileDevice) {
-                        onProgress(100, null, fileBlob)
+                        this.#setProgress(100, null, fileBlob)
                         return
                   }
 
-                  onProgress(90)
+                  this.#setProgress(90)
                   let fileURL = URL.createObjectURL(fileBlob)
 
                   browser.downloads.download({
                         url: fileURL, filename: filePath
-                  }).then(() => onProgress(100))
+                  }).then(() => this.#setProgress(100))
 
 
             } catch (error) {
                   console.error(error)
-                  onProgress(this.progress, error)
+                  this.#setProgress(this.progress, error)
             }
-
-            await this.#ffmpeg.exit()
       }
 
       // Downloads for GIFs in .webm format and images
-      async downloadImage(url, filePath, onProgress = () => { }) {
+      async downloadImage(url, filePath, ffmpegLoading) {
             try {
                   browser.downloads.download({ filename: filePath, url: url }).then(id => {
                         browser.downloads.search({ id: id }).then(downloadItems => {
@@ -98,7 +86,7 @@ class VideoDownloader {
                                           this.progress = (downloadItem.totalBytes == -1 ? 1 : downloadItem.bytesReceived / downloadItem.totalBytes) * 100
                                           console.log(" progress: " + this.progress)
 
-                                          onProgress(this.progress, downloadItem.error)
+                                          this.#setProgress(this.progress, downloadItem.error)
 
                                           if (this.progress >= 100)
                                                 clearInterval(interval)
@@ -111,7 +99,7 @@ class VideoDownloader {
                               }
 
                               else {
-                                    onProgress(0, "Download object lost")
+                                    this.#setProgress(0, "Download object lost")
                               }
                         });
                   })
@@ -121,6 +109,27 @@ class VideoDownloader {
                   this.#setProgress(0, error)
 
             }
+
+            await ffmpegLoading
+      }
+
+      async downloadVideo(url, filePath, ffmpegLoading) {
+            const videoBlob = await this.#proccessPlaylist(url);
+            await ffmpegLoading
+            let fileBlob = await this.#convertVideo(videoBlob)
+
+            if (this.#mobileDevice) {
+                  this.#setProgress(100, null, fileBlob)
+            }
+            else {
+                  let fileURL = URL.createObjectURL(fileBlob)
+
+                  browser.downloads.download({
+                        url: fileURL, filename: filePath
+                  })
+                  this.#setProgress(100)
+            }
+
       }
 
       async #download() {
@@ -129,38 +138,34 @@ class VideoDownloader {
             const tries = currentItem.tries
             const url = currentItem.url
             const filePath = currentItem.filePath
+            const type = currentItem.type
             this.#onProgress = currentItem.onProgress
 
             this.#downloadReady = false
             this.progress = 0
 
+            let ffmpegLoading
 
-            if (!this.#ffmpeg) {
-                  this.#ffmpeg = createFFmpeg({
-                        corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
-                        log: true,
-                        mainName: 'main'
-                  });
+            if (type != "Image") {
+                  if (!this.#ffmpeg) {
+                        this.#ffmpeg = createFFmpeg({
+                              corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
+                              log: true,
+                              mainName: 'main'
+                        });
+                  }
+                  ffmpegLoading = this.#ffmpeg.load()
             }
 
-            let ffmpegLoading = new Promise(resolve => this.#ffmpeg.load().then(resolve()))
-
             try {
-                  const videoBlob = await this.#proccessPlaylist(url);
-                  await ffmpegLoading
-                  let fileBlob = await this.#convertVideo(videoBlob)
+                  if (type == "Video")
+                        await this.downloadVideo(url, filePath, ffmpegLoading)
 
-                  if (this.#mobileDevice) {
-                        this.#setProgress(100, null, fileBlob)
-                  }
-                  else {
-                        let fileURL = URL.createObjectURL(fileBlob)
+                  else if (type == "GIF")
+                        await this.downloadGIF(url, filePath, ffmpegLoading)
 
-                        browser.downloads.download({
-                              url: fileURL, filename: filePath
-                        })
-                        this.#setProgress(100)
-                  }
+                  else if (type == "Image")
+                        await this.downloadImage(url, filePath, ffmpegLoading)
 
             } catch (error) {
                   console.error(error)
@@ -176,7 +181,11 @@ class VideoDownloader {
 
             }
 
-            await this.#ffmpeg.exit()
+            if (type != "Image") {
+                  await ffmpegLoading
+                  await this.#ffmpeg.exit()
+            }
+
             this.#downloadReady = true;
             if (this.#queue.length > 0) this.#download()
       }

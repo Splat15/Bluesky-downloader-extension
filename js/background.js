@@ -15,19 +15,19 @@ else onboardingStatus = JSON.parse(onboardingStatus)
 const standardSettings = [
       // Sections
       [
-            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path"}
+            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path" }
       ],
       [
             // Settings
-            { value: true, id: "vidDownload", type: "toggle", name: "Video downloading"},
-            { value: true, id: "imgDownload", type: "toggle", name: "Image downloading"},
-            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloading"}
+            { value: true, id: "vidDownload", type: "toggle", name: "Video downloading" },
+            { value: true, id: "imgDownload", type: "toggle", name: "Image downloading" },
+            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloading" }
       ],
       [
-            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm"}
+            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" }
       ],
       [
-            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups"}
+            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups" }
       ]
 ]
 
@@ -71,47 +71,18 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   browser.tabs.sendMessage(sender.tab.id, response)
             }
 
-            // Video downloads
-            if (message.fileType == "Video") {
-                  // Start download
-                  downloader.download(message.url, message.filePath, (progress, error, fileBlob = null) => {
+            if (message.fileType == "GIF" && GetSetting("gifsAsWEBM").value)
+                  message.fileType = "Image"
 
-                        // Send progress messages to sender
-                        let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }
-                        if (error !== null) response.error = error.toString()
+            // Start download
+            downloader.download(message.url, message.filePath, message.fileType, (progress, error, fileBlob = null) => {
 
-                        browser.tabs.sendMessage(sender.tab.id, response)
-                  })
-            }
+                  // Send progress messages to sender
+                  let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }
+                  if (error !== null) response.error = error.toString()
 
-            // Image downloads
-            else {
-                  try {
-                        if (message.fileType == "GIF" && !GetSetting("gifsAsWEBM").value) {
-                              downloader.downloadGIF(message.url, message.filePath, ((progress, error, fileBlob = null) => {
-                                    if (error)
-                                          throw new Error(error)
-
-                                    let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }
-                                    browser.tabs.sendMessage(sender.tab.id, response)
-                              }))
-                        }
-                        else {
-                              downloader.downloadImage(message.url, message.filePath, ((progress, error) => {
-                                    if (error)
-                                          throw new Error(error)
-
-                                    let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress }
-                                    browser.tabs.sendMessage(sender.tab.id, response)
-                              }))
-                        }
-                  }
-
-                  catch (error) {
-                        let response = { type: "bsky-download-progress", id: message.id, url: message.url, error: error }
-                        browser.tabs.sendMessage(sender.tab.id, response)
-                  }
-            }
+                  browser.tabs.sendMessage(sender.tab.id, response)
+            })
       }
 
       // Settings get requests
