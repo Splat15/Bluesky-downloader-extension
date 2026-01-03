@@ -125,15 +125,23 @@ browser.runtime.onMessage.addListener((message) => {
 })
 browser.runtime.sendMessage({ type: "init" })
 
+// Prevents false mouse inputs
+let lastTouch = 0
 
 // Handle change of input method
 document.documentElement.addEventListener("mousemove", () => {
+      // If touch was triggered less than 0.5s ago, ignore input
+      // This prevents activation when opening and closing images
+      if (Date.now() - lastTouch < 500) return
+      
       if (inputMethod != "mouse") {
             HandleInputChange("mouse")
       }
 })
 
 document.documentElement.addEventListener("touchstart", () => {
+      lastTouch = Date.now()
+      
       if (inputMethod != "touch") {
             HandleInputChange("touch")
       }
