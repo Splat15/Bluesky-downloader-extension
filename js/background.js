@@ -156,7 +156,15 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Install time request
       else if (message.type == "init") {
             const uptime = Date.now() - startTime
-            browser.tabs.sendMessage(sender.tab.id, { type: "init", uptime: uptime, onboardingStatus: onboardingStatus, settings: settings, lightMode: lightMode, inputMethod: inputMethod })
+            browser.tabs.sendMessage(sender.tab.id, {
+                  type: "init",
+                  uptime: uptime,
+                  onboardingStatus: onboardingStatus,
+                  settings: settings,
+                  lightMode: lightMode,
+                  inputMethod: inputMethod,
+                  version: browser.runtime.getManifest().version
+            })
       }
 
       // Onboarding status updates
