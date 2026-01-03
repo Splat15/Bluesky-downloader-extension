@@ -5,11 +5,12 @@ let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
 let currentVer = browser.runtime.getManifest().version
-let majorVerInfo = {version: "2.0.0", text: "Bluesky downloader has been updated", link: {text: "See changes", link: "https://duckduckgo.com"}}
+let majorVerInfo = { version: "2.0.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.0.0"}}
 let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version 
 localStorage.setItem("lastMajorVer", majorVerInfo.version)
 
-let librewolfWarning = localStorage.getItem("librewolfWarning") == "true"
+// Causing issues. Disabled until I can find a better solution.
+let librewolfWarning = true //localStorage.getItem("librewolfWarning") == "true"
 
 let inputMethod = localStorage.getItem("inputMethod")
 
@@ -57,6 +58,7 @@ localStorage.setItem("settings", JSON.stringify(settings))
 
 
 browser.runtime.onInstalled.addListener((details) => {
+      console.log(details)
       if (details.reason == "install") {
             onboardingStatus = { image: false, video: false }
             localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
