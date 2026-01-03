@@ -15,19 +15,19 @@ else onboardingStatus = JSON.parse(onboardingStatus)
 const standardSettings = [
       // Sections
       [
-            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path", description: "Placeholder" }
+            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path"}
       ],
       [
             // Settings
-            { value: true, id: "vidDownload", type: "toggle", name: "Video download", description: "Placeholder" },
-            { value: true, id: "imgDownload", type: "toggle", name: "Image download", description: "Placeholder" },
-            { value: true, id: "gifDownload", type: "toggle", name: "GIF download", description: "Placeholder" }
+            { value: true, id: "vidDownload", type: "toggle", name: "Video downloading"},
+            { value: true, id: "imgDownload", type: "toggle", name: "Image downloading"},
+            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloading"}
       ],
       [
-            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm", description: "Placeholder" }
+            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm"}
       ],
       [
-            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", description: "Placeholder" }
+            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups"}
       ]
 ]
 
