@@ -1063,3 +1063,185 @@ class ToastManager {
             }
       }
 }
+
+class FlashingBorders {
+      flashingBorders = []
+      #stop = false;
+
+      constructor(element, downloadButton, type, inputMethod) {
+            // Touch input
+            if (inputMethod == "touch") {
+                  // Images
+                  if (type == Downloadbutton.Image) {
+                        // Create individual border segments
+                        for (let i = 0; i < 3; i++) {
+                              let highStrokeWidth = 4 - i * 1.5
+                              let highSize = -8.5 * i - highStrokeWidth * 2
+
+                              const border = new FlashingBorder(
+                                    downloadButton.downloadButton,
+                                    new FlashingBorder.BorderState(0, 0, 0),
+                                    new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
+                                    new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
+                                    800
+                              )
+                              border.borderElement.style.borderRadius = "1000px"
+                              border.Start()
+
+                              this.flashingBorders.push(border)
+                              if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                              else onboardingElements.image.push(border)
+                        }
+
+                        // Destroy borders after 2.4s
+                        setTimeout(() => {
+                              this.flashingBorders.forEach(border => border.Destroy())
+                              if (this.#stop) return
+
+                              onboardingStatus.image = true
+                              browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+                        }, 2400)
+                  }
+
+                  // Videos
+                  else {
+                        for (let i = 0; i < 3; i++) {
+                              // Create individual border segments
+                              const border = new FlashingBorder(
+                                    element.parentElement,
+                                    new FlashingBorder.BorderState(0, 0, 0),
+                                    new FlashingBorder.BorderState(i, i, 5),
+                                    new FlashingBorder.BorderState(i * 9 - i * 1.5, i * 9 - i * 1.5, 5 - i * 1.5),
+                                    800
+                              )
+                              border.Start()
+
+                              this.flashingBorders.push(border)
+                              if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                              else onboardingElements.image.push(border)
+                        }
+
+                        // Add listener for when user interacts with video player
+                        let hasRun = false
+                        element.parentElement.parentElement.addEventListener("click", () => {
+                              // Destroy old borders
+                              if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
+
+                              // If onboaring has occurred for this type
+                              // or this eventlistener has run
+                              // or flashing borders have been stopped
+                              if (
+                                    onboardingStatus.video ||
+                                    hasRun ||
+                                    this.#stop
+                              ) return
+
+                              hasRun = true
+
+                              this.flashingBorders = []
+                              for (let i = 0; i < 3; i++) {
+                                    let highStrokeWidth = 4 - i * 1.5
+                                    let highSize = -8.5 * i - highStrokeWidth * 2
+
+                                    const border = new FlashingBorder(
+                                          downloadButton.downloadButton,
+                                          new FlashingBorder.BorderState(0, 0, 0),
+                                          new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
+                                          new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
+                                          800
+                                    )
+                                    border.borderElement.style.borderRadius = "1000px"
+                                    border.Start()
+
+                                    this.flashingBorders.push(border)
+                                    if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                                    else onboardingElements.image.push(border)
+                              }
+
+                              setTimeout(() => {
+                                    this.flashingBorders.forEach(border => border.Destroy())
+                                    if (this.#stop) return;
+
+                                    onboardingStatus.video = true
+                                    browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+                              }, 2400)
+                        })
+                  }
+            }
+
+            // Mouse input
+            else {
+                  // Create individual border segments
+                  for (let i = 0; i < 3; i++) {
+                        const border = new FlashingBorder(
+                              element.parentElement,
+                              new FlashingBorder.BorderState(0, 0, 0),
+                              new FlashingBorder.BorderState(i, i, 5),
+                              new FlashingBorder.BorderState(i * 9 - i * 1.5, i * 9 - i * 1.5, 5 - i * 1.5),
+                              800
+                        )
+                        border.Start()
+                        this.flashingBorders.push(border)
+
+                        if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                        else onboardingElements.image.push(border)
+                  }
+
+                  let hasRun = false
+                  // Add hover event listener
+                  element.parentElement.parentElement.addEventListener("mouseover", () => {
+                        // Destroy old borders
+                        if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
+
+                        // If onboaring has occurred for this type
+                        // or this eventlistener has run
+                        // or flashing borders have been stopped
+                        if (
+                              ((type == Downloadbutton.Image && onboardingStatus.image) ||
+                                    (type == Downloadbutton.Video && onboardingStatus.video)) ||
+                              this.#stop ||
+                              hasRun
+                        ) return
+                        hasRun = true
+
+                        // Reset list
+                        this.flashingBorders = []
+                        // Create new border segments
+                        for (let i = 0; i < 3; i++) {
+                              let highStrokeWidth = 4 - i * 1.5
+                              let highSize = -8.5 * i - highStrokeWidth * 2
+
+                              const border = new FlashingBorder(
+                                    downloadButton.downloadButton,
+                                    new FlashingBorder.BorderState(0, 0, 0),
+                                    new FlashingBorder.BorderState(-4 * 2, -4 * 2, 4),
+                                    new FlashingBorder.BorderState(highSize, highSize, highStrokeWidth),
+                                    800
+                              )
+                              border.borderElement.style.borderRadius = "1000px"
+                              border.Start()
+
+                              this.flashingBorders.push(border)
+                              if (type == Downloadbutton.Video) onboardingElements.video.push(border)
+                              else onboardingElements.image.push(border)
+                        }
+
+                        // Destroy borders after 2.4s
+                        setTimeout(() => {
+                              this.flashingBorders.forEach(border => border.Destroy())
+                              if (this.#stop) return
+
+                              if (type == Downloadbutton.Video) onboardingStatus.video = true
+                              else onboardingStatus.image = true
+
+                              browser.runtime.sendMessage({ type: "onboarding-update", onboardingStatus: onboardingStatus })
+                        }, 2400)
+                  })
+            }
+      }
+
+      Destroy() {
+            this.#stop = true
+            this.flashingBorders.forEach(flashingBorder => flashingBorder.Destroy())
+      }
+}
