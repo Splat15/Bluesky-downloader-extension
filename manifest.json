@@ -28,5 +28,13 @@
     "default_popup": "settings/settings.html"
   },
   "web_accessible_resources": ["data/*", "lib/*", "icons/*"],
-  "content_security_policy": "script-src 'self';"
+  "content_security_policy": "script-src 'self';",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{27272153-e087-4c53-a5af-5baa6df90881}",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
+  }
 }
