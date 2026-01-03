@@ -4,6 +4,11 @@ const startTime = Date.now()
 let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
+let currentVer = browser.runtime.getManifest().version
+let majorVerInfo = {version: "2.0.0", text: "Bluesky downloader has been updated", link: {text: "See changes", link: "https://duckduckgo.com"}}
+let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version 
+localStorage.setItem("lastMajorVer", majorVerInfo.version)
+
 let librewolfWarning = localStorage.getItem("librewolfWarning") == "true"
 
 let inputMethod = localStorage.getItem("inputMethod")
@@ -55,6 +60,15 @@ browser.runtime.onInstalled.addListener((details) => {
       if (details.reason == "install") {
             onboardingStatus = { image: false, video: false }
             localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
+
+            showVerInfo = false
+            for (let i = 0; i < tabIDs.length; i++) {
+                  const tabID = tabIDs[i]
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "version-info-displayed" })
+                  }
+                  catch { }
+            }
       }
 });
 
@@ -124,6 +138,18 @@ browser.runtime.onMessage.addListener((message, sender) => {
             localStorage.setItem("librewolfWarning", librewolfWarning)
       }
 
+      // Librewolf warning status set request
+      else if (message.type == "version-info-displayed") {
+            showVerInfo = false
+            for (let i = 0; i < tabIDs.length; i++) {
+                  const tabID = tabIDs[i]
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "version-info-displayed" })
+                  }
+                  catch { }
+            }
+      }
+
       // Install time request
       else if (message.type == "init") {
             const uptime = Date.now() - startTime
@@ -134,7 +160,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   settings: settings,
                   lightMode: lightMode,
                   inputMethod: inputMethod,
-                  version: browser.runtime.getManifest().version
+                  version: currentVer,
+                  versionInfo: showVerInfo ? majorVerInfo : null
             })
       }
 

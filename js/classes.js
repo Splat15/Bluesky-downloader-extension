@@ -245,7 +245,7 @@ class Downloadbutton {
                   }
 
                   this.#filePath += this.#fileExtension
-                  if(this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
+                  if (this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
                   await new Promise((resolve) => {
@@ -831,8 +831,8 @@ class ToastManager {
             containers.forEach(container => container.remove())
       }
 
-      DisplayToast(text, progressBar = true, helpLink = null) {
-            let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout, helpLink)
+      DisplayToast(text, progressBar = true, helpLink = null, onDismiss = null) {
+            let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout, helpLink, onDismiss)
             toast.onAction = () => { this.DismissToast(toast, this.toastList) }
             this.toastList.unshift(toast)
 
@@ -912,13 +912,15 @@ class ToastManager {
             mobileLayout
             #toastAction
             dismissed = false
+            #onDismiss
 
-            constructor(text, container, progressBar, firstToast, mobileLayout, helpLink) {
+            constructor(text, container, progressBar, firstToast, mobileLayout, helpLink, onDismiss) {
                   this.container = container
                   this.text = text
                   this.progressBar = progressBar
                   this.mobileLayout = mobileLayout
                   this.helpLink = helpLink
+                  this.#onDismiss = onDismiss
                   this.Display(firstToast)
 
                   if (this.text) this.SetText(this.text)
@@ -1013,9 +1015,18 @@ class ToastManager {
                   setTimeout(() => {
                         this.toastElem.remove()
                   }, 200);
+
+                  if (this.#onDismiss) this.#onDismiss()
             }
 
             Display(firstToast) {
+                  let link = { text: "Learn more", link: "" }
+
+                  if (typeof this.helpLink === "object")
+                        link = this.helpLink
+
+                  else link.link = this.helpLink
+
                   const domParser = new DOMParser()
 
                   // Create toast from HTML string
@@ -1027,7 +1038,7 @@ class ToastManager {
                         <div class="toast-text-overflow-gradient" style="left: 0px; transform: rotate(180deg); opacity: 0;" id="overflowLeft"></div>
                         <div id="toastTextDiv" class="toast-text-div">
                               <p class="toast-text${this.text ? "" : " toast-text-loading"}" id="toastText">${this.text ? this.text : "Loading..."}</p>
-                              ${this.helpLink ? `<a class="toast-text toast-help-link" href="${this.helpLink}">Learn more</a>` : ""}
+                              ${this.helpLink ? `<a class="toast-text toast-help-link" href="${link.link}">${link.text}</a>` : ""}
                         </div>
                         <div class="toast-text-overflow-gradient" style="right: 0px; opacity: 0;" id="overflowRight"></div>
                   </div>

@@ -11,6 +11,9 @@ let init = false
 let lightMode = false
 const toastManager = new ToastManager()
 let mediaElements = [] // Prevents duplicate application of download buttons and onboarding elements
+let versionInfoToast
+let versionInfo
+
 
 const mobileDevice = DetectMobileDevice() // Detect browser based on user agent for compatibility and layout
 let inputMethod
@@ -89,6 +92,27 @@ browser.runtime.onMessage.addListener((message) => {
                               document.documentElement.classList.add("dark-mode")
                   }
             }
+
+            versionInfo = message.versionInfo
+            setTimeout(() => {
+                  if (versionInfo) {
+                        versionInfoToast = toastManager.DisplayToast(
+                              versionInfo.text,
+                              false,
+                              versionInfo.link,
+                              () => {
+                                    versionInfoToast = null
+                                    browser.runtime.sendMessage({ type: "version-info-displayed" })
+                              }
+                        )
+                  }
+            }, 2000)
+      }
+
+      else if (message.type == "version-info-displayed") {
+            versionInfo = null
+            if (versionInfoToast)
+                  versionInfoToast.Dismiss()
       }
 
       // Settings updates
@@ -133,7 +157,7 @@ document.documentElement.addEventListener("mousemove", () => {
       // If touch was triggered less than 0.5s ago, ignore input
       // This prevents activation when opening and closing images
       if (Date.now() - lastTouch < 500) return
-      
+
       if (inputMethod != "mouse") {
             HandleInputChange("mouse")
       }
@@ -141,7 +165,7 @@ document.documentElement.addEventListener("mousemove", () => {
 
 document.documentElement.addEventListener("touchstart", () => {
       lastTouch = Date.now()
-      
+
       if (inputMethod != "touch") {
             HandleInputChange("touch")
       }
@@ -168,7 +192,7 @@ function HandleInputChange(method) {
       // Manually re-add onboarding elements
       // Images
       try {
-            if (!onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) {
+            if ((!onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload").value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.image[0].element, downloadButtons.image[0], Downloadbutton.Image, inputMethod))
 
                   onboardingHasRun.image = true
@@ -180,7 +204,7 @@ function HandleInputChange(method) {
 
       // Videos
       try {
-            if (!onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) {
+            if ((!onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload").value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.video[0].videoElement, downloadButtons.video[0], Downloadbutton.Video, inputMethod))
 
                   onboardingHasRun.video = true
@@ -218,7 +242,7 @@ new NodeObserver(
                               downloadButtons.image.push(downloadButton)
 
                               // Show flashing borders tutorial
-                              if (!onboardingStatus.image && !onboardingHasRun.image) {
+                              if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload").value) {
                                     flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Image, inputMethod))
                                     onboardingHasRun.image = true
                               }
@@ -274,7 +298,7 @@ new NodeObserver(
                                           downloadButtons.video.push(downloadButton)
 
                                           // Show flashing borders tutorial
-                                          if (!onboardingStatus.video && !onboardingHasRun.video) {
+                                          if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload").value) {
                                                 flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
                                                 onboardingHasRun.video = true
                                           }
@@ -353,7 +377,7 @@ function InstallCleanup() {
                         const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager, !GetSetting("imgDownload").value, inputMethod)
                         downloadButtons.image.push(downloadButton)
 
-                        if (!onboardingStatus.image && !onboardingHasRun.image) {
+                        if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload").value) {
                               flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Image, inputMethod))
 
                               onboardingHasRun.image = true
@@ -376,7 +400,7 @@ function InstallCleanup() {
                                     downloadButtons.video.push(downloadButton)
 
                                     // Onboarding procedure
-                                    if (!onboardingStatus.video && !onboardingHasRun.video) {
+                                    if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload").value) {
                                           flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
 
                                           onboardingHasRun.video = true
