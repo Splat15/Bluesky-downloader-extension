@@ -261,7 +261,7 @@ class Downloadbutton {
 
                               // Old method without support for file paths
                               // Used on mobile devices without browser.downloads API
-                              if (this.#mobileDevice) {
+                              if (this.#mobileDevice && this.type == Downloadbutton.Image) {
                                     // Get local URL
                                     const file = await fetch(url)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
@@ -339,6 +339,17 @@ class Downloadbutton {
 
                                                       this.#AddURLToHistory(url)
 
+                                                      if (message.fileBlob) {
+                                                            let fileURL = URL.createObjectURL(message.fileBlob)
+                                                            const a = document.createElement('a');
+                                                            a.download = this.#fileName + ".gif";
+                                                            a.href = fileURL;
+
+                                                            a.click();
+
+                                                            window.URL.revokeObjectURL(fileURL)
+                                                      }
+
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Done
 
                                                       setTimeout(() => {
@@ -415,7 +426,7 @@ class Downloadbutton {
                                                 // Save URL to history
                                                 this.#AddURLToHistory(url)
 
-                                                if (message.fileBlob !== null) {
+                                                if (message.fileBlob) {
                                                       let fileURL = URL.createObjectURL(message.fileBlob)
                                                       const a = document.createElement('a');
                                                       a.download = this.#fileName + ".mp4";

@@ -7,7 +7,6 @@ let lightMode = localStorage.getItem("lightMode") == "true"
 let librewolfWarning = localStorage.getItem("librewolfWarning") == "true"
 
 let inputMethod = localStorage.getItem("inputMethod")
-if (!inputMethod) inputMethod = "mouse"
 
 let onboardingStatus = localStorage.getItem("onboarding-status")
 if (!onboardingStatus) onboardingStatus = { image: true, video: true }
@@ -89,11 +88,11 @@ browser.runtime.onMessage.addListener((message, sender) => {
             else {
                   try {
                         if (message.fileType == "GIF" && !GetSetting("gifsAsWEBM").value) {
-                              downloader.downloadGIF(message.url, message.filePath, ((progress, error) => {
+                              downloader.downloadGIF(message.url, message.filePath, ((progress, error, fileBlob = null) => {
                                     if (error)
                                           throw new Error(error)
 
-                                    let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress }
+                                    let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }
                                     browser.tabs.sendMessage(sender.tab.id, response)
                               }))
                         }

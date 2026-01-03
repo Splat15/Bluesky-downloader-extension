@@ -214,7 +214,13 @@ class Setting {
                   pathInput.addEventListener("input", () => {
                         if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
                               // Only display warning if no warning is present
-                              if (!mobilePathWarning || mobilePathWarning.dismissed) mobilePathWarning = toastManager.DisplayToast("Your browser doesn't support setting a download path", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android")
+                              if (!mobilePathWarning || mobilePathWarning.dismissed)
+                                    mobilePathWarning = toastManager.DisplayToast(
+                                          "Your browser doesn't support setting a download folder",
+                                          false,
+                                          "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android"
+                                    )
+                              
                               pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
                         }
                         this.value = pathInput.value
@@ -261,7 +267,13 @@ class Setting {
       ChangePathVal(value) {
             if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
                   // Only display warning if no warning is present
-                  if (!mobilePathWarning || mobilePathWarning.dismissed) mobilePathWarning = toastManager.DisplayToast("Your browser doesn't support setting a download path", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android")
+                  if (!mobilePathWarning || mobilePathWarning.dismissed)
+                        mobilePathWarning = toastManager.DisplayToast(
+                              "Your browser doesn't support setting a download folder",
+                              false,
+                              "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android"
+                        )
+
                   pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
             }
             pathInput.value = value

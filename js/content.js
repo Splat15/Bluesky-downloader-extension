@@ -29,6 +29,11 @@ browser.runtime.onMessage.addListener((message) => {
             lightMode = message.lightMode
             inputMethod = message.inputMethod
 
+            if (!inputMethod) {
+                  inputMethod = navigator.maxTouchPoints > 0 ? "touch" : "mouse"
+                  browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
+            }
+
             if (message.uptime < minUptime) InstallCleanup()
 
 

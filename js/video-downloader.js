@@ -45,8 +45,7 @@ class VideoDownloader {
       // Downloads for GIFs in .gif format
       async downloadGIF(url, filePath, onProgress = () => { }) {
             try {
-                  if (!this.#ffmpeg) {
-
+                  if (!this.#ffmpeg){
                         this.#ffmpeg = createFFmpeg({
                               corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
                               log: true,
@@ -62,6 +61,11 @@ class VideoDownloader {
                   onProgress(40)
                   let fileBlob = await this.#convertGIF(videoBlob)
 
+                  if (this.#mobileDevice) {
+                        onProgress(100, null, fileBlob)
+                        return;
+                  }
+
                   onProgress(90)
                   let fileURL = URL.createObjectURL(fileBlob)
 
@@ -70,8 +74,7 @@ class VideoDownloader {
                         url: fileURL, filename: filePath
                   })
 
-                  onProgress(100)
-                  
+
             } catch (error) {
                   console.error(error)
                   onProgress(this.progress, error)
@@ -133,14 +136,13 @@ class VideoDownloader {
             this.progress = 0
 
 
-            if (!this.#ffmpeg) {
-
-                  this.#ffmpeg = createFFmpeg({
-                        corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
-                        log: true,
-                        mainName: 'main'
-                  });
-            }
+            if (!this.#ffmpeg){ 
+            this.#ffmpeg = createFFmpeg({
+                  corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
+                  log: true,
+                  mainName: 'main'
+            });
+      }
 
             let ffmpegLoading = new Promise(resolve => this.#ffmpeg.load().then(resolve()))
 
@@ -255,7 +257,7 @@ class VideoDownloader {
 
             const videoData = this.#ffmpeg.FS("readFile", `output.gif`);
             const mp4Blob = new Blob([videoData.buffer], {
-                  type: "video/mp4",
+                  type: "image/gif",
             });
 
             return mp4Blob
