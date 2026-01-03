@@ -5,6 +5,7 @@ let flashingBorders = []
 let onboardingHasRun = { video: false, image: false }
 let downloadButtons = { video: [], image: [], gif: [] }
 let settings
+let version
 let onInit = []
 let init = false
 let lightMode = false
@@ -28,6 +29,7 @@ browser.runtime.onMessage.addListener((message) => {
             settings = message.settings
             lightMode = message.lightMode
             inputMethod = message.inputMethod
+            version = message.version
 
             if (!inputMethod) {
                   inputMethod = navigator.maxTouchPoints > 0 ? "touch" : "mouse"
@@ -307,12 +309,19 @@ new NodeObserver(
       }
 )
 
+onInit.push(() => {
+      // Remove old stylesheets
+      Array.from(document.querySelectorAll("#bsky-downloads-stylesheet"))
+            .forEach(stylesheet => stylesheet.remove())
 
-// Add stylesheet
-const stylesheet = document.createElement("link")
-stylesheet.href = browser.runtime.getURL("../css/style.css")
-stylesheet.rel = "stylesheet"
-document.head.appendChild(stylesheet)
+      // Add stylesheet
+      const stylesheet = document.createElement("link")
+      // Incorporate version number to avoid caching issue
+      stylesheet.href = browser.runtime.getURL("../css/style.css") + "?version=" + version
+      stylesheet.id = "bsky-downloads-stylesheet"
+      stylesheet.rel = "stylesheet"
+      document.head.appendChild(stylesheet)
+})
 
 
 /** 

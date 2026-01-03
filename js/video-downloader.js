@@ -45,7 +45,7 @@ class VideoDownloader {
       // Downloads for GIFs in .gif format
       async downloadGIF(url, filePath, onProgress = () => { }) {
             try {
-                  if (!this.#ffmpeg){
+                  if (!this.#ffmpeg) {
                         this.#ffmpeg = createFFmpeg({
                               corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
                               log: true,
@@ -63,16 +63,15 @@ class VideoDownloader {
 
                   if (this.#mobileDevice) {
                         onProgress(100, null, fileBlob)
-                        return;
+                        return
                   }
 
                   onProgress(90)
                   let fileURL = URL.createObjectURL(fileBlob)
 
                   browser.downloads.download({
-                        // replace .webm with .gif
                         url: fileURL, filename: filePath
-                  })
+                  }).then(() => onProgress(100))
 
 
             } catch (error) {
@@ -136,13 +135,13 @@ class VideoDownloader {
             this.progress = 0
 
 
-            if (!this.#ffmpeg){ 
-            this.#ffmpeg = createFFmpeg({
-                  corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
-                  log: true,
-                  mainName: 'main'
-            });
-      }
+            if (!this.#ffmpeg) {
+                  this.#ffmpeg = createFFmpeg({
+                        corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
+                        log: true,
+                        mainName: 'main'
+                  });
+            }
 
             let ffmpegLoading = new Promise(resolve => this.#ffmpeg.load().then(resolve()))
 
