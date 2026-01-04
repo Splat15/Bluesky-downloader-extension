@@ -16,6 +16,8 @@ If this bothers you, please use an official Firefox version.
 ## Firefox for android
 Firefox for android does not support specifying a path for downloaded files.</br>
 You can however freely change the file name.
+Firefox for android also doesn't support downloading files on the background.<br/>
+The browser and the tab that you started the download from have to remain in focus during the download.
 </br></br>
 # Credit
 Video downloads are based on [downloader.notx.blue](https://github.com/breakzplatform/downloader.notx.blue) ([down.blue](https://down.blue)) by [breakzplatform](https://github.com/breakzplatform).<br/>
