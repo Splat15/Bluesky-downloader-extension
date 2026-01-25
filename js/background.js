@@ -9,9 +9,6 @@ let majorVerInfo = { version: "2.0.0", text: "Bluesky downloader has been update
 let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version 
 localStorage.setItem("lastMajorVer", majorVerInfo.version)
 
-// Causing issues. Disabled until I can find a better solution.
-let librewolfWarning = true //localStorage.getItem("librewolfWarning") == "true"
-
 let inputMethod = localStorage.getItem("inputMethod")
 
 let onboardingStatus = localStorage.getItem("onboarding-status")
@@ -129,18 +126,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
             localStorage.setItem("inputMethod", inputMethod)
       }
 
-      // Librewolf warning status get request
-      else if (message.type == "get-librewolf-warning") {
-            browser.tabs.sendMessage(sender.tab.id, { value: librewolfWarning, type: "librewolf-warning" })
-      }
-
-      // Librewolf warning status set request
-      else if (message.type == "set-librewolf-warning") {
-            librewolfWarning = true
-            localStorage.setItem("librewolfWarning", librewolfWarning)
-      }
-
-      // Librewolf warning status set request
+      // Update popup display status
       else if (message.type == "version-info-displayed") {
             showVerInfo = false
             for (let i = 0; i < tabIDs.length; i++) {
