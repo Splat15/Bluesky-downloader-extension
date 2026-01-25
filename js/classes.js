@@ -81,6 +81,7 @@ class Downloadbutton {
       #toastManager
       #toast
       #did
+      #postID
       #downloading = false
 
 
@@ -195,6 +196,7 @@ class Downloadbutton {
       /** Downloads the url based on type of button */
       async #Download(url) {
             try {
+                  console.log(document.URL, document.location.href)
                   if (this.#downloading) return
                   this.#downloading = true
 
@@ -215,20 +217,47 @@ class Downloadbutton {
                               this.#displayName = responseBody.displayName
                         }
 
+                        // Try to get elements that contain an href with the username and post id
+                        let profileElems = GetNthParent(this.element, 17).querySelectorAll("a[href]")
+                        console.log(profileElems)
+
+                        // Get username from collected elements
+                        for (let i = 0; i < profileElems.length; i++) {
+                              let href = profileElems[i].href
+
+                              let postID = href.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
+                              if (postID) {
+                                    this.#postID = postID[1]
+                                    break
+                              }
+                        }
+
+
                         this.#filePath = this.#GetFilePath()
                         this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
                   }
                   else {
                         if (!this.#username) {
+                              // Try to get elements that contain an href with the username and post id
                               let profileElems = GetNthParent(this.element, 9).querySelectorAll("a[href]")
+                              console.log(profileElems)
 
+                              // Get username from collected elements
                               for (let i = 0; i < profileElems.length; i++) {
                                     let href = profileElems[i].href
                                     let username = href.match(/(?<=\/profile\/)[^\/ ]+/)
 
                                     if (username) {
                                           this.#username = username[0]
-                                          break
+
+                                          // Skip post ID if unnecessary
+                                          if (this.#postID) break;
+
+                                          let postID = href.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
+                                          if (postID) {
+                                                this.#postID = postID[1]
+                                                break
+                                          }
                                     }
                               }
 
@@ -254,6 +283,21 @@ class Downloadbutton {
                               resolve()
                         }, 200);
                   })
+
+
+                  // Try to get post ID from URL
+                  if (!this.#postID) {
+                        let postID = document.URL.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
+                        if (postID)
+                              this.#postID = postID[1]
+                  }
+
+                  if (!this.#postID) {
+                        //window.alert("no post id found")
+                        this.#postID = "0000000000000"
+                  
+                  }
+                  console.log("post ID: " + this.#postID)
 
                   try {
                         // Image download
@@ -322,23 +366,6 @@ class Downloadbutton {
 
                                                 // Download is finished
                                                 if (message.progress >= 100) {
-                                                      // Warn Librewolf users of promptless downloads
-                                                      if (!this.#mobileDevice) {
-                                                            const time = Date.now()
-                                                            window.addEventListener("blur", () => {
-                                                                  if (Date.now() - time > 200) return
-
-                                                                  browser.runtime.onMessage.addListener((message) => {
-                                                                        if (message.type == "librewolf-warning" && message.value !== true) {
-                                                                              browser.runtime.sendMessage({ type: "set-librewolf-warning" })
-                                                                              toastManager.DisplayToast("Your browser may not support promptless downloads", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#3rd-party-firefox-versions")
-                                                                        }
-                                                                  })
-
-                                                                  browser.runtime.sendMessage({ type: "get-librewolf-warning" })
-                                                            })
-                                                      }
-
                                                       this.#AddURLToHistory(url)
 
                                                       if (message.fileBlob) {
@@ -408,23 +435,6 @@ class Downloadbutton {
 
                                           // Download done
                                           if (message.progress == 100) {
-                                                // Warn Librewolf users of promptless downloads
-                                                if (!this.#mobileDevice) {
-                                                      const time = Date.now()
-                                                      window.addEventListener("blur", () => {
-                                                            if (Date.now() - time > 200) return
-
-                                                            browser.runtime.onMessage.addListener((message) => {
-                                                                  if (message.type == "librewolf-warning" && message.value !== true) {
-                                                                        browser.runtime.sendMessage({ type: "set-librewolf-warning" })
-                                                                        toastManager.DisplayToast("Your browser may not support promptless downloads", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#3rd-party-firefox-versions")
-                                                                  }
-                                                            })
-
-                                                            browser.runtime.sendMessage({ type: "get-librewolf-warning" })
-                                                      })
-                                                }
-
                                                 // Save URL to history
                                                 this.#AddURLToHistory(url)
 
