@@ -192,7 +192,7 @@ function HandleInputChange(method) {
       // Manually re-add onboarding elements
       // Images
       try {
-            if ((!onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload").value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.image[0].element, downloadButtons.image[0], Downloadbutton.Image, inputMethod))
 
                   onboardingHasRun.image = true
@@ -204,7 +204,7 @@ function HandleInputChange(method) {
 
       // Videos
       try {
-            if ((!onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload").value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.video[0].videoElement, downloadButtons.video[0], Downloadbutton.Video, inputMethod))
 
                   onboardingHasRun.video = true
