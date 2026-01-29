@@ -196,7 +196,6 @@ class Downloadbutton {
       /** Downloads the url based on type of button */
       async #Download(url) {
             try {
-                  console.log(document.URL, document.location.href)
                   if (this.#downloading) return
                   this.#downloading = true
 
@@ -209,69 +208,52 @@ class Downloadbutton {
                   this.#fileExtension = this.type.ext
                   this.#hash = GenerateHash(url).toString()
 
-                  if (this.type != Downloadbutton.GIF) {
-                        if (!this.#username) {
-                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
-                              const responseBody = JSON.parse(await response.text())
-                              this.#username = responseBody.handle
-                              this.#displayName = responseBody.displayName
-                        }
+                  // Username has not been determined yet
+                  if (!this.#username) {
+                        // Find the post element
+                        let postElem = this.element
+                        while (postElem.parentElement && !/^postThreadItem/.test(postElem.getAttribute("data-testid")))
+                              postElem = postElem.parentElement
 
                         // Try to get elements that contain an href with the username and post id
-                        let profileElems = GetNthParent(this.element, 17).querySelectorAll("a[href]")
-                        console.log(profileElems)
+                        const profileElems = postElem.querySelectorAll("a[href]")
 
                         // Get username from collected elements
                         for (let i = 0; i < profileElems.length; i++) {
-                              let href = profileElems[i].href
+                              const href = profileElems[i].href
+                              let matches = href.match(/\/profile\/([^\/]+)(?:\/post\/([^\/]+)|)/)
 
-                              let postID = href.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
-                              if (postID) {
-                                    this.#postID = postID[1]
-                                    break
-                              }
-                        }
-
-
-                        this.#filePath = this.#GetFilePath()
-                        this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
-                  }
-                  else {
-                        if (!this.#username) {
-                              // Try to get elements that contain an href with the username and post id
-                              let profileElems = GetNthParent(this.element, 9).querySelectorAll("a[href]")
-                              console.log(profileElems)
-
-                              // Get username from collected elements
-                              for (let i = 0; i < profileElems.length; i++) {
-                                    let href = profileElems[i].href
-                                    let username = href.match(/(?<=\/profile\/)[^\/ ]+/)
-
-                                    if (username) {
-                                          this.#username = username[0]
-
-                                          // Skip post ID if unnecessary
-                                          if (this.#postID) break;
-
-                                          let postID = href.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
-                                          if (postID) {
-                                                this.#postID = postID[1]
-                                                break
-                                          }
+                              if (matches && matches.length >= 2) {
+                                    this.#username = matches[1]
+                                    if (matches[2]) {
+                                          this.#postID = matches[2]
+                                          break
                                     }
                               }
-
-                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#username)
-                              const responseBody = JSON.parse(await response.text())
-                              this.#displayName = responseBody.displayName
                         }
-
-                        this.#filePath = this.#GetFilePath()
-                        this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
-
-                        // If gifs should be downloaded as .gif, change file extension. Rest of the logic is handled in the bg script
-                        if (!GetSetting("gifsAsWEBM").value) this.#fileExtension = ".gif"
                   }
+                  
+                  // Try to get post ID from URL
+                  if (!this.#postID) {
+                        let postID = document.URL.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
+                        if (postID)
+                              this.#postID = postID[1]
+                  }
+
+                  if (!this.#postID) {
+                        window.alert("no post id found")
+                  }
+                  console.log("post ID: " + this.#postID)
+
+                  const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did || this.#username)
+                  const responseBody = JSON.parse(await response.text())
+                  this.#displayName = responseBody.displayName
+
+                  this.#filePath = this.#GetFilePath()
+                  this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
+
+                  // If gifs should be downloaded as .gif, change file extension. Rest of the logic is handled in the bg script
+                  if (!GetSetting("gifsAsWEBM").value) this.#fileExtension = ".gif"
 
                   this.#filePath += this.#fileExtension
                   if (this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
@@ -283,21 +265,6 @@ class Downloadbutton {
                               resolve()
                         }, 200);
                   })
-
-
-                  // Try to get post ID from URL
-                  if (!this.#postID) {
-                        let postID = document.URL.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
-                        if (postID)
-                              this.#postID = postID[1]
-                  }
-
-                  if (!this.#postID) {
-                        //window.alert("no post id found")
-                        this.#postID = "0000000000000"
-                  
-                  }
-                  console.log("post ID: " + this.#postID)
 
                   try {
                         // Image download
@@ -576,7 +543,7 @@ class Downloadbutton {
       }
 
       #GetFilePath() {
-            return GetFilePath(this.#hash, this.type.name, this.#username, this.#displayName)
+            return GetFilePath(this.#hash, this.type.name, this.#username, this.#displayName, this.#postID)
       }
 }
 
@@ -614,12 +581,13 @@ function GenerateHash(string) {
 const pathVars = [
       { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag"] },
       { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
-      { name: "File name", desc: "Username of the poster and the hash of the file URL.", tags: ["filename", "file"] },
-      { name: "Hash", desc: "Hash of the file URL.", tags: ["hash", "id"] },
+      { name: "File name", desc: "Username of the poster and the post ID.", tags: ["filename", "file"] },
+      { name: "Hash", desc: "Hash of the file URL.", tags: ["hash"] },
+      { name: "Post ID", desc: "ID of the post.", tags: ["postid", "id"] },
       { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "mediatype", "posttype", "format"] }
 ]
 
-function GetFilePath(hash, type, username = "empty", displayName = "empty", pathTemplate = null) {
+function GetFilePath(hash, type, username = "empty", displayName = "empty", postID = "0000000000000", pathTemplate = null) {
       try {
             // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
             username = username.replaceAll(/\/\\/gi, "#")
@@ -632,9 +600,10 @@ function GetFilePath(hash, type, username = "empty", displayName = "empty", path
             pathTemplate = pathTemplate
                   .replaceAll(new RegExp(`%(${pathVars[0].tags.join("|")})%`, "gi"), username)
                   .replaceAll(new RegExp(`%(${pathVars[1].tags.join("|")})%`, "gi"), displayName)
-                  .replaceAll(new RegExp(`%(${pathVars[2].tags.join("|")})%`, "gi"), username + "-" + hash)
+                  .replaceAll(new RegExp(`%(${pathVars[2].tags.join("|")})%`, "gi"), username + "-" + postID)
                   .replaceAll(new RegExp(`%(${pathVars[3].tags.join("|")})%`, "gi"), hash)
-                  .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), type)
+                  .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), postID)
+                  .replaceAll(new RegExp(`%(${pathVars[5].tags.join("|")})%`, "gi"), type)
 
             // Sanitize path for compatibility
             pathTemplate = pathTemplate.replaceAll(/\\{1, 2}/g, "/") // Replace backslashes with forward slashes

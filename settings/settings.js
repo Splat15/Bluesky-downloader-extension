@@ -290,13 +290,16 @@ class Setting {
 
       // Simulate an example file path using example data
       UpdatePathExample() {
-            const url = "https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:z72i7hdynmk6r22z27h6tvur/bafkreifihgfy33x5mxc6metbzi42iv53i2s3fkxm4c3cehg6xuq7ce4hfm@jpeg"
-            const hash = GenerateHash(url)
+            // Example post: https://bsky.app/profile/bsky.app/post/3lxxo3i4qzs2c
+            //const url = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
+            //const hash = GenerateHash(url)
+            const hash = "488225599" // Precalculated
             const username = "bsky.app"
             const displayName = "Bluesky"
-            const type = Downloadbutton.Image.name
+            const postID = "3lxxo3i4qzs2c"
+            const type = Downloadbutton.Video.name
 
-            pathExample.textContent = GetFilePath(hash, type, username, displayName, this.value) + ".mp4"
+            pathExample.textContent = GetFilePath(hash, type, username, displayName, postID, this.value) + ".mp4"
       }
 
       // Set focus to path input field
