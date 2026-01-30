@@ -66,7 +66,7 @@ class Downloadbutton {
             Done: browser.runtime.getURL("../icons/checkbox.svg"),
             Error: browser.runtime.getURL("../icons/error.svg")
       }
-      static Image = { name: "Image", ext: ".jpg", searchDepth: 14 }
+      static Image = { name: "Image", ext: ".jpg", searchDepth: 13 }
       static Video = { name: "Video", ext: ".mp4", searchDepth: 16 }
       static GIF = { name: "GIF", ext: ".webm", searchDepth: 8 }
 
