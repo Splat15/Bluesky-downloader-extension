@@ -593,7 +593,7 @@ function GenerateHash(string) {
 const pathVars = [
       { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag"] },
       { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
-      { name: "File name", desc: "Username of the poster and the post ID.", tags: ["filename", "file"] },
+      { name: "File name", desc: "Username of the poster and the hash of the file url.", tags: ["filename", "file"] },
       { name: "Hash", desc: "Hash of the file URL.", tags: ["hash"] },
       { name: "Post ID", desc: "ID of the post.", tags: ["postid", "id"] },
       { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "mediatype", "posttype", "format"] }
@@ -612,7 +612,7 @@ function GetFilePath(hash, type, username = "empty", displayName = "empty", post
             pathTemplate = pathTemplate
                   .replaceAll(new RegExp(`%(${pathVars[0].tags.join("|")})%`, "gi"), username)
                   .replaceAll(new RegExp(`%(${pathVars[1].tags.join("|")})%`, "gi"), displayName)
-                  .replaceAll(new RegExp(`%(${pathVars[2].tags.join("|")})%`, "gi"), username + "-" + postID)
+                  .replaceAll(new RegExp(`%(${pathVars[2].tags.join("|")})%`, "gi"), username + "-" + hash)
                   .replaceAll(new RegExp(`%(${pathVars[3].tags.join("|")})%`, "gi"), hash)
                   .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), postID)
                   .replaceAll(new RegExp(`%(${pathVars[5].tags.join("|")})%`, "gi"), type)
