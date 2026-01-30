@@ -66,9 +66,9 @@ class Downloadbutton {
             Done: browser.runtime.getURL("../icons/checkbox.svg"),
             Error: browser.runtime.getURL("../icons/error.svg")
       }
-      static Image = { name: "Image", ext: ".jpg" }
-      static Video = { name: "Video", ext: ".mp4" }
-      static GIF = { name: "GIF", ext: ".webm" }
+      static Image = { name: "Image", ext: ".jpg", searchDepth: 14 }
+      static Video = { name: "Video", ext: ".mp4", searchDepth: 16 }
+      static GIF = { name: "GIF", ext: ".webm", searchDepth: 8 }
 
       #mobileDevice = DetectMobileDevice()
       #inputMethod
@@ -209,30 +209,42 @@ class Downloadbutton {
                   this.#hash = GenerateHash(url).toString()
 
                   // Username has not been determined yet
-                  if (!this.#username) {
-                        // Find the post element
-                        let postElem = this.element
-                        while (postElem.parentElement && !/^postThreadItem/.test(postElem.getAttribute("data-testid")))
-                              postElem = postElem.parentElement
-
+                  if (!this.#username) { // debugging
                         // Try to get elements that contain an href with the username and post id
-                        const profileElems = postElem.querySelectorAll("a[href]")
+                        const elementHeight = this.element.getBoundingClientRect().y
+                        let searchDepth = this.type.searchDepth
 
-                        // Get username from collected elements
-                        for (let i = 0; i < profileElems.length; i++) {
-                              const href = profileElems[i].href
-                              let matches = href.match(/\/profile\/([^\/]+)(?:\/post\/([^\/]+)|)/)
+                        while (!this.#postID && searchDepth <= this.type.searchDepth + 3) {
+                              let postElem = GetNthParent(this.element, searchDepth)
 
-                              if (matches && matches.length >= 2) {
-                                    this.#username = matches[1]
-                                    if (matches[2]) {
-                                          this.#postID = matches[2]
-                                          break
+                              let linkElems = postElem.querySelectorAll("a[href*='/profile/']")
+
+
+                              // Get username from collected elements
+                              for (let i = 0; i < linkElems.length; i++) {
+                                    const linkElem = linkElems[i]
+
+                                    // Check if the link element is higher on screen than media element
+                                    const linkElemHeight = linkElem.getBoundingClientRect().y
+                                    if (linkElemHeight < elementHeight) {
+                                          const href = linkElem.href
+                                          let matches = href.match(/\/profile\/([^\/]+)(?:\/post\/([^\/]+)|)/)
+
+                                          if (matches && matches.length >= 2) {
+                                                this.#username = matches[1]
+                                                if (matches[2]) {
+                                                      postElem.style.border = "solid red 3px"
+                                                      this.#postID = matches[2]
+                                                      break
+                                                }
+                                          }
                                     }
                               }
+
+                              searchDepth++
                         }
                   }
-                  
+
                   // Try to get post ID from URL
                   if (!this.#postID) {
                         let postID = document.URL.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
