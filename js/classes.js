@@ -233,7 +233,8 @@ class Downloadbutton {
                                           if (matches && matches.length >= 2) {
                                                 this.#username = matches[1]
                                                 if (matches[2]) {
-                                                      postElem.style.border = "solid red 3px"
+                                                      //postElem.style.border = "solid red 2px"
+                                                      //linkElem.style.border = "solid green 2px"
                                                       this.#postID = matches[2]
                                                       break
                                                 }
@@ -253,7 +254,8 @@ class Downloadbutton {
                   }
 
                   if (!this.#postID) {
-                        window.alert("no post id found")
+                        //window.alert("no post id found")
+                        console.error("no post id found")
                   }
                   console.log("post ID: " + this.#postID)
 
@@ -487,7 +489,7 @@ class Downloadbutton {
 
       /** Free up memory by destroying progress circle */
       #DestroyProgressCircle() {
-            this.#progressCircle.destroy()
+            tryRun(this.#progressCircle.destroy, true)
             this.#progressCircle = null;
 
             // Dismiss toast some time after mouse left
@@ -1247,5 +1249,12 @@ class FlashingBorders {
       Destroy() {
             this.#stop = true
             this.flashingBorders.forEach(flashingBorder => flashingBorder.Destroy())
+      }
+}
+
+function tryRun(func, log = false) {
+      try { func }
+      catch (e) {
+            if (log) console.log(e)
       }
 }
