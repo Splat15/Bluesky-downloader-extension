@@ -259,7 +259,7 @@ class Downloadbutton {
                   }
                   console.log("post ID: " + this.#postID)
 
-                  const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did || this.#username)
+                  const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + (this.#did ? this.#did : this.#username))
                   const responseBody = JSON.parse(await response.text())
                   this.#displayName = responseBody.displayName
 
