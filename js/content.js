@@ -20,6 +20,19 @@ let inputMethod
 
 const minUptime = 1000 // Max. ms amount of time since install of extension for cleanup to be executed
 
+
+// Cleanup
+Array.from(document.querySelectorAll("#mainThreadHelper"))
+      .forEach(stylesheet => stylesheet.remove())
+
+// Add main thread document
+const script = document.createElement("script")
+// Incorporate version number to avoid caching issue
+script.src = browser.runtime.getURL("/js/document.js")
+script.id = "mainThreadHelper"
+document.head.appendChild(script)
+
+
 browser.runtime.onMessage.addListener((message) => {
 
       // Response to init request
@@ -343,14 +356,14 @@ new NodeObserver(
 
 onInit.push(() => {
       // Remove old stylesheets
-      Array.from(document.querySelectorAll("#bsky-downloads-stylesheet"))
+      Array.from(document.querySelectorAll("#bskyDownloadStylesheet"))
             .forEach(stylesheet => stylesheet.remove())
 
       // Add stylesheet
       const stylesheet = document.createElement("link")
       // Incorporate version number to avoid caching issue
       stylesheet.href = browser.runtime.getURL("../css/style.css") + "?version=" + version
-      stylesheet.id = "bsky-downloads-stylesheet"
+      stylesheet.id = "bskyDownloadStylesheet"
       stylesheet.rel = "stylesheet"
       document.head.appendChild(stylesheet)
 })

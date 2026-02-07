@@ -80,70 +80,112 @@ class Downloadbutton {
       #progressCircleElem = null
       #toastManager
       #toast
-      #did
-      #postID
+      #atURI
       #downloading = false
 
-
-      #hash
-      #displayName
       #fileExtension
-      #fileName
       #filePath
-      #username
-      element
-      videoElement
+      mediaElement
+      postElement
 
-      constructor(type, element, url, toastManager, hidden, inputMethod, videoElement = null) {
+      #postID
+      #hash
+      #username
+      #displayName
+      #fileName
+      #timestamp
+      #language
+      #label
+      #bookmarkCount
+      #replyCount
+      #repostCount
+      #likeCount
+
+
+      constructor(type, element, url, toastManager, hidden, inputMethod) {
             this.url = url
             this.type = type
             this.#toastManager = toastManager
-            this.element = element
+            this.mediaElement = element
             this.#inputMethod = inputMethod
-            this.videoElement = videoElement
-
-            // Get user id
-            this.#did = url.replace(/%3A/g, ":").match(/\/(did:plc:\w+)\//)
-            if (this.#did) this.#did = this.#did[1]
-            else this.#did = undefined
 
             if (this.type == Downloadbutton.Image) {
                   this.url = this.url.replace("/feed_thumbnail/", "/feed_fullsize/")
 
-                  this.element.downloadButton = true
+                  this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.element.parentElement.appendChild(this.#downloadButtonDiv)
+                  this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.style.left = "16px !important")
 
-                  this.element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
 
             else if (this.type == Downloadbutton.Video) {
                   this.url = this.url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
-                  this.element.downloadButton = true
+                  this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.element.parentElement.insertBefore(this.#downloadButtonDiv, this.element)
+                  this.mediaElement.parentElement.insertBefore(this.#downloadButtonDiv, this.mediaElement)
             }
 
             else if (this.type == Downloadbutton.GIF) {
-                  this.element.downloadButton = true
+                  this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.element.parentElement.appendChild(this.#downloadButtonDiv)
+                  this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.classList.add("alt-button-left"))
 
-                  this.element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
 
             else {
                   throw new Error("Invalid download button type: " + this.type)
             }
+
+            /** Add script to doc to get uri from main thread.
+             * This looks for react properties which are only accessible in the main document thread.  */
+            let script = document.createElement("script")
+            script.id = "uriScript"
+            script.textContent = `
+            (function () {
+                  const element = document.currentScript;
+                  const uri = GetURI(element)
+                  console.log(uri)
+                  element.setAttribute("uri", uri)
+            })()`
+
+            new MutationObserver((mutationList, observer) => {
+                  let uri = script.getAttribute("uri")
+                  if (uri) {
+                        this.#atURI = uri
+                        observer.disconnect()
+
+
+                        // Try to get post ID from URL
+                        if (this.#atURI === "none") {
+                              let matches = document.URL.match(/\/profile\/([^\/]+)\/post\/([^\/]+)/)
+                              if (matches && matches.length >= 3) {
+                                    this.#username = matches[1]
+                                    this.#postID = matches[2]
+
+                                    this.#atURI = `at://${this.#username}/app.bsky.feed.post/${this.#postID}`
+                              }
+                        }
+
+                        if (!this.#atURI) {
+                              window.alert("no post id or at:// URI found")
+                              console.error("no post id or at:// URI found")
+                        }
+                        console.log("at uri: " + this.#atURI)
+                  }
+            }).observe(script, { attributes: true })
+
+            this.#downloadButtonDiv.appendChild(script)
       }
 
       SetVisibility(visibility) {
@@ -208,7 +250,7 @@ class Downloadbutton {
                   this.#fileExtension = this.type.ext
                   this.#hash = GenerateHash(url).toString()
 
-                  // Username has not been determined yet
+                  /*// Username has not been determined yet
                   if (!this.#username) { // debugging
                         // Try to get elements that contain an href with the username and post id
                         const elementHeight = this.element.getBoundingClientRect().y
@@ -244,24 +286,9 @@ class Downloadbutton {
 
                               searchDepth++
                         }
-                  }
+                  }*/
 
-                  // Try to get post ID from URL
-                  if (!this.#postID) {
-                        let postID = document.URL.match(/\/profile\/[^\/]+\/post\/([^\/]+)/)
-                        if (postID)
-                              this.#postID = postID[1]
-                  }
-
-                  if (!this.#postID) {
-                        //window.alert("no post id found")
-                        console.error("no post id found")
-                  }
-                  console.log("post ID: " + this.#postID)
-
-                  const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + (this.#did ? this.#did : this.#username))
-                  const responseBody = JSON.parse(await response.text())
-                  this.#displayName = responseBody.displayName
+                  await this.#GetInfoFromThread()
 
                   this.#filePath = this.#GetFilePath()
                   this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
@@ -556,8 +583,90 @@ class Downloadbutton {
             }
       }
 
+      #GetInfoFromThread() {
+            return new Promise((resolve, reject) => {
+                  try {
+                        fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + this.#atURI).then(response => {
+                              response.text().then(body => {
+                                    body = JSON.parse(body)
+                                    this.#username = body.thread.post.author.handle
+                                    this.#displayName = body.thread.post.author.displayName
+                                    this.#timestamp = new Date(body.thread.post.record.createdAt)
+                                    this.#language = body.thread.post.record.langs[0]
+                                    this.#label = this.#HandleLabels(body.thread.post.labels)
+
+                                    this.#bookmarkCount = body.thread.post.bookmarkCount
+                                    this.#replyCount = body.thread.post.replyCount
+                                    this.#repostCount = body.thread.post.repostCount + body.thread.post.quoteCount
+                                    this.#likeCount = body.thread.post.likeCount
+
+                                    resolve()
+                              })
+                        })
+                  }
+                  catch (e) {
+                        reject(e)
+                  }
+            })
+      }
+
+      #HandleLabels(labels) {
+            // Severety of label from 0 to 2
+            let labelScore = 0
+            // Translation from label score to friendly names by index
+            let friendlyNames = ["SFW", "NSFW", "Graphic"]
+            // Assignment of severety per label
+            let labelVals = { porn: 1, "sexual": 1, "nudity": 1, "graphic-media": 2 }
+
+            if (labels) {
+                  for (let i = 0; i < labels.length && labelScore != 2; i++) {
+                        let label = labels[i].val
+                        let labelVal = labelVals[label]
+                        if (labelVal && labelVal > labelScore)
+                              labelScore = labelVal
+                  }
+            }
+            return friendlyNames[labelScore]
+      }
+
       #GetFilePath() {
-            return GetFilePath(this.#hash, this.type.name, this.#username, this.#displayName, this.#postID)
+            return GetFilePath({
+                  username: this.#username,
+                  displayName: this.#displayName,
+                  hash: this.#hash,
+                  postID: this.#postID,
+                  type: this.type.name,
+                  timestamp: this.#GetApproximateAge(this.#timestamp),
+                  language: this.#language,
+                  label: this.#label,
+                  bookmarkCount: this.#bookmarkCount,
+                  replyCount: this.#replyCount,
+                  repostCount: this.#repostCount,
+                  likeCount: this.#likeCount
+            })
+      }
+
+      #GetApproximateAge(date) {
+            let ageStr
+
+            const timeDiffS = (Date.now() - date) / 1000 // Age in seconds
+            const secondsInYear = 31536000 // Seconds in 365 days
+            const secondsInDay = 86400
+            const secondsInhour = 3600
+            const secondsInminute = 60
+
+            if (timeDiffS >= secondsInYear)
+                  ageStr = Math.round(timeDiffS / secondsInYear) + "y"
+            else if (timeDiffS >= secondsInDay)
+                  ageStr = Math.round(timeDiffS / secondsInDay) + "d"
+            else if (timeDiffS >= secondsInhour)
+                  ageStr = Math.round(timeDiffS / secondsInhour) + "h"
+            else if (timeDiffS >= secondsInminute)
+                  ageStr = Math.round(timeDiffS / secondsInminute) + "m"
+            else
+                  ageStr = Math.round(timeDiffS) + "s"
+
+            return ageStr
       }
 }
 
@@ -593,16 +702,37 @@ function GenerateHash(string) {
 };
 
 const pathVars = [
-      { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag"] },
+      { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag", "handle"] },
       { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
       { name: "File name", desc: "Username of the poster and the hash of the file url.", tags: ["filename", "file"] },
       { name: "Hash", desc: "Hash of the file URL.", tags: ["hash"] },
-      { name: "Post ID", desc: "ID of the post.", tags: ["postid", "id"] },
-      { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "mediatype", "posttype", "format"] }
+      { name: "Post ID", desc: "ID of the post.", tags: ["postid", "id", "rkey", "record", "recordkey"] },
+      { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "mediatype", "posttype", "format"] },
+      { name: "Age", desc: "Approximate age of the post, example: 15h.", tags: ["age", "time", "timestamp"] },
+      { name: "Language", desc: "Language of the post as a country code.", tags: ["lang", "language"] },
+      { name: "Label", desc: "Label of the post. Either SFW, NSFW or Graphic.", tags: ["label", "labels", "nsfw", "sfw", "warning"] },
+      { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", tags: ["bookmarks", "bookmark", "bookmarked"] },
+      { name: "Replies", desc: "Amount of replies to the post.", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
+      { name: "Reposts", desc: "Amount of reposts of the post.", tags: ["reposts", "repost", "reposted"] },
+      { name: "Likes", desc: "Amount of likes on the post.", tags: ["likes", "like", "liked"] }
 ]
 
-function GetFilePath(hash, type, username = "empty", displayName = "empty", postID = "0000000000000", pathTemplate = null) {
+function GetFilePath(properties, pathTemplate = null) {
       try {
+            // Apply provided values and defaults
+            username = properties.username || "empty"
+            displayName = properties.displayName || "empty"
+            hash = properties.hash || "0"
+            postID = properties.postID || "0000000000000"
+            type = properties.type || "Image"
+            timestamp = properties.timestamp || "0s"
+            language = properties.language || "en"
+            label = properties.label || "SFW"
+            bookmarkCount = properties.bookmarkCount || "0"
+            replyCount = properties.replyCount || "0"
+            repostCount = properties.repostCount || "0"
+            likeCount = properties.likeCount || "0"
+
             // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
             username = username.replaceAll(/\/\\/gi, "#")
             displayName = displayName.replaceAll(/\/\\/gi, "#")
@@ -618,6 +748,13 @@ function GetFilePath(hash, type, username = "empty", displayName = "empty", post
                   .replaceAll(new RegExp(`%(${pathVars[3].tags.join("|")})%`, "gi"), hash)
                   .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), postID)
                   .replaceAll(new RegExp(`%(${pathVars[5].tags.join("|")})%`, "gi"), type)
+                  .replaceAll(new RegExp(`%(${pathVars[6].tags.join("|")})%`, "gi"), timestamp)
+                  .replaceAll(new RegExp(`%(${pathVars[7].tags.join("|")})%`, "gi"), language)
+                  .replaceAll(new RegExp(`%(${pathVars[8].tags.join("|")})%`, "gi"), label)
+                  .replaceAll(new RegExp(`%(${pathVars[9].tags.join("|")})%`, "gi"), bookmarkCount)
+                  .replaceAll(new RegExp(`%(${pathVars[10].tags.join("|")})%`, "gi"), replyCount)
+                  .replaceAll(new RegExp(`%(${pathVars[11].tags.join("|")})%`, "gi"), repostCount)
+                  .replaceAll(new RegExp(`%(${pathVars[12].tags.join("|")})%`, "gi"), likeCount)
 
             // Sanitize path for compatibility
             pathTemplate = pathTemplate.replaceAll(/\\{1, 2}/g, "/") // Replace backslashes with forward slashes
@@ -1257,4 +1394,15 @@ function tryRun(func, log = false) {
       catch (e) {
             if (log) console.log(e)
       }
+}
+
+
+// Like querySelector but working outwards through parents
+function OuterQuerySelector(element, selector) {
+      while (!element.matches(selector)) {
+            if (element == document.body)
+                  return false
+            element = element.parentElement
+      }
+      return element
 }
