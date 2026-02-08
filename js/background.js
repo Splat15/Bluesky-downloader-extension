@@ -5,8 +5,8 @@ let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
 let currentVer = browser.runtime.getManifest().version
-let majorVerInfo = { version: "2.0.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.0.0"}}
-let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version 
+let majorVerInfo = { version: "2.0.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.0.0" } }
+let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version
 localStorage.setItem("lastMajorVer", majorVerInfo.version)
 
 let inputMethod = localStorage.getItem("inputMethod")
@@ -83,10 +83,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   let response = { type: "bsky-download-progress", id: message.id, url: message.url, error: "Error: URL empty" }
                   browser.tabs.sendMessage(sender.tab.id, response)
             }
-
-            if (message.fileType == "GIF" && GetSetting("gifsAsWEBM").value)
-                  message.fileType = "Image"
-
+            
             // Start download
             downloader.download(message.url, message.filePath, message.fileType, (progress, error, fileBlob = null) => {
 

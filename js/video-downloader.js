@@ -42,34 +42,6 @@ class VideoDownloader {
             }
       }
 
-      // Downloads for GIFs in .gif format
-      async downloadGIF(url, filePath, ffmpegLoading) {
-            try {
-                  const videoBlob = await this.#proccessPlaylist(url);
-
-                  this.#setProgress(40)
-                  await ffmpegLoading
-                  let fileBlob = await this.#convertGIF(videoBlob)
-
-                  if (this.#mobileDevice) {
-                        this.#setProgress(100, null, fileBlob)
-                        return
-                  }
-
-                  this.#setProgress(90)
-                  let fileURL = URL.createObjectURL(fileBlob)
-
-                  browser.downloads.download({
-                        url: fileURL, filename: filePath
-                  }).then(() => this.#setProgress(100))
-
-
-            } catch (error) {
-                  console.error(error)
-                  this.#setProgress(this.progress, error)
-            }
-      }
-
       // Downloads for GIFs in .webm format and images
       async downloadImage(url, filePath, ffmpegLoading) {
             try {
@@ -146,7 +118,7 @@ class VideoDownloader {
 
             let ffmpegLoading
 
-            if (type != "Image") {
+            if (type == "Video") {
                   if (!this.#ffmpeg) {
                         this.#ffmpeg = createFFmpeg({
                               corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
@@ -161,10 +133,7 @@ class VideoDownloader {
                   if (type == "Video")
                         await this.downloadVideo(url, filePath, ffmpegLoading)
 
-                  else if (type == "GIF")
-                        await this.downloadGIF(url, filePath, ffmpegLoading)
-
-                  else if (type == "Image")
+                  else
                         await this.downloadImage(url, filePath, ffmpegLoading)
 
             } catch (error) {
@@ -181,7 +150,7 @@ class VideoDownloader {
 
             }
 
-            if (type != "Image") {
+            if (type == "Video") {
                   await ffmpegLoading
                   await this.#ffmpeg.exit()
             }
