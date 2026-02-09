@@ -80,26 +80,31 @@ class Downloadbutton {
       #progressCircleElem = null
       #toastManager
       #toast
-      #atURI
       #downloading = false
 
+      #atURI
+      url
       #fileExtension
       #filePath
+      #fileName
+
       mediaElement
       postElement
 
-      #postID
-      #hash
-      #username
-      #displayName
-      #fileName
-      #timestamp
-      #language
-      #label
-      #bookmarkCount
-      #replyCount
-      #repostCount
-      #likeCount
+      postInfoDone = false
+      postInfo = {
+            postID: undefined,
+            hash: undefined,
+            username: undefined,
+            displayName: undefined,
+            timestamp: undefined,
+            language: undefined,
+            label: undefined,
+            bookmarkCount: undefined,
+            replyCount: undefined,
+            repostCount: undefined,
+            likeCount: undefined
+      }
 
 
       constructor(type, element, url, toastManager, hidden, inputMethod) {
@@ -170,10 +175,10 @@ class Downloadbutton {
                         if (this.#atURI === "none") {
                               let matches = document.URL.match(/\/profile\/([^\/]+)\/post\/([^\/]+)/)
                               if (matches && matches.length >= 3) {
-                                    this.#username = matches[1]
-                                    this.#postID = matches[2]
+                                    this.postInfo.username = matches[1]
+                                    this.postInfo.postID = matches[2]
 
-                                    this.#atURI = `at://${this.#username}/app.bsky.feed.post/${this.#postID}`
+                                    this.#atURI = `at://${this.postInfo.username}/app.bsky.feed.post/${this.postInfo.postID}`
                               }
                         }
 
@@ -245,58 +250,38 @@ class Downloadbutton {
                   this.#CreateProgressCircle()
                   this.#progressCircle.set(0.01)
 
-                  if (GetSetting("downloadToast").value) this.#toast = this.#toastManager.DisplayToast()
-
-                  this.#fileExtension = this.type.ext
-                  this.#hash = GenerateHash(url).toString()
-
-                  /*// Username has not been determined yet
-                  if (!this.#username) { // debugging
-                        // Try to get elements that contain an href with the username and post id
-                        const elementHeight = this.element.getBoundingClientRect().y
-                        let searchDepth = this.type.searchDepth
-
-                        while (!this.#postID && searchDepth <= this.type.searchDepth + 3) {
-                              let postElem = GetNthParent(this.element, searchDepth)
-
-                              let linkElems = postElem.querySelectorAll("a[href*='/profile/']")
-
-
-                              // Get username from collected elements
-                              for (let i = 0; i < linkElems.length; i++) {
-                                    const linkElem = linkElems[i]
-
-                                    // Check if the link element is higher on screen than media element
-                                    const linkElemHeight = linkElem.getBoundingClientRect().y
-                                    if (linkElemHeight < elementHeight) {
-                                          const href = linkElem.href
-                                          let matches = href.match(/\/profile\/([^\/]+)(?:\/post\/([^\/]+)|)/)
-
-                                          if (matches && matches.length >= 2) {
-                                                this.#username = matches[1]
-                                                if (matches[2]) {
-                                                      //postElem.style.border = "solid red 2px"
-                                                      //linkElem.style.border = "solid green 2px"
-                                                      this.#postID = matches[2]
-                                                      break
-                                                }
-                                          }
-                                    }
-                              }
-
-                              searchDepth++
+                  let toastDisplayed = false
+                  setTimeout(() => {
+                        if (!toastDisplayed && GetSetting("downloadToast").value) {
+                              toastDisplayed = true
+                              this.#toast = this.#toastManager.DisplayToast()
                         }
-                  }*/
+                  }, 300)
 
-                  await this.#GetInfoFromThread()
+                  if (!this.postInfoDone) {
+                        await this.#GetInfoFromThread()
+                        this.postInfoDone = true
+                  }
 
                   this.#filePath = this.#GetFilePath()
                   this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
 
-                  // If gifs should be downloaded as .gif, change file extension. Rest of the logic is handled in the bg script
-                  if (!GetSetting("gifsAsWEBM").value) this.#fileExtension = ".gif"
+                  this.#fileExtension = this.type.ext
+                  if (this.type == Downloadbutton.GIF)
+                        // Tenor and the bluesky mirrors use the last two letters of the ID to indicate format
+                        if (!GetSetting("gifsAsWEBM").value) {
+                              this.#fileExtension = ".gif"
+                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "AC")
+                        }
+                        else
+                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "P3")
 
                   this.#filePath += this.#fileExtension
+
+                  if (!toastDisplayed && GetSetting("downloadToast").value) {
+                        toastDisplayed = true
+                        this.#toast = this.#toastManager.DisplayToast()
+                  }
                   if (this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
@@ -313,9 +298,7 @@ class Downloadbutton {
 
                               // Old method without support for file paths
                               // Used on mobile devices without browser.downloads API
-                              if (this.#mobileDevice &&
-                                    (this.type == Downloadbutton.Image ||
-                                          (this.type == Downloadbutton.GIF && GetSetting("gifsAsWEBM").value))) {
+                              if (this.#mobileDevice) {
                                     // Get local URL
                                     const file = await fetch(url)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
@@ -375,17 +358,6 @@ class Downloadbutton {
                                                 // Download is finished
                                                 if (message.progress >= 100) {
                                                       this.#AddURLToHistory(url)
-
-                                                      if (message.fileBlob) {
-                                                            let fileURL = URL.createObjectURL(message.fileBlob)
-                                                            const a = document.createElement('a');
-                                                            a.download = this.#fileName + ".gif";
-                                                            a.href = fileURL;
-
-                                                            a.click();
-
-                                                            window.URL.revokeObjectURL(fileURL)
-                                                      }
 
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Done
 
@@ -477,7 +449,7 @@ class Downloadbutton {
                                     id: id,
                                     url: url,
                                     fileType: this.type.name,
-                                    username: this.#username,
+                                    username: this.postInfo.username,
                                     filePath: this.#filePath
                               })
                         }
@@ -495,7 +467,24 @@ class Downloadbutton {
                   }
             }
             catch (error) {
-                  console.log(error)
+                  this.#downloading = false
+                  this.#downloadIcon.src = Downloadbutton.Icons.Error
+
+                  this.#toastManager.SetText(this.#toast, error)
+
+                  setTimeout(() => {
+                        this.#progressCircleElem.style.opacity = 0
+                        setTimeout(() => {
+                              try {
+                                    this.#downloadIcon.style.opacity = 1
+                                    this.#downloading = false
+                                    this.#DestroyProgressCircle()
+                              }
+                              catch { }
+                        }, 100);
+                  }, 800)
+
+                  throw new Error(error)
             }
       }
 
@@ -583,90 +572,14 @@ class Downloadbutton {
             }
       }
 
-      #GetInfoFromThread() {
-            return new Promise((resolve, reject) => {
-                  try {
-                        fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + this.#atURI).then(response => {
-                              response.text().then(body => {
-                                    body = JSON.parse(body)
-                                    this.#username = body.thread.post.author.handle
-                                    this.#displayName = body.thread.post.author.displayName
-                                    this.#timestamp = new Date(body.thread.post.record.createdAt)
-                                    this.#language = body.thread.post.record.langs[0]
-                                    this.#label = this.#HandleLabels(body.thread.post.labels)
-
-                                    this.#bookmarkCount = body.thread.post.bookmarkCount
-                                    this.#replyCount = body.thread.post.replyCount
-                                    this.#repostCount = body.thread.post.repostCount + body.thread.post.quoteCount
-                                    this.#likeCount = body.thread.post.likeCount
-
-                                    resolve()
-                              })
-                        })
-                  }
-                  catch (e) {
-                        reject(e)
-                  }
-            })
-      }
-
-      #HandleLabels(labels) {
-            // Severety of label from 0 to 2
-            let labelScore = 0
-            // Translation from label score to friendly names by index
-            let friendlyNames = ["SFW", "NSFW", "Graphic"]
-            // Assignment of severety per label
-            let labelVals = { porn: 1, "sexual": 1, "nudity": 1, "graphic-media": 2 }
-
-            if (labels) {
-                  for (let i = 0; i < labels.length && labelScore != 2; i++) {
-                        let label = labels[i].val
-                        let labelVal = labelVals[label]
-                        if (labelVal && labelVal > labelScore)
-                              labelScore = labelVal
-                  }
-            }
-            return friendlyNames[labelScore]
+      async #GetInfoFromThread() {
+            const newPostInfo = await GetInfoFromThread(this.#atURI, this.url)
+            this.postInfo = { ...this.postInfo, ...newPostInfo }
+            return
       }
 
       #GetFilePath() {
-            return GetFilePath({
-                  username: this.#username,
-                  displayName: this.#displayName,
-                  hash: this.#hash,
-                  postID: this.#postID,
-                  type: this.type.name,
-                  timestamp: this.#GetApproximateAge(this.#timestamp),
-                  language: this.#language,
-                  label: this.#label,
-                  bookmarkCount: this.#bookmarkCount,
-                  replyCount: this.#replyCount,
-                  repostCount: this.#repostCount,
-                  likeCount: this.#likeCount
-            })
-      }
-
-      #GetApproximateAge(date) {
-            let ageStr
-
-            const timeDiffS = (Date.now() - date) / 1000 // Age in seconds
-            const secondsInYear = 31536000 // Seconds in 365 days
-            const secondsInDay = 86400
-            const secondsInhour = 3600
-            const secondsInminute = 60
-
-            if (timeDiffS >= secondsInYear)
-                  ageStr = Math.round(timeDiffS / secondsInYear) + "y"
-            else if (timeDiffS >= secondsInDay)
-                  ageStr = Math.round(timeDiffS / secondsInDay) + "d"
-            else if (timeDiffS >= secondsInhour)
-                  ageStr = Math.round(timeDiffS / secondsInhour) + "h"
-            else if (timeDiffS >= secondsInminute)
-                  ageStr = Math.round(timeDiffS / secondsInminute) + "m"
-            else
-                  ageStr = Math.round(timeDiffS) + "s"
-
-            return ageStr
+            return GetFilePath(this.postInfo)
       }
 }
 
@@ -701,65 +614,47 @@ function GenerateHash(string) {
       return Math.abs(hash);
 };
 
-const pathVars = [
-      { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag", "handle"] },
-      { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
-      { name: "File name", desc: "Username of the poster and the hash of the file url.", tags: ["filename", "file"] },
-      { name: "Hash", desc: "Hash of the file URL.", tags: ["hash"] },
-      { name: "Post ID", desc: "ID of the post.", tags: ["postid", "id", "rkey", "record", "recordkey"] },
-      { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "mediatype", "posttype", "format"] },
-      { name: "Age", desc: "Approximate age of the post, example: 15h.", tags: ["age", "time", "timestamp"] },
-      { name: "Language", desc: "Language of the post as a country code.", tags: ["lang", "language"] },
-      { name: "Label", desc: "Label of the post. Either SFW, NSFW or Graphic.", tags: ["label", "labels", "nsfw", "sfw", "warning"] },
-      { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", tags: ["bookmarks", "bookmark", "bookmarked"] },
-      { name: "Replies", desc: "Amount of replies to the post.", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
-      { name: "Reposts", desc: "Amount of reposts of the post.", tags: ["reposts", "repost", "reposted"] },
-      { name: "Likes", desc: "Amount of likes on the post.", tags: ["likes", "like", "liked"] }
-]
+const pathVars = {
+      username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
+      displayName: { name: "Display name", desc: "Display name of the poster.", default: "error", tags: ["displayname", "poster", "name"] },
+      fileName: { name: "File name", desc: "Username of the poster and the hash of the file url.", default: "error-0", tags: ["filename", "file"] },
+      postID: { name: "Post ID", desc: "ID of the post.", default: "0", tags: ["postid", "id", "rkey", "record", "recordkey"] },
+      hash: { name: "Hash", desc: "Hash of the file URL.", default: "0000000000000", tags: ["hash"] },
+      type: { name: "Type", desc: "Media type of the post.", default: "Image", tags: ["type", "media", "mediatype", "posttype", "format"] },
+      age: { name: "Age", desc: "Approximate age of the post, example: 15h.", default: "0s", tags: ["age", "time", "timestamp"] },
+      language: { name: "Language", desc: "Language of the post as a country code.", default: "en", tags: ["lang", "language"] },
+      label: { name: "Label", desc: "Label of the post. Either SFW, NSFW or Graphic.", default: "SFW", tags: ["label", "labels", "nsfw", "sfw", "warning"] },
+      bookmarks: { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", default: "0", tags: ["bookmarks", "bookmark", "bookmarked"] },
+      replies: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
+      reposts: { name: "Reposts", desc: "Amount of reposts of the post.", default: "0", tags: ["reposts", "repost", "reposted"] },
+      likes: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] }
+}
 
 function GetFilePath(properties, pathTemplate = null) {
       try {
-            // Apply provided values and defaults
-            username = properties.username || "empty"
-            displayName = properties.displayName || "empty"
-            hash = properties.hash || "0"
-            postID = properties.postID || "0000000000000"
-            type = properties.type || "Image"
-            timestamp = properties.timestamp || "0s"
-            language = properties.language || "en"
-            label = properties.label || "SFW"
-            bookmarkCount = properties.bookmarkCount || "0"
-            replyCount = properties.replyCount || "0"
-            repostCount = properties.repostCount || "0"
-            likeCount = properties.likeCount || "0"
-
             // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
-            username = username.replaceAll(/\/\\/gi, "#")
-            displayName = displayName.replaceAll(/\/\\/gi, "#")
+            try {
+                  properties.username = properties.username.replaceAll(/\/\\/gi, "#")
+                  properties.displayName = properties.displayName.replaceAll(/\/\\/gi, "#")
+                  properties.fileName = properties.fileName.replaceAll(/\/\\/gi, "#")
+            } catch { }
 
             if (pathTemplate === null) pathTemplate = GetSetting("downloadPath").value
 
             if (DetectMobileDevice()) pathTemplate = pathTemplate.replaceAll(/[\/\\]+/gi, "")
 
-            pathTemplate = pathTemplate
-                  .replaceAll(new RegExp(`%(${pathVars[0].tags.join("|")})%`, "gi"), username)
-                  .replaceAll(new RegExp(`%(${pathVars[1].tags.join("|")})%`, "gi"), displayName)
-                  .replaceAll(new RegExp(`%(${pathVars[2].tags.join("|")})%`, "gi"), username + "-" + hash)
-                  .replaceAll(new RegExp(`%(${pathVars[3].tags.join("|")})%`, "gi"), hash)
-                  .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), postID)
-                  .replaceAll(new RegExp(`%(${pathVars[5].tags.join("|")})%`, "gi"), type)
-                  .replaceAll(new RegExp(`%(${pathVars[6].tags.join("|")})%`, "gi"), timestamp)
-                  .replaceAll(new RegExp(`%(${pathVars[7].tags.join("|")})%`, "gi"), language)
-                  .replaceAll(new RegExp(`%(${pathVars[8].tags.join("|")})%`, "gi"), label)
-                  .replaceAll(new RegExp(`%(${pathVars[9].tags.join("|")})%`, "gi"), bookmarkCount)
-                  .replaceAll(new RegExp(`%(${pathVars[10].tags.join("|")})%`, "gi"), replyCount)
-                  .replaceAll(new RegExp(`%(${pathVars[11].tags.join("|")})%`, "gi"), repostCount)
-                  .replaceAll(new RegExp(`%(${pathVars[12].tags.join("|")})%`, "gi"), likeCount)
+
+            Object.keys(pathVars).forEach(key => {
+                  pathTemplate = pathTemplate.replaceAll(
+                        new RegExp(`%(${pathVars[key].tags.join("|")})%`, "gi"),
+                        properties[key] || pathVars[key].default
+                  )
+            })
 
             // Sanitize path for compatibility
             pathTemplate = pathTemplate.replaceAll(/\\{1, 2}/g, "/") // Replace backslashes with forward slashes
-                  .replaceAll(/[^\/\w+-]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
-                  .replaceAll(/[^\/\w+-.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
+                  .replaceAll(/[^\/\w+ -]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
+                  .replaceAll(/[^\/\w+ -.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
                   .replaceAll(/(?<=^|\/)\.+/g, "") // Remove leading dots ".files/.file" => "files/file"
                   .replaceAll(/\.(?=.+\/)/g, "_") // Remove dots in folder names "file.test/test" => "file_test/test"
                   .replaceAll(/(?<=^|\/)[^/]{0}(?=$|\/)/g, "empty") // Deal with empty folders / file names "/files/" => "empty/files/empty"
@@ -806,6 +701,131 @@ function SetSetting(settingId, value, settings) {
                   }
             }
       }
+}
+
+
+async function GetInfoFromThread(atURI, url, response = null) {
+      try {
+            if (!response) {
+                  response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + atURI)
+                  response = await response.text()
+                  response = JSON.parse(response)
+            }
+
+            let info = {}
+
+            let post = response.thread.post
+            let record = post.record
+
+            let media = ProcessMedia(record.embed)
+
+            // URI doesn't match, try quoted post
+            if (!media.find(cid => url.includes(cid))) {
+                  post = post.embed.record.record || post.embed.record
+                  record = post.value
+            }
+
+            media = ProcessMedia(record.embed)
+
+            info.postID = atURI.match(/[^\/]+$/)[0]
+            info.hash = GenerateHash(url)
+
+            info.username = post.author.handle
+            info.displayName = post.author.displayName
+            info.fileName = info.username + "-" + info.postID
+            info.timestamp = new Date(record.createdAt)
+            info.language = record.langs[0]
+            info.label = ProcessLabels(post.labels)
+
+            info.bookmarkCount = post.bookmarkCount
+            info.replyCount = post.replyCount
+            info.repostCount = post.repostCount + post.quoteCount
+            info.likeCount = post.likeCount
+
+            return info
+      }
+      catch (e) {
+            console.error("Error while parsing post information: " + e)
+            return false
+      }
+
+}
+
+
+function ProcessMedia(media) {
+      if (!media) return null
+      let mediaURLs = []
+
+      // Handle quote posts with media
+      if (media.$type == "app.bsky.embed.recordWithMedia") {
+            media = media.media
+      }
+
+      // Handle images
+      if (media.$type == "app.bsky.embed.images") {
+            media.images.forEach(image => mediaURLs.push(image.image.ref.$link))
+      }
+      // Handle videos
+      else if (media.$type == "app.bsky.embed.video") {
+            mediaURLs.push(media.video.ref.$link)
+      }
+      // Handle external media such as tenor gifs
+      else if (media.$type == "app.bsky.embed.external") {
+            try {
+                  // Tenor encodes desired format as 2 letters at the end of the ID
+                  // media.tenor.com/*P3/*.gif => .webm
+                  // media.tenor.com/*AC/*.gif => .gif
+
+                  // Match GIF ID from tenor posts or website URLs with similar structure
+                  mediaURLs.push(media.external.uri.match(/https?:\/\/(?:\w+\.)+\w+\/([^\/]+)[^\/]{2}\//)[1])
+            }
+            catch {
+                  window.alert("non tenor external media: " + media.external.uri)
+            }
+      }
+      return mediaURLs
+}
+
+function ProcessLabels(labels) {
+      // Severety of label from 0 to 2
+      let labelScore = 0
+      // Translation from label score to friendly names by index
+      let friendlyNames = ["SFW", "NSFW", "Graphic"]
+      // Assignment of severety per label
+      let labelVals = { porn: 1, "sexual": 1, "nudity": 1, "graphic-media": 2 }
+
+      if (labels) {
+            for (let i = 0; i < labels.length && labelScore != 2; i++) {
+                  let label = labels[i].val
+                  let labelVal = labelVals[label]
+                  if (labelVal && labelVal > labelScore)
+                        labelScore = labelVal
+            }
+      }
+      return friendlyNames[labelScore]
+}
+
+function GetApproximateAge(date) {
+      let ageStr
+
+      const timeDiffS = (Date.now() - date) / 1000 // Age in seconds
+      const secondsInYear = 31536000 // Seconds in 365 days
+      const secondsInDay = 86400
+      const secondsInhour = 3600
+      const secondsInminute = 60
+
+      if (timeDiffS >= secondsInYear)
+            ageStr = Math.round(timeDiffS / secondsInYear) + "y"
+      else if (timeDiffS >= secondsInDay)
+            ageStr = Math.round(timeDiffS / secondsInDay) + "d"
+      else if (timeDiffS >= secondsInhour)
+            ageStr = Math.round(timeDiffS / secondsInhour) + "h"
+      else if (timeDiffS >= secondsInminute)
+            ageStr = Math.round(timeDiffS / secondsInminute) + "m"
+      else
+            ageStr = Math.round(timeDiffS) + "s"
+
+      return ageStr
 }
 
 class FlashingBorder {

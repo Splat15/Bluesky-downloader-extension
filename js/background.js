@@ -172,18 +172,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
       }
 });
 
-function GetFilePath(postType, userName, fileName, fileExt) {
-      let path = GetSetting("downloadPath").value
-
-      path = path.replaceAll(/%(posttype|type)%/gi, postType)
-            .replaceAll(/%(username|user|poster)%/gi, userName)
-            .replaceAll(/%(filename|file|id|hash)%/gi, fileName)
-      path += fileExt
-
-      return path
-}
-
-
 function SetSetting(settingId, value) {
       if (GetSetting(settingId).value == value)
             return

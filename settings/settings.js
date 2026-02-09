@@ -1,3 +1,15 @@
+let cachedExamplePost
+let exampleAtURI = "at://bsky.app/app.bsky.feed.post/3lxxo3i4qzs2c"
+let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
+let onExampleReady = []
+fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exampleAtURI)
+      .then(response =>
+            response.text().then(post => {
+                  cachedExamplePost = JSON.parse(post)
+                  onExampleReady.forEach(func => func())
+            })
+      )
+
 // Handles the display and function of different kinds of settings
 class Setting {
       container
@@ -122,8 +134,9 @@ class Setting {
 
 
                   // Add variables to list
-                  for (let i = 0; i < pathVars.length; i++) {
-                        const variable = pathVars[i]
+                  let pathVarKeys = Object.keys(pathVars)
+                  for (let i = 0; i < pathVarKeys.length; i++) {
+                        const variable = pathVars[pathVarKeys[i]]
 
                         const element = document.createElement("p")
                         element.classList.add("path-var")
@@ -220,7 +233,7 @@ class Setting {
                                           false,
                                           "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android"
                                     )
-                              
+
                               pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
                         }
                         this.value = pathInput.value
@@ -246,7 +259,10 @@ class Setting {
                   this.container.appendChild(this.element)
                   this.FocusPathInput()
 
-                  this.UpdatePathExample()
+                  if (!cachedExamplePost)
+                        onExampleReady.push(() => { this.UpdatePathExample() })
+                  else
+                        this.UpdatePathExample()
             }
 
             // Invalid type
@@ -264,7 +280,7 @@ class Setting {
       }
 
       // Set path input value manually
-      ChangePathVal(value) {
+      async ChangePathVal(value) {
             if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
                   // Only display warning if no warning is present
                   if (!mobilePathWarning || mobilePathWarning.dismissed)
@@ -289,17 +305,10 @@ class Setting {
       }
 
       // Simulate an example file path using example data
-      UpdatePathExample() {
-            // Example post: https://bsky.app/profile/bsky.app/post/3lxxo3i4qzs2c
-            //const url = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
-            //const hash = GenerateHash(url)
-            const hash = "488225599" // Precalculated
-            const username = "bsky.app"
-            const displayName = "Bluesky"
-            const postID = "3lxxo3i4qzs2c"
-            const type = Downloadbutton.Video.name
-
-            pathExample.textContent = GetFilePath(hash, type, username, displayName, postID, this.value) + ".mp4"
+      async UpdatePathExample() {
+            if (!cachedExamplePost) return
+            let postInfo = await GetInfoFromThread(exampleAtURI, exampleURL, cachedExamplePost)
+            pathExample.textContent = GetFilePath(postInfo, this.value) + ".mp4"
       }
 
       // Set focus to path input field
