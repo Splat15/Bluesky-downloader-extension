@@ -306,9 +306,12 @@ class Setting {
 
       // Simulate an example file path using example data
       async UpdatePathExample() {
-            if (!cachedExamplePost) return
-            let postInfo = await GetInfoFromThread(exampleAtURI, exampleURL, cachedExamplePost)
-            pathExample.textContent = GetFilePath(postInfo, this.value) + ".mp4"
+            if (cachedExamplePost) {
+                  let postInfo = await GetInfoFromThread(exampleAtURI, exampleURL, cachedExamplePost)
+                  pathExample.textContent = GetFilePath(postInfo, this.value) + ".mp4"
+            }
+            else
+                  pathExample.textContent = ""
       }
 
       // Set focus to path input field
