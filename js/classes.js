@@ -617,26 +617,28 @@ function GenerateHash(string) {
 const pathVars = {
       username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
       displayName: { name: "Display name", desc: "Display name of the poster.", default: "error", tags: ["displayname", "poster", "name"] },
-      fileName: { name: "File name", desc: "Username of the poster and the ID of the post", default: "error-0", tags: ["filename", "file"] },
-      postID: { name: "Post ID", desc: "ID of the post.", default: "0", tags: ["postid", "id", "rkey", "record", "recordkey"] },
-      hash: { name: "Hash", desc: "Hash of the file URL.", default: "0000000000000", tags: ["hash"] },
+      fileName: { name: "File name", desc: "Username of the poster and the ID of the post", default: "error-0000000000000", tags: ["filename", "file"] },
+      postID: { name: "Post ID", desc: "ID of the post.", default: "0000000000000", tags: ["postid", "id", "rkey", "record", "recordkey"] },
+      hash: { name: "Hash", desc: "Hash of the file URL.", default: "0", tags: ["hash"] },
       type: { name: "Type", desc: "Media type of the post.", default: "Image", tags: ["type", "media", "mediatype", "posttype", "format"] },
-      age: { name: "Age", desc: "Approximate age of the post, example: 15h.", default: "0s", tags: ["age", "time", "timestamp"] },
+      timestamp: { name: "Age", desc: "Approximate age of the post, example: 15h.", default: "0s", tags: ["age", "time", "timestamp"] },
       language: { name: "Language", desc: "Language of the post as a country code.", default: "en", tags: ["lang", "language"] },
       label: { name: "Label", desc: "Label of the post. Either SFW, NSFW or Graphic.", default: "SFW", tags: ["label", "labels", "nsfw", "sfw", "warning"] },
-      bookmarks: { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", default: "0", tags: ["bookmarks", "bookmark", "bookmarked"] },
-      replies: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
-      reposts: { name: "Reposts", desc: "Amount of reposts of the post.", default: "0", tags: ["reposts", "repost", "reposted"] },
-      likes: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] }
+      bookmarkCount: { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", default: "0", tags: ["bookmarks", "bookmark", "bookmarked"] },
+      replieCount: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
+      repostCount: { name: "Reposts", desc: "Amount of reposts of the post.", default: "0", tags: ["reposts", "repost", "reposted"] },
+      likeCount: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] }
 }
 
 function GetFilePath(properties, pathTemplate = null) {
       try {
+            let tempProperties = properties
             // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
             try {
-                  properties.username = properties.username.replaceAll(/\/\\/gi, "#")
-                  properties.displayName = properties.displayName.replaceAll(/\/\\/gi, "#")
-                  properties.fileName = properties.fileName.replaceAll(/\/\\/gi, "#")
+                  tempProperties.username = tempProperties.username.replaceAll(/\/\\/gi, "#")
+                  tempProperties.displayName = tempProperties.displayName.replaceAll(/\/\\/gi, "#")
+                  tempProperties.fileName = tempProperties.fileName.replaceAll(/\/\\/gi, "#")
+                  tempProperties.timestamp = GetApproximateAge(tempProperties.timestamp)
             } catch { }
 
             if (pathTemplate === null) pathTemplate = GetSetting("downloadPath").value
@@ -647,13 +649,13 @@ function GetFilePath(properties, pathTemplate = null) {
             Object.keys(pathVars).forEach(key => {
                   pathTemplate = pathTemplate.replaceAll(
                         new RegExp(`%(${pathVars[key].tags.join("|")})%`, "gi"),
-                        properties[key] || pathVars[key].default
+                        tempProperties[key] || pathVars[key].default
                   )
             })
 
             // Sanitize path for compatibility
             pathTemplate = pathTemplate.replaceAll(/\\{1, 2}/g, "/") // Replace backslashes with forward slashes
-                  .replaceAll(/[^\/\w+ -]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
+                  .replaceAll(/[^\/\w+-]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
                   .replaceAll(/[^\/\w+ -.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
                   .replaceAll(/(?<=^|\/)\.+/g, "") // Remove leading dots ".files/.file" => "files/file"
                   .replaceAll(/\.(?=.+\/)/g, "_") // Remove dots in folder names "file.test/test" => "file_test/test"
