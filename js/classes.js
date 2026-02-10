@@ -617,7 +617,7 @@ function GenerateHash(string) {
 const pathVars = {
       username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
       displayName: { name: "Display name", desc: "Display name of the poster.", default: "error", tags: ["displayname", "poster", "name"] },
-      fileName: { name: "File name", desc: "Username of the poster and the hash of the file url.", default: "error-0", tags: ["filename", "file"] },
+      fileName: { name: "File name", desc: "Username of the poster and the ID of the post", default: "error-0", tags: ["filename", "file"] },
       postID: { name: "Post ID", desc: "ID of the post.", default: "0", tags: ["postid", "id", "rkey", "record", "recordkey"] },
       hash: { name: "Hash", desc: "Hash of the file URL.", default: "0000000000000", tags: ["hash"] },
       type: { name: "Type", desc: "Media type of the post.", default: "Image", tags: ["type", "media", "mediatype", "posttype", "format"] },
