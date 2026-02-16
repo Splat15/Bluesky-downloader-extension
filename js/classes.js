@@ -66,9 +66,10 @@ class Downloadbutton {
             Done: browser.runtime.getURL("../icons/checkbox.svg"),
             Error: browser.runtime.getURL("../icons/error.svg")
       }
-      static Image = { name: "Image", ext: ".jpg", searchDepth: 13 }
-      static Video = { name: "Video", ext: ".mp4", searchDepth: 16 }
-      static GIF = { name: "GIF", ext: ".webm", searchDepth: 8 }
+      static Image = { name: "Image", ext: ".jpg" }
+      static Video = { name: "Video", ext: ".mp4" }
+      static GIF = { name: "GIF", ext: ".webm" }
+      static UploadedGIF = { name: "GIF", ext: ".mp4" }
 
       #mobileDevice = DetectMobileDevice()
       #inputMethod
@@ -91,6 +92,7 @@ class Downloadbutton {
       mediaElement
       postElement
 
+      rawPostInfo
       postInfoDone = false
       postInfo = {
             postID: undefined,
@@ -114,6 +116,12 @@ class Downloadbutton {
             this.mediaElement = element
             this.#inputMethod = inputMethod
 
+
+            if (this.mediaElement.textContent == "GIF") {
+                  this.type = Downloadbutton.UploadedGIF
+                  this.mediaElement = this.mediaElement.parentElement.parentElement
+            }
+
             if (this.type == Downloadbutton.Image) {
                   this.url = this.url.replace("/feed_thumbnail/", "/feed_fullsize/")
 
@@ -136,7 +144,7 @@ class Downloadbutton {
                   this.mediaElement.parentElement.insertBefore(this.#downloadButtonDiv, this.mediaElement)
             }
 
-            else if (this.type == Downloadbutton.GIF) {
+            else if (this.type == Downloadbutton.GIF || this.type == Downloadbutton.UploadedGIF) {
                   this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
                   this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
@@ -156,41 +164,24 @@ class Downloadbutton {
              * This looks for react properties which are only accessible in the main document thread.  */
             let script = document.createElement("script")
             script.id = "uriScript"
+            this.#downloadButtonDiv.appendChild(script)
+
+            new MutationObserver((mutationList, observer) => {
+                  let postData = script.getAttribute("post-data")
+                  if (postData) {
+                        postData = JSON.parse(postData)
+                        this.rawPostInfo = postData.postInfo
+                        this.#atURI = postData.uri || this.rawPostInfo.uri
+                        observer.disconnect()
+                  }
+            }).observe(script, { attributes: true })
             script.textContent = `
             (function () {
                   const element = document.currentScript;
                   const uri = GetURI(element)
-                  console.log(uri)
-                  element.setAttribute("uri", uri)
+                  element.setAttribute("post-data", JSON.stringify(uri))
             })()`
 
-            new MutationObserver((mutationList, observer) => {
-                  let uri = script.getAttribute("uri")
-                  if (uri) {
-                        this.#atURI = uri
-                        observer.disconnect()
-
-
-                        // Try to get post ID from URL
-                        if (this.#atURI === "none") {
-                              let matches = document.URL.match(/\/profile\/([^\/]+)\/post\/([^\/]+)/)
-                              if (matches && matches.length >= 3) {
-                                    this.postInfo.username = matches[1]
-                                    this.postInfo.postID = matches[2]
-
-                                    this.#atURI = `at://${this.postInfo.username}/app.bsky.feed.post/${this.postInfo.postID}`
-                              }
-                        }
-
-                        if (!this.#atURI) {
-                              window.alert("no post id or at:// URI found")
-                              console.error("no post id or at:// URI found")
-                        }
-                        console.log("at uri: " + this.#atURI)
-                  }
-            }).observe(script, { attributes: true })
-
-            this.#downloadButtonDiv.appendChild(script)
       }
 
       SetVisibility(visibility) {
@@ -275,6 +266,12 @@ class Downloadbutton {
                         }
                         else
                               url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "P3")
+
+                  // Fake GIFs uploaded by users need to be converted to the right format
+                  if (this.type == Downloadbutton.UploadedGIF) {
+                        if (!GetSetting("gifsAsWEBM").value) this.#fileExtension = ".gif"
+                        url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
+                  }
 
                   this.#filePath += this.#fileExtension
 
@@ -379,7 +376,8 @@ class Downloadbutton {
                                           type: "bsky-download",
                                           id: id,
                                           url: url,
-                                          fileType: this.type.name,
+                                          fileType: this.type,
+                                          fileExt: this.#fileExtension,
                                           filePath: this.#filePath
                                     })
                               }
@@ -448,8 +446,8 @@ class Downloadbutton {
                                     type: "bsky-download",
                                     id: id,
                                     url: url,
-                                    fileType: this.type.name,
-                                    username: this.postInfo.username,
+                                    fileType: this.type,
+                                    fileExt: this.#fileExtension,
                                     filePath: this.#filePath
                               })
                         }
@@ -505,7 +503,7 @@ class Downloadbutton {
 
       /** Free up memory by destroying progress circle */
       #DestroyProgressCircle() {
-            tryRun(this.#progressCircle.destroy, true)
+            tryRun(this.#progressCircle.destroy)
             this.#progressCircle = null;
 
             // Dismiss toast some time after mouse left
@@ -573,7 +571,8 @@ class Downloadbutton {
       }
 
       async #GetInfoFromThread() {
-            const newPostInfo = await GetInfoFromThread(this.#atURI, this.url)
+
+            const newPostInfo = await GetInfoFromThread(this.rawPostInfo, this.#atURI, this.url)
             this.postInfo = { ...this.postInfo, ...newPostInfo }
             return
       }
@@ -625,14 +624,14 @@ const pathVars = {
       language: { name: "Language", desc: "Language of the post as a country code.", default: "en", tags: ["lang", "language"] },
       label: { name: "Label", desc: "Label of the post. Either SFW, NSFW or Graphic.", default: "SFW", tags: ["label", "labels", "nsfw", "sfw", "warning"] },
       bookmarkCount: { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", default: "0", tags: ["bookmarks", "bookmark", "bookmarked"] },
-      replieCount: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
+      replyCount: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
       repostCount: { name: "Reposts", desc: "Amount of reposts of the post.", default: "0", tags: ["reposts", "repost", "reposted"] },
       likeCount: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] }
 }
 
 function GetFilePath(properties, pathTemplate = null) {
       try {
-            let tempProperties = properties
+            let tempProperties = structuredClone(properties)
             // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
             try {
                   tempProperties.username = tempProperties.username.replaceAll(/\/\\/gi, "#")
@@ -706,43 +705,33 @@ function SetSetting(settingId, value, settings) {
 }
 
 
-async function GetInfoFromThread(atURI, url, response = null) {
+async function GetInfoFromThread(postInfo, atURI, url) {
       try {
-            if (!response) {
-                  response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + atURI)
-                  response = await response.text()
-                  response = JSON.parse(response)
-            }
 
             let info = {}
-
-            let post = response.thread.post
-            let record = post.record
-
+            let record = postInfo.record
             let media = ProcessMedia(record.embed)
 
             // URI doesn't match, try quoted post
             if (!media.find(cid => url.includes(cid))) {
-                  post = post.embed.record.record || post.embed.record
-                  record = post.value
+                  postInfo = postInfo.embed.record.record || postInfo.embed.record
+                  record = postInfo.value
             }
 
-            media = ProcessMedia(record.embed)
+            tryRun((() => info.postID = atURI.match(/[^\/]+$/)[0]))
+            tryRun((() => info.hash = GenerateHash(url)))
 
-            info.postID = atURI.match(/[^\/]+$/)[0]
-            info.hash = GenerateHash(url)
+            tryRun((() => info.username = postInfo.author.handle))
+            tryRun((() => info.displayName = postInfo.author.displayName))
+            tryRun((() => info.fileName = info.username + "-" + info.postID))
+            tryRun((() => info.timestamp = new Date(record.createdAt)))
+            tryRun((() => info.language = record.langs[0]))
+            tryRun((() => info.label = ProcessLabels(postInfo.labels)))
 
-            info.username = post.author.handle
-            info.displayName = post.author.displayName
-            info.fileName = info.username + "-" + info.postID
-            info.timestamp = new Date(record.createdAt)
-            info.language = record.langs[0]
-            info.label = ProcessLabels(post.labels)
-
-            info.bookmarkCount = post.bookmarkCount
-            info.replyCount = post.replyCount
-            info.repostCount = post.repostCount + post.quoteCount
-            info.likeCount = post.likeCount
+            tryRun((() => info.bookmarkCount = postInfo.bookmarkCount))
+            tryRun((() => info.replyCount = postInfo.replyCount))
+            tryRun((() => info.repostCount = postInfo.repostCount + postInfo.quoteCount))
+            tryRun((() => info.likeCount = postInfo.likeCount))
 
             return info
       }
@@ -787,6 +776,7 @@ function ProcessMedia(media) {
       }
       return mediaURLs
 }
+
 
 function ProcessLabels(labels) {
       // Severety of label from 0 to 2
@@ -1412,7 +1402,7 @@ class FlashingBorders {
 }
 
 function tryRun(func, log = false) {
-      try { func }
+      try { func() }
       catch (e) {
             if (log) console.log(e)
       }
