@@ -14,6 +14,7 @@
     "scripts": [
       "lib/ffmpeg.min.js",
       "lib/ffmpeg-core.js",
+      "js/classes.js",
       "js/video-downloader.js",
       "js/background.js"
     ]
