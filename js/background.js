@@ -82,10 +82,11 @@ browser.runtime.onMessage.addListener((message, sender) => {
             if (!message.url || message.url.length == 0) {
                   let response = { type: "bsky-download-progress", id: message.id, url: message.url, error: "Error: URL empty" }
                   browser.tabs.sendMessage(sender.tab.id, response)
+                  return
             }
             
             // Start download
-            downloader.download(message.url, message.filePath, message.fileType, (progress, error, fileBlob = null) => {
+            downloader.download(message.url, message.filePath, message.fileType, message.fileExt, (progress, error, fileBlob = null) => {
 
                   // Send progress messages to sender
                   let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }

@@ -32,10 +32,10 @@ class VideoDownloader {
             this.#onProgress = () => { }
       }
 
-      download(url, filePath, type, onProgress = () => { }) {
+      download(url, filePath, type, fileExtension, onProgress = () => { }) {
             if (this.#queue.find(element => element.url == url)) return
 
-            this.#queue.push({ url: url, filePath: filePath, type: type, onProgress: onProgress, tries: 0 })
+            this.#queue.push({ url: url, filePath: filePath, type: type, fileExtension: fileExtension, onProgress: onProgress, tries: 0 })
             if (this.#downloadReady) {
                   this.#downloadReady = false
                   this.#download()
@@ -85,10 +85,10 @@ class VideoDownloader {
             await ffmpegLoading
       }
 
-      async downloadVideo(url, filePath, ffmpegLoading) {
+      async downloadVideo(url, filePath, fileExtension, ffmpegLoading) {
             const videoBlob = await this.#proccessPlaylist(url);
             await ffmpegLoading
-            let fileBlob = await this.#convertVideo(videoBlob)
+            let fileBlob = await this.#convertVideo(videoBlob, fileExtension)
 
             if (this.#mobileDevice) {
                   this.#setProgress(100, null, fileBlob)
@@ -111,6 +111,7 @@ class VideoDownloader {
             const url = currentItem.url
             const filePath = currentItem.filePath
             const type = currentItem.type
+            const fileExtension = currentItem.fileExtension
             this.#onProgress = currentItem.onProgress
 
             this.#downloadReady = false
@@ -118,7 +119,7 @@ class VideoDownloader {
 
             let ffmpegLoading
 
-            if (type == "Video") {
+            if (type == Downloadbutton.Video || Downloadbutton.UploadedGIF) {
                   if (!this.#ffmpeg) {
                         this.#ffmpeg = createFFmpeg({
                               corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
@@ -130,8 +131,8 @@ class VideoDownloader {
             }
 
             try {
-                  if (type == "Video")
-                        await this.downloadVideo(url, filePath, ffmpegLoading)
+                  if (type == Downloadbutton.Video || Downloadbutton.UploadedGIF)
+                        await this.downloadVideo(url, filePath, fileExtension, ffmpegLoading)
 
                   else
                         await this.downloadImage(url, filePath, ffmpegLoading)
@@ -150,7 +151,7 @@ class VideoDownloader {
 
             }
 
-            if (type == "Video") {
+            if (type == Downloadbutton.Video || Downloadbutton.UploadedGIF) {
                   await ffmpegLoading
                   await this.#ffmpeg.exit()
             }
@@ -159,7 +160,7 @@ class VideoDownloader {
             if (this.#queue.length > 0) this.#download()
       }
 
-      async #convertVideo(videoBlob) {
+      async #convertVideo(videoBlob, fileExtension) {
             if (!this.#ffmpeg) {
 
                   this.#ffmpeg = createFFmpeg({
@@ -189,12 +190,12 @@ class VideoDownloader {
                   "0",
                   "-c",
                   "copy",
-                  "output.mp4"
+                  "output" + fileExtension
             );
 
-            const videoData = this.#ffmpeg.FS("readFile", `output.mp4`);
+            const videoData = this.#ffmpeg.FS("readFile", `output` + fileExtension);
             const mp4Blob = new Blob([videoData.buffer], {
-                  type: "video/mp4",
+                  type: "video/" + fileExtension.match(/[^\.]+$/)[0],
             });
 
             return mp4Blob
