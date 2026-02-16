@@ -2,11 +2,15 @@ let cachedExamplePost
 let exampleAtURI = "at://bsky.app/app.bsky.feed.post/3lxxo3i4qzs2c"
 let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
 let onExampleReady = []
+let postInfo
 fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exampleAtURI)
       .then(response =>
             response.text().then(post => {
                   cachedExamplePost = JSON.parse(post)
-                  onExampleReady.forEach(func => func())
+                  GetInfoFromThread(exampleAtURI, exampleURL, cachedExamplePost).then(info => {
+                        postInfo = info
+                        onExampleReady.forEach(func => func())
+                  })
             })
       )
 
@@ -307,7 +311,6 @@ class Setting {
       // Simulate an example file path using example data
       async UpdatePathExample() {
             if (cachedExamplePost) {
-                  let postInfo = await GetInfoFromThread(exampleAtURI, exampleURL, cachedExamplePost)
                   pathExample.textContent = GetFilePath(postInfo, this.value) + ".mp4"
             }
             else
