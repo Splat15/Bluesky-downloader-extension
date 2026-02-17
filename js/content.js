@@ -21,16 +21,26 @@ let inputMethod
 const minUptime = 1000 // Max. ms amount of time since install of extension for cleanup to be executed
 
 
-// Cleanup
-Array.from(document.querySelectorAll("#mainThreadHelper"))
-      .forEach(stylesheet => stylesheet.remove())
+const mainThreadHelperLoaded = new Promise(resolve => {
+      // Cleanup
+      Array.from(document.querySelectorAll("#mainThreadHelper"))
+            .forEach(stylesheet => stylesheet.remove())
 
-// Add main thread document
-const script = document.createElement("script")
-// Incorporate version number to avoid caching issue
-script.src = browser.runtime.getURL("/js/document.js")
-script.id = "mainThreadHelper"
-document.head.appendChild(script)
+      // Add main thread document
+      const script = document.createElement("script")
+      // Incorporate version number to avoid caching issue
+      script.src = browser.runtime.getURL("/js/document.js")
+      script.id = "mainThreadHelper"
+      document.head.appendChild(script)
+      
+      new MutationObserver((mutationList, observer) => {
+            let hasRun = script.getAttribute("has-run")
+            if (hasRun) {
+                  observer.disconnect()
+                  resolve()
+            }
+      }).observe(script, { attributes: true })
+})
 
 
 browser.runtime.onMessage.addListener((message) => {

@@ -96,4 +96,4 @@ function ScanObject(object_, test, maxDepth, path = null, depth = 0, knownElemen
       }
 }
 
-throw new DOMException("apkjsoidh")
+document.currentScript.setAttribute("has-run", "true")

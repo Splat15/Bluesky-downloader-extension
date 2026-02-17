@@ -175,12 +175,15 @@ class Downloadbutton {
                         observer.disconnect()
                   }
             }).observe(script, { attributes: true })
-            script.textContent = `
-            (function () {
-                  const element = document.currentScript;
-                  const uri = GetURI(element)
-                  element.setAttribute("post-data", JSON.stringify(uri))
-            })()`
+
+            mainThreadHelperLoaded.then(() => {
+                  script.textContent = `
+                        (function () {
+                              const element = document.currentScript;
+                              const uri = GetURI(element)
+                              element.setAttribute("post-data", JSON.stringify(uri))
+                        })()`
+            })
 
       }
 
@@ -616,7 +619,7 @@ function GenerateHash(string) {
 const pathVars = {
       username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
       displayName: { name: "Display name", desc: "Display name of the poster.", default: "error", tags: ["displayname", "poster", "name"] },
-      fileName: { name: "File name", desc: "Username of the poster and the ID of the post", default: "error-0000000000000", tags: ["filename", "file"] },
+      fileName: { name: "File name", desc: "Username of the poster, the ID of the post and the media index.", default: "error-0000000000000-1", tags: ["filename", "file"] },
       postID: { name: "Post ID", desc: "ID of the post.", default: "0000000000000", tags: ["postid", "id", "rkey", "record", "recordkey"] },
       hash: { name: "Hash", desc: "Hash of the file URL.", default: "0", tags: ["hash"] },
       type: { name: "Type", desc: "Media type of the post.", default: "Image", tags: ["type", "media", "mediatype", "posttype", "format"] },
@@ -626,7 +629,8 @@ const pathVars = {
       bookmarkCount: { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", default: "0", tags: ["bookmarks", "bookmark", "bookmarked"] },
       replyCount: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
       repostCount: { name: "Reposts", desc: "Amount of reposts of the post.", default: "0", tags: ["reposts", "repost", "reposted"] },
-      likeCount: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] }
+      likeCount: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] },
+      mediaIndex: { name: "Media index", desc: "Number from 1-4 that indicates which of the post's media files is being downloaded.", default: "1", tags: ["index", "mediaindex"] }
 }
 
 function GetFilePath(properties, pathTemplate = null) {
@@ -713,17 +717,22 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             let media = ProcessMedia(record.embed)
 
             // URI doesn't match, try quoted post
-            if (!media.find(cid => url.includes(cid))) {
+            let mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+            if (mediaIndex == -1) {
                   postInfo = postInfo.embed.record.record || postInfo.embed.record
                   record = postInfo.value
+
+                  media = ProcessMedia(record.embed)
+                  mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
             }
+            mediaIndex++
 
             tryRun((() => info.postID = atURI.match(/[^\/]+$/)[0]))
             tryRun((() => info.hash = GenerateHash(url)))
 
             tryRun((() => info.username = postInfo.author.handle))
             tryRun((() => info.displayName = postInfo.author.displayName))
-            tryRun((() => info.fileName = info.username + "-" + info.postID))
+            tryRun((() => info.fileName = info.username + "-" + info.postID + "-" + mediaIndex))
             tryRun((() => info.timestamp = new Date(record.createdAt)))
             tryRun((() => info.language = record.langs[0]))
             tryRun((() => info.label = ProcessLabels(postInfo.labels)))
@@ -732,6 +741,7 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             tryRun((() => info.replyCount = postInfo.replyCount))
             tryRun((() => info.repostCount = postInfo.repostCount + postInfo.quoteCount))
             tryRun((() => info.likeCount = postInfo.likeCount))
+            tryRun((() => info.mediaIndex = mediaIndex))
 
             return info
       }
