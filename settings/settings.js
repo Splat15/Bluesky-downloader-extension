@@ -6,8 +6,8 @@ let postInfo
 fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exampleAtURI)
       .then(response =>
             response.text().then(post => {
-                  cachedExamplePost = JSON.parse(post)
-                  GetInfoFromThread(exampleAtURI, exampleURL, cachedExamplePost).then(info => {
+                  cachedExamplePost = JSON.parse(post).thread.post
+                  GetInfoFromThread(cachedExamplePost, exampleAtURI, exampleURL).then(info => {
                         postInfo = info
                         onExampleReady.forEach(func => func())
                   })
