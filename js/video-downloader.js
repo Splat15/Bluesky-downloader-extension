@@ -119,7 +119,7 @@ class VideoDownloader {
 
             let ffmpegLoading
 
-            if (type == Downloadbutton.Video || type == Downloadbutton.UploadedGIF) {
+            if (type.id == Downloadbutton.Video.id || type.id == Downloadbutton.UploadedGIF.id) {
                   if (!this.#ffmpeg) {
                         this.#ffmpeg = createFFmpeg({
                               corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
@@ -131,7 +131,7 @@ class VideoDownloader {
             }
 
             try {
-                  if (type == Downloadbutton.Video || type == Downloadbutton.UploadedGIF)
+                  if (type.id == Downloadbutton.Video.id || type.id == Downloadbutton.UploadedGIF.id)
                         await this.downloadVideo(url, filePath, fileExtension, ffmpegLoading)
 
                   else
@@ -151,7 +151,7 @@ class VideoDownloader {
 
             }
 
-            if (type == Downloadbutton.Video || type == Downloadbutton.UploadedGIF) {
+            if (type.id == Downloadbutton.Video.id || type.id == Downloadbutton.UploadedGIF.id) {
                   await ffmpegLoading
                   await this.#ffmpeg.exit()
             }
