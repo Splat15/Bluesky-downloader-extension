@@ -66,10 +66,10 @@ class Downloadbutton {
             Done: browser.runtime.getURL("../icons/checkbox.svg"),
             Error: browser.runtime.getURL("../icons/error.svg")
       }
-      static Image = { name: "Image", ext: ".jpg" }
-      static Video = { name: "Video", ext: ".mp4" }
-      static GIF = { name: "GIF", ext: ".webm" }
-      static UploadedGIF = { name: "GIF", ext: ".mp4" }
+      static Image = { name: "Image", ext: ".jpg", id: "image" }
+      static Video = { name: "Video", ext: ".mp4", id: "video" }
+      static GIF = { name: "GIF", ext: ".webm", id: "gif" }
+      static UploadedGIF = { name: "GIF", ext: ".mp4", id: "uploadedgif" }
 
       #mobileDevice = DetectMobileDevice()
       #inputMethod
@@ -169,10 +169,12 @@ class Downloadbutton {
             new MutationObserver((mutationList, observer) => {
                   let postData = script.getAttribute("post-data")
                   if (postData) {
-                        postData = JSON.parse(postData)
-                        this.rawPostInfo = postData.postInfo
-                        this.#atURI = postData.uri || this.rawPostInfo.uri
-                        observer.disconnect()
+                        try {
+                              postData = JSON.parse(postData)
+                              this.rawPostInfo = postData.postInfo
+                              this.#atURI = postData.uri || this.rawPostInfo.uri
+                              observer.disconnect()
+                        }catch{}
                   }
             }).observe(script, { attributes: true })
 
@@ -180,8 +182,8 @@ class Downloadbutton {
                   script.textContent = `
                         (function () {
                               const element = document.currentScript;
-                              const uri = GetURI(element)
-                              element.setAttribute("post-data", JSON.stringify(uri))
+                              const postData = GetURI(element)
+                              element.setAttribute("post-data", JSON.stringify(postData))
                         })()`
             })
 
@@ -272,7 +274,6 @@ class Downloadbutton {
 
                   // Fake GIFs uploaded by users need to be converted to the right format
                   if (this.type == Downloadbutton.UploadedGIF) {
-                        if (!GetSetting("gifsAsWEBM").value) this.#fileExtension = ".gif"
                         url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
                   }
 
@@ -518,7 +519,7 @@ class Downloadbutton {
                   if (!toast.mouseOn)
                         timeout = setTimeout(() => {
                               this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                        }, 2500);
+                        }, 3500);
 
                   // Mouse enters element
                   toast.onMouseEnter = () => {
@@ -533,7 +534,7 @@ class Downloadbutton {
                         if (!timeout)
                               timeout = setTimeout(() => {
                                     this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                              }, 2000);
+                              }, 2500);
                   }
             }
       }
@@ -574,10 +575,18 @@ class Downloadbutton {
       }
 
       async #GetInfoFromThread() {
+            try {
+                  if (!this.rawPostInfo) {
+                        this.rawPostInfo = await fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + this.#atURI)
+                        this.rawPostInfo = await this.rawPostInfo.text()
+                        this.rawPostInfo = JSON.parse(this.rawPostInfo)
+                        this.rawPostInfo = this.rawPostInfo.thread.post
+                  }
 
-            const newPostInfo = await GetInfoFromThread(this.rawPostInfo, this.#atURI, this.url)
-            this.postInfo = { ...this.postInfo, ...newPostInfo }
-            return
+                  const newPostInfo = await GetInfoFromThread(this.rawPostInfo, this.#atURI, this.url)
+                  this.postInfo = { ...this.postInfo, ...newPostInfo }
+                  return
+            }catch(e){console.error(e)}
       }
 
       #GetFilePath() {
@@ -711,7 +720,6 @@ function SetSetting(settingId, value, settings) {
 
 async function GetInfoFromThread(postInfo, atURI, url) {
       try {
-
             let info = {}
             let record = postInfo.record
             let media = ProcessMedia(record.embed)
