@@ -6,7 +6,7 @@ const { createFFmpeg, fetchFile } = FFmpeg
 // Modified downloader to run as a standalone class
 // Removed UI values
 // Removed unused logic
-// Extracted the video conversion locig into separate function
+// Extracted the video conversion logic into separate function
 // Made to work with video URLs directly
 // Made compatible as a web extension based on browser-extension-ffmpeg
 // https://github.com/Aniny21/browser-extension-ffmpeg/
@@ -86,7 +86,7 @@ class VideoDownloader {
       }
 
       async downloadVideo(url, filePath, fileExtension, ffmpegLoading) {
-            const videoBlob = await this.#proccessPlaylist(url);
+            const videoBlob = await this.#processPlaylist(url);
             await ffmpegLoading
             let fileBlob = await this.#convertVideo(videoBlob, fileExtension)
 
@@ -241,7 +241,7 @@ class VideoDownloader {
             return mp4Blob
       }
 
-      async #proccessPlaylist(playlistUrl) {
+      async #processPlaylist(playlistUrl) {
             const masterPlaylistResponse = await fetch(playlistUrl);
             const masterPlaylist = await masterPlaylistResponse.text();
 

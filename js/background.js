@@ -187,7 +187,7 @@ function SetSetting(settingId, value) {
                         for (let i = 0; i < tabIDs.length; i++) {
                               const tabID = tabIDs[i]
                               try {
-                                    // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
+                                    // Extension popup window can only be addressed with runtime.sendMessage but background script can't access this
                                     // Content script is tasked with repeating the message for the popup window
                                     browser.tabs.sendMessage(tabID, { type: "settings-update", settings: settings, repeat: i == 0 })
                               }

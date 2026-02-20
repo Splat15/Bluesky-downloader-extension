@@ -28,7 +28,7 @@ class NodeObserver {
             this.#observer.observe(node, { childList: true, subtree: true });
       }
 
-      // Recursively test addedd nodes against condition
+      // Recursively test added nodes against condition
       #TestNodeDeep(Test, node, Callback, singleUse, testDeep) {
             // If mutation is an added node and Test is true
             if (node.nodeType === Node.ELEMENT_NODE && Test(node)) {
@@ -230,7 +230,7 @@ class Downloadbutton {
             return downloadButton
       }
 
-      // Set sstyling for touch devices
+      // Set styling for touch devices
       SetInputSupport(inputMethod) {
             this.#inputMethod = inputMethod
             this.#downloadButtonDiv.style.opacity = this.#inputMethod == "touch" ? "1" : ""
@@ -797,11 +797,11 @@ function ProcessMedia(media) {
 
 
 function ProcessLabels(labels) {
-      // Severety of label from 0 to 2
+      // Severity of label from 0 to 2
       let labelScore = 0
       // Translation from label score to friendly names by index
       let friendlyNames = ["SFW", "NSFW", "Graphic"]
-      // Assignment of severety per label
+      // Assignment of severity per label
       let labelVals = [["porn", 1], ["sex", 1], ["nudity", 1], ["graphic-media", 2]]
 
       if (labels) {
@@ -821,17 +821,17 @@ function GetApproximateAge(date) {
       const timeDiffS = (Date.now() - date) / 1000 // Age in seconds
       const secondsInYear = 31536000 // Seconds in 365 days
       const secondsInDay = 86400
-      const secondsInhour = 3600
-      const secondsInminute = 60
+      const secondsInHour = 3600
+      const secondsInMinute = 60
 
       if (timeDiffS >= secondsInYear)
             ageStr = Math.round(timeDiffS / secondsInYear) + "y"
       else if (timeDiffS >= secondsInDay)
             ageStr = Math.round(timeDiffS / secondsInDay) + "d"
-      else if (timeDiffS >= secondsInhour)
-            ageStr = Math.round(timeDiffS / secondsInhour) + "h"
-      else if (timeDiffS >= secondsInminute)
-            ageStr = Math.round(timeDiffS / secondsInminute) + "m"
+      else if (timeDiffS >= secondsInHour)
+            ageStr = Math.round(timeDiffS / secondsInHour) + "h"
+      else if (timeDiffS >= secondsInMinute)
+            ageStr = Math.round(timeDiffS / secondsInMinute) + "m"
       else
             ageStr = Math.round(timeDiffS) + "s"
 
@@ -1111,7 +1111,7 @@ class ToastManager {
                   const divWidth = parseFloat(divComputedStyle.width)
 
                   const overflowAmount = textWidth - divWidth
-                  const scrollTime = overflowAmount * 0.02 // time for scrolling in seconds, higher multiplyer = slower movement
+                  const scrollTime = overflowAmount * 0.02 // time for scrolling in seconds, higher multiplier = slower movement
 
                   // Text is wider than div
                   if (overflowAmount > 0) {
