@@ -174,7 +174,7 @@ class Downloadbutton {
                               this.rawPostInfo = postData.postInfo
                               this.#atURI = postData.uri || this.rawPostInfo.uri
                               observer.disconnect()
-                        }catch{}
+                        } catch { }
                   }
             }).observe(script, { attributes: true })
 
@@ -586,7 +586,7 @@ class Downloadbutton {
                   const newPostInfo = await GetInfoFromThread(this.rawPostInfo, this.#atURI, this.url)
                   this.postInfo = { ...this.postInfo, ...newPostInfo }
                   return
-            }catch(e){console.error(e)}
+            } catch (e) { console.error(e) }
       }
 
       #GetFilePath() {
@@ -802,12 +802,12 @@ function ProcessLabels(labels) {
       // Translation from label score to friendly names by index
       let friendlyNames = ["SFW", "NSFW", "Graphic"]
       // Assignment of severety per label
-      let labelVals = { porn: 1, "sexual": 1, "nudity": 1, "graphic-media": 2 }
+      let labelVals = [["porn", 1], ["sex", 1], ["nudity", 1], ["graphic-media", 2]]
 
       if (labels) {
             for (let i = 0; i < labels.length && labelScore != 2; i++) {
                   let label = labels[i].val
-                  let labelVal = labelVals[label]
+                  let labelVal = labelVals.find(element => label.includes(element[0]))[1] || 0
                   if (labelVal && labelVal > labelScore)
                         labelScore = labelVal
             }
