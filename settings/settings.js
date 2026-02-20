@@ -43,7 +43,7 @@ class Setting {
             if (this.type == "toggle") {
                   // Parse setting HTML
                   this.element = domParser.parseFromString(`
-                  <div class="setting setting-${this.value ? "" : "in"}active">
+                  <div class="setting setting-${this.value ? "" : "in"}active" title="Toggle ${this.name}">
                         <div type="checkbox" class="checkbox">
                               <svg fill="none" width="14" viewBox="0 0 24 24" height="14" style="margin: 5px;">
                                     <path fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="butt"
@@ -79,7 +79,7 @@ class Setting {
                         <div class="setting path-setting">
                               <div class="path-input-desc">
                                     <p style="margin: auto 0;">${isMobile ? "File name" : "Download path"}</p>
-                                    <input id="pathUndoButton" class="path-undo-button" type="button">
+                                    <input id="pathUndoButton" class="path-undo-button" type="button" title="Undo changes">
                               </div>
                               <div id="pathInputContainer" class="path-input-container-container">
                                     <div class="path-input-container">
@@ -93,7 +93,7 @@ class Setting {
                               </div>
                               <p class="path-example" id="pathExample"></p>
                               <div class="path-actions path-input-vars-container">
-                                    <p id="pathActionInsert" class="path-input-action-label path-input-vars">Variables</p>
+                                    <p id="pathActionInsert" class="path-input-action-label path-input-vars" title="Open the variable selection">Variables</p>
                                     <div id="pathVarMenu" class="path-input-vars-menu">
                                           <div id="varList" class="path-input-menu-var-list">
                                           </div>
@@ -109,10 +109,10 @@ class Setting {
                               </div>
                               <div class="path-actions">
                                     <div class="path-input-action path-input-help">
-                                          <p id="pathActionHelp" class="path-input-action-label">Help</p>
+                                          <p id="pathActionHelp" class="path-input-action-label" title="Open the help popup">Help</p>
                                     </div>
                                     <div class="path-input-action path-input-reset">
-                                          <p id="pathActionReset" class="path-input-action-label">Reset</p>
+                                          <p id="pathActionReset" class="path-input-action-label" title="Reset path to default value">Reset</p>
                                     </div>
                               </div>
                         </div>`, "text/html")
