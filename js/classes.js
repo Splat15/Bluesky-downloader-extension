@@ -729,12 +729,14 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             if (mediaIndex == -1) {
                   postInfo = postInfo.embed.record.record || postInfo.embed.record
                   record = postInfo.value
-                  
+
+                  atURI = postInfo.uri
+
                   media = ProcessMedia(record.embed)
                   mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
             }
             mediaIndex++
-            if(mediaIndex == 1 && media.length == 1) mediaIndex = 0
+            if (mediaIndex == 1 && media.length == 1) mediaIndex = 0
 
             tryRun((() => info.postID = atURI.match(/[^\/]+$/)[0]))
             tryRun((() => info.hash = GenerateHash(url)))
