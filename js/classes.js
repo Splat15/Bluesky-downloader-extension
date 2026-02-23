@@ -585,6 +585,8 @@ class Downloadbutton {
 
                   const newPostInfo = await GetInfoFromThread(this.rawPostInfo, this.#atURI, this.url)
                   this.postInfo = { ...this.postInfo, ...newPostInfo }
+                  this.postInfo.type = this.type.name
+                  
                   return
             } catch (e) { console.error(e) }
       }
@@ -659,6 +661,7 @@ function GetFilePath(properties, pathTemplate = null) {
 
 
             Object.keys(pathVars).forEach(key => {
+                  console.log(key + ":", tempProperties[key])
                   pathTemplate = pathTemplate.replaceAll(
                         new RegExp(`%(${pathVars[key].tags.join("|")})%`, "gi"),
                         tempProperties[key] || pathVars[key].default
