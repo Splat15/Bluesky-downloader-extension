@@ -234,6 +234,7 @@ body {
   word-break: break-word;
   color: var(--text-locked);
   font-size: 12px;
+  min-height: 16px;
 }
 
 .path-input-container {
@@ -415,7 +416,7 @@ body {
 }
 
 .path-input-vars-menu-opened {
-  height: 157px;
+  height: 200px;
 }
 
 .path-input-menu-var-list {

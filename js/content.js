@@ -20,6 +20,29 @@ let inputMethod
 
 const minUptime = 1000 // Max. ms amount of time since install of extension for cleanup to be executed
 
+
+const mainThreadHelperLoaded = new Promise(resolve => {
+      // Cleanup
+      Array.from(document.querySelectorAll("#mainThreadHelper"))
+            .forEach(stylesheet => stylesheet.remove())
+
+      // Add main thread document
+      const script = document.createElement("script")
+      // Incorporate version number to avoid caching issue
+      script.src = browser.runtime.getURL("/js/document.js")
+      script.id = "mainThreadHelper"
+      document.head.appendChild(script)
+      
+      new MutationObserver((mutationList, observer) => {
+            let hasRun = script.getAttribute("has-run")
+            if (hasRun) {
+                  observer.disconnect()
+                  resolve()
+            }
+      }).observe(script, { attributes: true })
+})
+
+
 browser.runtime.onMessage.addListener((message) => {
 
       // Response to init request
@@ -192,7 +215,7 @@ function HandleInputChange(method) {
       // Manually re-add onboarding elements
       // Images
       try {
-            if ((!onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload").value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.image[0].element, downloadButtons.image[0], Downloadbutton.Image, inputMethod))
 
                   onboardingHasRun.image = true
@@ -204,7 +227,7 @@ function HandleInputChange(method) {
 
       // Videos
       try {
-            if ((!onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload").value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.video[0].videoElement, downloadButtons.video[0], Downloadbutton.Video, inputMethod))
 
                   onboardingHasRun.video = true
@@ -343,14 +366,14 @@ new NodeObserver(
 
 onInit.push(() => {
       // Remove old stylesheets
-      Array.from(document.querySelectorAll("#bsky-downloads-stylesheet"))
+      Array.from(document.querySelectorAll("#bskyDownloadStylesheet"))
             .forEach(stylesheet => stylesheet.remove())
 
       // Add stylesheet
       const stylesheet = document.createElement("link")
       // Incorporate version number to avoid caching issue
       stylesheet.href = browser.runtime.getURL("../css/style.css") + "?version=" + version
-      stylesheet.id = "bsky-downloads-stylesheet"
+      stylesheet.id = "bskyDownloadStylesheet"
       stylesheet.rel = "stylesheet"
       document.head.appendChild(stylesheet)
 })

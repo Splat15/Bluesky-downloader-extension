@@ -1,3 +1,19 @@
+let cachedExamplePost
+let exampleAtURI = "at://bsky.app/app.bsky.feed.post/3lxxo3i4qzs2c"
+let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
+let onExampleReady = []
+let postInfo
+fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exampleAtURI)
+      .then(response =>
+            response.text().then(post => {
+                  cachedExamplePost = JSON.parse(post).thread.post
+                  GetInfoFromThread(cachedExamplePost, exampleAtURI, exampleURL).then(info => {
+                        postInfo = info
+                        onExampleReady.forEach(func => func())
+                  })
+            })
+      )
+
 // Handles the display and function of different kinds of settings
 class Setting {
       container
@@ -27,7 +43,7 @@ class Setting {
             if (this.type == "toggle") {
                   // Parse setting HTML
                   this.element = domParser.parseFromString(`
-                  <div class="setting setting-${this.value ? "" : "in"}active">
+                  <div class="setting setting-${this.value ? "" : "in"}active" title="Toggle ${this.name}">
                         <div type="checkbox" class="checkbox">
                               <svg fill="none" width="14" viewBox="0 0 24 24" height="14" style="margin: 5px;">
                                     <path fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="butt"
@@ -63,7 +79,7 @@ class Setting {
                         <div class="setting path-setting">
                               <div class="path-input-desc">
                                     <p style="margin: auto 0;">${isMobile ? "File name" : "Download path"}</p>
-                                    <input id="pathUndoButton" class="path-undo-button" type="button">
+                                    <input id="pathUndoButton" class="path-undo-button" type="button" title="Undo changes">
                               </div>
                               <div id="pathInputContainer" class="path-input-container-container">
                                     <div class="path-input-container">
@@ -77,7 +93,7 @@ class Setting {
                               </div>
                               <p class="path-example" id="pathExample"></p>
                               <div class="path-actions path-input-vars-container">
-                                    <p id="pathActionInsert" class="path-input-action-label path-input-vars">Variables</p>
+                                    <p id="pathActionInsert" class="path-input-action-label path-input-vars" title="Open the variable selection">Variables</p>
                                     <div id="pathVarMenu" class="path-input-vars-menu">
                                           <div id="varList" class="path-input-menu-var-list">
                                           </div>
@@ -93,10 +109,10 @@ class Setting {
                               </div>
                               <div class="path-actions">
                                     <div class="path-input-action path-input-help">
-                                          <p id="pathActionHelp" class="path-input-action-label">Help</p>
+                                          <p id="pathActionHelp" class="path-input-action-label" title="Open the help popup">Help</p>
                                     </div>
                                     <div class="path-input-action path-input-reset">
-                                          <p id="pathActionReset" class="path-input-action-label">Reset</p>
+                                          <p id="pathActionReset" class="path-input-action-label" title="Reset path to default value">Reset</p>
                                     </div>
                               </div>
                         </div>`, "text/html")
@@ -122,8 +138,9 @@ class Setting {
 
 
                   // Add variables to list
-                  for (let i = 0; i < pathVars.length; i++) {
-                        const variable = pathVars[i]
+                  let pathVarKeys = Object.keys(pathVars)
+                  for (let i = 0; i < pathVarKeys.length; i++) {
+                        const variable = pathVars[pathVarKeys[i]]
 
                         const element = document.createElement("p")
                         element.classList.add("path-var")
@@ -220,7 +237,7 @@ class Setting {
                                           false,
                                           "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android"
                                     )
-                              
+
                               pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
                         }
                         this.value = pathInput.value
@@ -246,7 +263,10 @@ class Setting {
                   this.container.appendChild(this.element)
                   this.FocusPathInput()
 
-                  this.UpdatePathExample()
+                  if (!cachedExamplePost)
+                        onExampleReady.push(() => { this.UpdatePathExample() })
+                  else
+                        this.UpdatePathExample()
             }
 
             // Invalid type
@@ -264,7 +284,7 @@ class Setting {
       }
 
       // Set path input value manually
-      ChangePathVal(value) {
+      async ChangePathVal(value) {
             if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
                   // Only display warning if no warning is present
                   if (!mobilePathWarning || mobilePathWarning.dismissed)
@@ -289,14 +309,12 @@ class Setting {
       }
 
       // Simulate an example file path using example data
-      UpdatePathExample() {
-            const url = "https://cdn.bsky.app/img/feed_thumbnail/plain/did:plc:z72i7hdynmk6r22z27h6tvur/bafkreifihgfy33x5mxc6metbzi42iv53i2s3fkxm4c3cehg6xuq7ce4hfm@jpeg"
-            const hash = GenerateHash(url)
-            const username = "bsky.app"
-            const displayName = "Bluesky"
-            const type = Downloadbutton.Image.name
-
-            pathExample.textContent = GetFilePath(hash, type, username, displayName, this.value) + ".mp4"
+      async UpdatePathExample() {
+            if (cachedExamplePost) {
+                  pathExample.textContent = GetFilePath(postInfo, this.value) + ".mp4"
+            }
+            else
+                  pathExample.textContent = ""
       }
 
       // Set focus to path input field

@@ -28,7 +28,7 @@ class NodeObserver {
             this.#observer.observe(node, { childList: true, subtree: true });
       }
 
-      // Recursively test addedd nodes against condition
+      // Recursively test added nodes against condition
       #TestNodeDeep(Test, node, Callback, singleUse, testDeep) {
             // If mutation is an added node and Test is true
             if (node.nodeType === Node.ELEMENT_NODE && Test(node)) {
@@ -66,9 +66,10 @@ class Downloadbutton {
             Done: browser.runtime.getURL("../icons/checkbox.svg"),
             Error: browser.runtime.getURL("../icons/error.svg")
       }
-      static Image = { name: "Image", ext: ".jpg" }
-      static Video = { name: "Video", ext: ".mp4" }
-      static GIF = { name: "GIF", ext: ".webm" }
+      static Image = { name: "Image", ext: ".jpg", id: "image" }
+      static Video = { name: "Video", ext: ".mp4", id: "video" }
+      static GIF = { name: "GIF", ext: ".webm", id: "gif" }
+      static UploadedGIF = { name: "GIF", ext: ".mp4", id: "uploadedgif" }
 
       #mobileDevice = DetectMobileDevice()
       #inputMethod
@@ -80,69 +81,112 @@ class Downloadbutton {
       #progressCircleElem = null
       #toastManager
       #toast
-      #did
       #downloading = false
 
-
-      #hash
-      #displayName
+      #atURI
+      url
       #fileExtension
-      #fileName
       #filePath
-      #username
-      element
-      videoElement
+      #fileName
 
-      constructor(type, element, url, toastManager, hidden, inputMethod, videoElement = null) {
+      mediaElement
+      postElement
+
+      rawPostInfo
+      postInfoDone = false
+      postInfo = {
+            postID: undefined,
+            hash: undefined,
+            username: undefined,
+            displayName: undefined,
+            timestamp: undefined,
+            language: undefined,
+            label: undefined,
+            bookmarkCount: undefined,
+            replyCount: undefined,
+            repostCount: undefined,
+            likeCount: undefined
+      }
+
+
+      constructor(type, element, url, toastManager, hidden, inputMethod) {
             this.url = url
             this.type = type
             this.#toastManager = toastManager
-            this.element = element
+            this.mediaElement = element
             this.#inputMethod = inputMethod
-            this.videoElement = videoElement
 
-            // Get user id
-            this.#did = url.replace(/%3A/g, ":").match(/\/(did:plc:\w+)\//)
-            if (this.#did) this.#did = this.#did[1]
-            else this.#did = undefined
+
+            if (this.mediaElement.textContent == "GIF") {
+                  this.type = Downloadbutton.UploadedGIF
+                  this.mediaElement = this.mediaElement.parentElement.parentElement
+            }
 
             if (this.type == Downloadbutton.Image) {
                   this.url = this.url.replace("/feed_thumbnail/", "/feed_fullsize/")
 
-                  this.element.downloadButton = true
+                  this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.element.parentElement.appendChild(this.#downloadButtonDiv)
+                  this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.style.left = "16px !important")
 
-                  this.element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
 
             else if (this.type == Downloadbutton.Video) {
                   this.url = this.url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
-                  this.element.downloadButton = true
+                  this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.element.parentElement.insertBefore(this.#downloadButtonDiv, this.element)
+                  this.mediaElement.parentElement.insertBefore(this.#downloadButtonDiv, this.mediaElement)
             }
 
-            else if (this.type == Downloadbutton.GIF) {
-                  this.element.downloadButton = true
+            else if (this.type == Downloadbutton.GIF || this.type == Downloadbutton.UploadedGIF) {
+                  this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.element.parentElement.appendChild(this.#downloadButtonDiv)
+                  this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.element.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
+                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
                   altTextButtons.forEach(altTextButton => altTextButton.classList.add("alt-button-left"))
 
-                  this.element.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.element.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
 
             else {
                   throw new Error("Invalid download button type: " + this.type)
             }
+
+            /** Add script to doc to get uri from main thread.
+             * This looks for react properties which are only accessible in the main document thread.  */
+            let script = document.createElement("script")
+            script.id = "uriScript"
+            this.#downloadButtonDiv.appendChild(script)
+
+            new MutationObserver((mutationList, observer) => {
+                  let postData = script.getAttribute("post-data")
+                  if (postData) {
+                        try {
+                              postData = JSON.parse(postData)
+                              this.rawPostInfo = postData.postInfo
+                              this.#atURI = postData.uri || this.rawPostInfo.uri
+                              observer.disconnect()
+                        } catch { }
+                  }
+            }).observe(script, { attributes: true })
+
+            mainThreadHelperLoaded.then(() => {
+                  script.textContent = `
+                        (function () {
+                              const element = document.currentScript;
+                              const postData = GetURI(element)
+                              element.setAttribute("post-data", JSON.stringify(postData))
+                        })()`
+            })
+
       }
 
       SetVisibility(visibility) {
@@ -186,7 +230,7 @@ class Downloadbutton {
             return downloadButton
       }
 
-      // Set sstyling for touch devices
+      // Set styling for touch devices
       SetInputSupport(inputMethod) {
             this.#inputMethod = inputMethod
             this.#downloadButtonDiv.style.opacity = this.#inputMethod == "touch" ? "1" : ""
@@ -195,6 +239,8 @@ class Downloadbutton {
       /** Downloads the url based on type of button */
       async #Download(url) {
             try {
+                  console.log("Downloading " + url)
+
                   if (this.#downloading) return
                   this.#downloading = true
 
@@ -202,49 +248,43 @@ class Downloadbutton {
                   this.#CreateProgressCircle()
                   this.#progressCircle.set(0.01)
 
-                  if (GetSetting("downloadToast").value) this.#toast = this.#toastManager.DisplayToast()
+                  let toastDisplayed = false
+                  setTimeout(() => {
+                        if (!toastDisplayed && GetSetting("downloadToast").value) {
+                              toastDisplayed = true
+                              this.#toast = this.#toastManager.DisplayToast()
+                        }
+                  }, 300)
+
+                  if (!this.postInfoDone) {
+                        await this.#GetInfoFromThread()
+                        this.postInfoDone = true
+                  }
+
+                  this.#filePath = this.#GetFilePath()
+                  this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
 
                   this.#fileExtension = this.type.ext
-                  this.#hash = GenerateHash(url).toString()
-
-                  if (this.type != Downloadbutton.GIF) {
-                        if (!this.#username) {
-                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#did)
-                              const responseBody = JSON.parse(await response.text())
-                              this.#username = responseBody.handle
-                              this.#displayName = responseBody.displayName
+                  if (this.type == Downloadbutton.GIF)
+                        // Tenor and the bluesky mirrors use the last two letters of the ID to indicate format
+                        if (!GetSetting("gifsAsWEBM").value) {
+                              this.#fileExtension = ".gif"
+                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "AC")
                         }
+                        else
+                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "P3")
 
-                        this.#filePath = this.#GetFilePath()
-                        this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
-                  }
-                  else {
-                        if (!this.#username) {
-                              let profileElems = GetNthParent(this.element, 9).querySelectorAll("a[href]")
-
-                              for (let i = 0; i < profileElems.length; i++) {
-                                    let href = profileElems[i].href
-                                    let username = href.match(/(?<=\/profile\/)[^\/ ]+/)
-
-                                    if (username) {
-                                          this.#username = username[0]
-                                          break
-                                    }
-                              }
-
-                              const response = await fetch("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=" + this.#username)
-                              const responseBody = JSON.parse(await response.text())
-                              this.#displayName = responseBody.displayName
-                        }
-
-                        this.#filePath = this.#GetFilePath()
-                        this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
-
-                        // If gifs should be downloaded as .gif, change file extension. Rest of the logic is handled in the bg script
-                        if (!GetSetting("gifsAsWEBM").value) this.#fileExtension = ".gif"
+                  // Fake GIFs uploaded by users need to be converted to the right format
+                  if (this.type == Downloadbutton.UploadedGIF) {
+                        url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
                   }
 
                   this.#filePath += this.#fileExtension
+
+                  if (!toastDisplayed && GetSetting("downloadToast").value) {
+                        toastDisplayed = true
+                        this.#toast = this.#toastManager.DisplayToast()
+                  }
                   if (this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
@@ -257,13 +297,11 @@ class Downloadbutton {
 
                   try {
                         // Image download
-                        if (this.type != Downloadbutton.Video) {
+                        if (this.type != Downloadbutton.Video && this.type != Downloadbutton.UploadedGIF) {
 
                               // Old method without support for file paths
                               // Used on mobile devices without browser.downloads API
-                              if (this.#mobileDevice &&
-                                    (this.type == Downloadbutton.Image ||
-                                          (this.type == Downloadbutton.GIF && GetSetting("gifsAsWEBM").value))) {
+                              if (this.#mobileDevice) {
                                     // Get local URL
                                     const file = await fetch(url)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
@@ -322,35 +360,7 @@ class Downloadbutton {
 
                                                 // Download is finished
                                                 if (message.progress >= 100) {
-                                                      // Warn Librewolf users of promptless downloads
-                                                      if (!this.#mobileDevice) {
-                                                            const time = Date.now()
-                                                            window.addEventListener("blur", () => {
-                                                                  if (Date.now() - time > 200) return
-
-                                                                  browser.runtime.onMessage.addListener((message) => {
-                                                                        if (message.type == "librewolf-warning" && message.value !== true) {
-                                                                              browser.runtime.sendMessage({ type: "set-librewolf-warning" })
-                                                                              toastManager.DisplayToast("Your browser may not support promptless downloads", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#3rd-party-firefox-versions")
-                                                                        }
-                                                                  })
-
-                                                                  browser.runtime.sendMessage({ type: "get-librewolf-warning" })
-                                                            })
-                                                      }
-
                                                       this.#AddURLToHistory(url)
-
-                                                      if (message.fileBlob) {
-                                                            let fileURL = URL.createObjectURL(message.fileBlob)
-                                                            const a = document.createElement('a');
-                                                            a.download = this.#fileName + ".gif";
-                                                            a.href = fileURL;
-
-                                                            a.click();
-
-                                                            window.URL.revokeObjectURL(fileURL)
-                                                      }
 
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Done
 
@@ -372,7 +382,8 @@ class Downloadbutton {
                                           type: "bsky-download",
                                           id: id,
                                           url: url,
-                                          fileType: this.type.name,
+                                          fileType: this.type,
+                                          fileExt: this.#fileExtension,
                                           filePath: this.#filePath
                                     })
                               }
@@ -408,23 +419,6 @@ class Downloadbutton {
 
                                           // Download done
                                           if (message.progress == 100) {
-                                                // Warn Librewolf users of promptless downloads
-                                                if (!this.#mobileDevice) {
-                                                      const time = Date.now()
-                                                      window.addEventListener("blur", () => {
-                                                            if (Date.now() - time > 200) return
-
-                                                            browser.runtime.onMessage.addListener((message) => {
-                                                                  if (message.type == "librewolf-warning" && message.value !== true) {
-                                                                        browser.runtime.sendMessage({ type: "set-librewolf-warning" })
-                                                                        toastManager.DisplayToast("Your browser may not support promptless downloads", false, "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#3rd-party-firefox-versions")
-                                                                  }
-                                                            })
-
-                                                            browser.runtime.sendMessage({ type: "get-librewolf-warning" })
-                                                      })
-                                                }
-
                                                 // Save URL to history
                                                 this.#AddURLToHistory(url)
 
@@ -458,8 +452,8 @@ class Downloadbutton {
                                     type: "bsky-download",
                                     id: id,
                                     url: url,
-                                    fileType: this.type.name,
-                                    username: this.#username,
+                                    fileType: this.type,
+                                    fileExt: this.#fileExtension,
                                     filePath: this.#filePath
                               })
                         }
@@ -477,7 +471,24 @@ class Downloadbutton {
                   }
             }
             catch (error) {
-                  console.log(error)
+                  this.#downloading = false
+                  this.#downloadIcon.src = Downloadbutton.Icons.Error
+
+                  this.#toastManager.SetText(this.#toast, error)
+
+                  setTimeout(() => {
+                        this.#progressCircleElem.style.opacity = 0
+                        setTimeout(() => {
+                              try {
+                                    this.#downloadIcon.style.opacity = 1
+                                    this.#downloading = false
+                                    this.#DestroyProgressCircle()
+                              }
+                              catch { }
+                        }, 100);
+                  }, 800)
+
+                  throw new Error(error)
             }
       }
 
@@ -498,7 +509,7 @@ class Downloadbutton {
 
       /** Free up memory by destroying progress circle */
       #DestroyProgressCircle() {
-            this.#progressCircle.destroy()
+            tryRun(this.#progressCircle.destroy)
             this.#progressCircle = null;
 
             // Dismiss toast some time after mouse left
@@ -510,7 +521,7 @@ class Downloadbutton {
                   if (!toast.mouseOn)
                         timeout = setTimeout(() => {
                               this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                        }, 2500);
+                        }, 3500);
 
                   // Mouse enters element
                   toast.onMouseEnter = () => {
@@ -525,7 +536,7 @@ class Downloadbutton {
                         if (!timeout)
                               timeout = setTimeout(() => {
                                     this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                              }, 2000);
+                              }, 2500);
                   }
             }
       }
@@ -565,8 +576,25 @@ class Downloadbutton {
             }
       }
 
+      async #GetInfoFromThread() {
+            try {
+                  if (!this.rawPostInfo) {
+                        this.rawPostInfo = await fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + this.#atURI)
+                        this.rawPostInfo = await this.rawPostInfo.text()
+                        this.rawPostInfo = JSON.parse(this.rawPostInfo)
+                        this.rawPostInfo = this.rawPostInfo.thread.post
+                  }
+
+                  const newPostInfo = await GetInfoFromThread(this.rawPostInfo, this.#atURI, this.url)
+                  this.postInfo = { ...this.postInfo, ...newPostInfo }
+                  this.postInfo.type = this.type.name
+                  
+                  return
+            } catch (e) { console.error(e) }
+      }
+
       #GetFilePath() {
-            return GetFilePath(this.#hash, this.type.name, this.#username, this.#displayName)
+            return GetFilePath(this.postInfo)
       }
 }
 
@@ -601,35 +629,51 @@ function GenerateHash(string) {
       return Math.abs(hash);
 };
 
-const pathVars = [
-      { name: "Username", desc: "Username of the poster.", tags: ["username", "user", "tag"] },
-      { name: "Display name", desc: "Display name of the poster.", tags: ["displayname", "poster", "name"] },
-      { name: "File name", desc: "Username of the poster and the hash of the file URL.", tags: ["filename", "file"] },
-      { name: "Hash", desc: "Hash of the file URL.", tags: ["hash", "id"] },
-      { name: "Type", desc: "Media type of the post.", tags: ["type", "media", "mediatype", "posttype", "format"] }
-]
+const pathVars = {
+      username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
+      displayName: { name: "Display name", desc: "Display name of the poster.", default: "error", tags: ["displayname", "poster", "name"] },
+      fileName: { name: "File name", desc: "Username of the poster, the ID of the post and, on multi-image posts, which image is being downloaded.", default: "error-0000000000000-1", tags: ["filename", "file"] },
+      postID: { name: "Post ID", desc: "ID of the post.", default: "0000000000000", tags: ["postid", "id", "rkey", "record", "recordkey"] },
+      hash: { name: "Hash", desc: "Hash of the file URL.", default: "0", tags: ["hash"] },
+      type: { name: "Type", desc: "Media type of the post.", default: "Image", tags: ["type", "media", "mediatype", "posttype", "format"] },
+      timestamp: { name: "Age", desc: "Approximate age of the post, example: 15h.", default: "0s", tags: ["age", "time", "timestamp"] },
+      language: { name: "Language", desc: "Language of the post as a country code.", default: "en", tags: ["lang", "language"] },
+      label: { name: "Label", desc: "Label of the post. Either SFW, NSFW or Graphic.", default: "SFW", tags: ["label", "labels", "nsfw", "sfw", "warning"] },
+      bookmarkCount: { name: "Bookmarks", desc: "Amount of times the post has been bookmarked.", default: "0", tags: ["bookmarks", "bookmark", "bookmarked"] },
+      replyCount: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
+      repostCount: { name: "Reposts", desc: "Amount of reposts of the post.", default: "0", tags: ["reposts", "repost", "reposted"] },
+      likeCount: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] },
+      mediaIndex: { name: "Media index", desc: "Number from 1-4 that indicates which of the post's media files is being downloaded.", default: "1", tags: ["index", "mediaindex"] }
+}
 
-function GetFilePath(hash, type, username = "empty", displayName = "empty", pathTemplate = null) {
+function GetFilePath(properties, pathTemplate = null) {
       try {
+            let tempProperties = structuredClone(properties)
             // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
-            username = username.replaceAll(/\/\\/gi, "#")
-            displayName = displayName.replaceAll(/\/\\/gi, "#")
+            try {
+                  tempProperties.username = tempProperties.username.replaceAll(/\/\\/gi, "#")
+                  tempProperties.displayName = tempProperties.displayName.replaceAll(/\/\\/gi, "#")
+                  tempProperties.fileName = tempProperties.fileName.replaceAll(/\/\\/gi, "#")
+                  tempProperties.timestamp = GetApproximateAge(tempProperties.timestamp)
+            } catch { }
 
             if (pathTemplate === null) pathTemplate = GetSetting("downloadPath").value
 
             if (DetectMobileDevice()) pathTemplate = pathTemplate.replaceAll(/[\/\\]+/gi, "")
 
-            pathTemplate = pathTemplate
-                  .replaceAll(new RegExp(`%(${pathVars[0].tags.join("|")})%`, "gi"), username)
-                  .replaceAll(new RegExp(`%(${pathVars[1].tags.join("|")})%`, "gi"), displayName)
-                  .replaceAll(new RegExp(`%(${pathVars[2].tags.join("|")})%`, "gi"), username + "-" + hash)
-                  .replaceAll(new RegExp(`%(${pathVars[3].tags.join("|")})%`, "gi"), hash)
-                  .replaceAll(new RegExp(`%(${pathVars[4].tags.join("|")})%`, "gi"), type)
+
+            Object.keys(pathVars).forEach(key => {
+                  console.log(key + ":", tempProperties[key])
+                  pathTemplate = pathTemplate.replaceAll(
+                        new RegExp(`%(${pathVars[key].tags.join("|")})%`, "gi"),
+                        tempProperties[key] || pathVars[key].default
+                  )
+            })
 
             // Sanitize path for compatibility
             pathTemplate = pathTemplate.replaceAll(/\\{1, 2}/g, "/") // Replace backslashes with forward slashes
                   .replaceAll(/[^\/\w+-]+(?=$|\/)/g, "") // Truncate special characters at the end "file /file 🏳️‍⚧️" => "file/file"
-                  .replaceAll(/[^\/\w+-.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
+                  .replaceAll(/[^\/\w+ -.]/g, "_") // Replace special characters in the middle "files 01/file@01" => "files_01/file_01"
                   .replaceAll(/(?<=^|\/)\.+/g, "") // Remove leading dots ".files/.file" => "files/file"
                   .replaceAll(/\.(?=.+\/)/g, "_") // Remove dots in folder names "file.test/test" => "file_test/test"
                   .replaceAll(/(?<=^|\/)[^/]{0}(?=$|\/)/g, "empty") // Deal with empty folders / file names "/files/" => "empty/files/empty"
@@ -676,6 +720,130 @@ function SetSetting(settingId, value, settings) {
                   }
             }
       }
+}
+
+
+async function GetInfoFromThread(postInfo, atURI, url) {
+      try {
+            let info = {}
+            let record = postInfo.record
+            let media = ProcessMedia(record.embed)
+
+            // URI doesn't match, try quoted post
+            let mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+            if (mediaIndex == -1) {
+                  postInfo = postInfo.embed.record.record || postInfo.embed.record
+                  record = postInfo.value
+
+                  atURI = postInfo.uri
+
+                  media = ProcessMedia(record.embed)
+                  mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+            }
+            mediaIndex++
+            if (mediaIndex == 1 && media.length == 1) mediaIndex = 0
+
+            tryRun((() => info.postID = atURI.match(/[^\/]+$/)[0]))
+            tryRun((() => info.hash = GenerateHash(url)))
+
+            tryRun((() => info.username = postInfo.author.handle))
+            tryRun((() => info.displayName = postInfo.author.displayName))
+            tryRun((() => info.fileName = info.username + "-" + info.postID + (mediaIndex != 0 ? "-" + mediaIndex : "")))
+            tryRun((() => info.timestamp = new Date(record.createdAt)))
+            tryRun((() => info.language = record.langs[0]))
+            tryRun((() => info.label = ProcessLabels(postInfo.labels)))
+
+            tryRun((() => info.bookmarkCount = postInfo.bookmarkCount))
+            tryRun((() => info.replyCount = postInfo.replyCount))
+            tryRun((() => info.repostCount = postInfo.repostCount + postInfo.quoteCount))
+            tryRun((() => info.likeCount = postInfo.likeCount))
+            tryRun((() => info.mediaIndex = Math.max(mediaIndex, 1)))
+
+            return info
+      }
+      catch (e) {
+            console.error("Error while parsing post information: " + e)
+            return false
+      }
+
+}
+
+
+function ProcessMedia(media) {
+      if (!media) return null
+      let mediaURLs = []
+
+      // Handle quote posts with media
+      if (media.$type == "app.bsky.embed.recordWithMedia") {
+            media = media.media
+      }
+
+      // Handle images
+      if (media.$type == "app.bsky.embed.images") {
+            media.images.forEach(image => mediaURLs.push(image.image.ref.$link))
+      }
+      // Handle videos
+      else if (media.$type == "app.bsky.embed.video") {
+            mediaURLs.push(media.video.ref.$link)
+      }
+      // Handle external media such as tenor gifs
+      else if (media.$type == "app.bsky.embed.external") {
+            try {
+                  // Tenor encodes desired format as 2 letters at the end of the ID
+                  // media.tenor.com/*P3/*.gif => .webm
+                  // media.tenor.com/*AC/*.gif => .gif
+
+                  // Match GIF ID from tenor posts or website URLs with similar structure
+                  mediaURLs.push(media.external.uri.match(/https?:\/\/(?:\w+\.)+\w+\/([^\/]+)[^\/]{2}\//)[1])
+            }
+            catch {
+                  //window.alert("non tenor external media: " + media.external.uri)
+            }
+      }
+      return mediaURLs
+}
+
+
+function ProcessLabels(labels) {
+      // Severity of label from 0 to 2
+      let labelScore = 0
+      // Translation from label score to friendly names by index
+      let friendlyNames = ["SFW", "NSFW", "Graphic"]
+      // Assignment of severity per label
+      let labelVals = [["porn", 1], ["sex", 1], ["nudity", 1], ["graphic-media", 2]]
+
+      if (labels) {
+            for (let i = 0; i < labels.length && labelScore != 2; i++) {
+                  let label = labels[i].val
+                  let labelVal = labelVals.find(element => label.includes(element[0]))[1] || 0
+                  if (labelVal && labelVal > labelScore)
+                        labelScore = labelVal
+            }
+      }
+      return friendlyNames[labelScore]
+}
+
+function GetApproximateAge(date) {
+      let ageStr
+
+      const timeDiffS = (Date.now() - date) / 1000 // Age in seconds
+      const secondsInYear = 31536000 // Seconds in 365 days
+      const secondsInDay = 86400
+      const secondsInHour = 3600
+      const secondsInMinute = 60
+
+      if (timeDiffS >= secondsInYear)
+            ageStr = Math.round(timeDiffS / secondsInYear) + "y"
+      else if (timeDiffS >= secondsInDay)
+            ageStr = Math.round(timeDiffS / secondsInDay) + "d"
+      else if (timeDiffS >= secondsInHour)
+            ageStr = Math.round(timeDiffS / secondsInHour) + "h"
+      else if (timeDiffS >= secondsInMinute)
+            ageStr = Math.round(timeDiffS / secondsInMinute) + "m"
+      else
+            ageStr = Math.round(timeDiffS) + "s"
+
+      return ageStr
 }
 
 class FlashingBorder {
@@ -951,7 +1119,7 @@ class ToastManager {
                   const divWidth = parseFloat(divComputedStyle.width)
 
                   const overflowAmount = textWidth - divWidth
-                  const scrollTime = overflowAmount * 0.02 // time for scrolling in seconds, higher multiplyer = slower movement
+                  const scrollTime = overflowAmount * 0.02 // time for scrolling in seconds, higher multiplier = slower movement
 
                   // Text is wider than div
                   if (overflowAmount > 0) {
@@ -1257,4 +1425,22 @@ class FlashingBorders {
             this.#stop = true
             this.flashingBorders.forEach(flashingBorder => flashingBorder.Destroy())
       }
+}
+
+function tryRun(func, log = false) {
+      try { func() }
+      catch (e) {
+            if (log) console.log(e)
+      }
+}
+
+
+// Like querySelector but working outwards through parents
+function OuterQuerySelector(element, selector) {
+      while (!element.matches(selector)) {
+            if (element == document.body)
+                  return false
+            element = element.parentElement
+      }
+      return element
 }

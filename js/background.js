@@ -5,12 +5,9 @@ let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
 let currentVer = browser.runtime.getManifest().version
-let majorVerInfo = { version: "2.0.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.0.0"}}
-let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version 
+let majorVerInfo = { version: "2.1.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.1.0" } }
+let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version
 localStorage.setItem("lastMajorVer", majorVerInfo.version)
-
-// Causing issues. Disabled until I can find a better solution.
-let librewolfWarning = true //localStorage.getItem("librewolfWarning") == "true"
 
 let inputMethod = localStorage.getItem("inputMethod")
 
@@ -54,6 +51,16 @@ for (let i = 0; i < standardSettings.length; i++) {
       }
 }
 
+// Botch fix for changed name
+for (let i = 0; i < settings.length; i++) {
+      for (let j = 0; j < settings[i].length; j++) {
+            if (settings[i][j].id == "gifsAsWEBM") {
+                  settings[i][j].name = "Download Tenor GIFs as .webm"
+                  break
+            }
+      }
+}
+
 localStorage.setItem("settings", JSON.stringify(settings))
 
 
@@ -85,13 +92,11 @@ browser.runtime.onMessage.addListener((message, sender) => {
             if (!message.url || message.url.length == 0) {
                   let response = { type: "bsky-download-progress", id: message.id, url: message.url, error: "Error: URL empty" }
                   browser.tabs.sendMessage(sender.tab.id, response)
+                  return
             }
 
-            if (message.fileType == "GIF" && GetSetting("gifsAsWEBM").value)
-                  message.fileType = "Image"
-
             // Start download
-            downloader.download(message.url, message.filePath, message.fileType, (progress, error, fileBlob = null) => {
+            downloader.download(message.url, message.filePath, message.fileType, message.fileExt, (progress, error, fileBlob = null) => {
 
                   // Send progress messages to sender
                   let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }
@@ -129,18 +134,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
             localStorage.setItem("inputMethod", inputMethod)
       }
 
-      // Librewolf warning status get request
-      else if (message.type == "get-librewolf-warning") {
-            browser.tabs.sendMessage(sender.tab.id, { value: librewolfWarning, type: "librewolf-warning" })
-      }
-
-      // Librewolf warning status set request
-      else if (message.type == "set-librewolf-warning") {
-            librewolfWarning = true
-            localStorage.setItem("librewolfWarning", librewolfWarning)
-      }
-
-      // Librewolf warning status set request
+      // Update popup display status
       else if (message.type == "version-info-displayed") {
             showVerInfo = false
             for (let i = 0; i < tabIDs.length; i++) {
@@ -189,18 +183,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
       }
 });
 
-function GetFilePath(postType, userName, fileName, fileExt) {
-      let path = GetSetting("downloadPath").value
-
-      path = path.replaceAll(/%(posttype|type)%/gi, postType)
-            .replaceAll(/%(username|user|poster)%/gi, userName)
-            .replaceAll(/%(filename|file|id|hash)%/gi, fileName)
-      path += fileExt
-
-      return path
-}
-
-
 function SetSetting(settingId, value) {
       if (GetSetting(settingId).value == value)
             return
@@ -215,7 +197,7 @@ function SetSetting(settingId, value) {
                         for (let i = 0; i < tabIDs.length; i++) {
                               const tabID = tabIDs[i]
                               try {
-                                    // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
+                                    // Extension popup window can only be addressed with runtime.sendMessage but background script can't access this
                                     // Content script is tasked with repeating the message for the popup window
                                     browser.tabs.sendMessage(tabID, { type: "settings-update", settings: settings, repeat: i == 0 })
                               }
