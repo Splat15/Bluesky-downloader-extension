@@ -628,7 +628,7 @@ function GenerateHash(string) {
 const pathVars = {
       username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
       displayName: { name: "Display name", desc: "Display name of the poster.", default: "error", tags: ["displayname", "poster", "name"] },
-      fileName: { name: "File name", desc: "Username of the poster, the ID of the post and the media index.", default: "error-0000000000000-1", tags: ["filename", "file"] },
+      fileName: { name: "File name", desc: "Username of the poster, the ID of the post and, on multi-image posts, which image is being downloaded.", default: "error-0000000000000-1", tags: ["filename", "file"] },
       postID: { name: "Post ID", desc: "ID of the post.", default: "0000000000000", tags: ["postid", "id", "rkey", "record", "recordkey"] },
       hash: { name: "Hash", desc: "Hash of the file URL.", default: "0", tags: ["hash"] },
       type: { name: "Type", desc: "Media type of the post.", default: "Image", tags: ["type", "media", "mediatype", "posttype", "format"] },
@@ -752,7 +752,7 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             tryRun((() => info.replyCount = postInfo.replyCount))
             tryRun((() => info.repostCount = postInfo.repostCount + postInfo.quoteCount))
             tryRun((() => info.likeCount = postInfo.likeCount))
-            tryRun((() => info.mediaIndex = mediaIndex))
+            tryRun((() => info.mediaIndex = Math.max(mediaIndex, 1)))
 
             return info
       }
