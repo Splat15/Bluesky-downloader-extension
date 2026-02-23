@@ -295,7 +295,7 @@ class Downloadbutton {
 
                   try {
                         // Image download
-                        if (this.type != Downloadbutton.Video) {
+                        if (this.type != Downloadbutton.Video && this.type != Downloadbutton.UploadedGIF) {
 
                               // Old method without support for file paths
                               // Used on mobile devices without browser.downloads API
