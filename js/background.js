@@ -51,6 +51,16 @@ for (let i = 0; i < standardSettings.length; i++) {
       }
 }
 
+// Botch fix for changed name
+for (let i = 0; i < settings.length; i++) {
+      for (let j = 0; j < settings[i].length; j++) {
+            if (settings[i][j].id == "gifsAsWEBM") {
+                  settings[i][j].name = "Download Tenor GIFs as .webm"
+                  break
+            }
+      }
+}
+
 localStorage.setItem("settings", JSON.stringify(settings))
 
 
@@ -84,7 +94,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   browser.tabs.sendMessage(sender.tab.id, response)
                   return
             }
-            
+
             // Start download
             downloader.download(message.url, message.filePath, message.fileType, message.fileExt, (progress, error, fileBlob = null) => {
 
