@@ -729,18 +729,19 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             if (mediaIndex == -1) {
                   postInfo = postInfo.embed.record.record || postInfo.embed.record
                   record = postInfo.value
-
+                  
                   media = ProcessMedia(record.embed)
                   mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
             }
             mediaIndex++
+            if(mediaIndex == 1 && media.length == 1) mediaIndex = 0
 
             tryRun((() => info.postID = atURI.match(/[^\/]+$/)[0]))
             tryRun((() => info.hash = GenerateHash(url)))
 
             tryRun((() => info.username = postInfo.author.handle))
             tryRun((() => info.displayName = postInfo.author.displayName))
-            tryRun((() => info.fileName = info.username + "-" + info.postID + "-" + mediaIndex))
+            tryRun((() => info.fileName = info.username + "-" + info.postID + (mediaIndex != 0 ? "-" + mediaIndex : "")))
             tryRun((() => info.timestamp = new Date(record.createdAt)))
             tryRun((() => info.language = record.langs[0]))
             tryRun((() => info.label = ProcessLabels(postInfo.labels)))
@@ -789,7 +790,7 @@ function ProcessMedia(media) {
                   mediaURLs.push(media.external.uri.match(/https?:\/\/(?:\w+\.)+\w+\/([^\/]+)[^\/]{2}\//)[1])
             }
             catch {
-                  window.alert("non tenor external media: " + media.external.uri)
+                  //window.alert("non tenor external media: " + media.external.uri)
             }
       }
       return mediaURLs
