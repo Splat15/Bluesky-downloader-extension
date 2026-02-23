@@ -239,6 +239,8 @@ class Downloadbutton {
       /** Downloads the url based on type of button */
       async #Download(url) {
             try {
+                  console.log("Downloading " + url)
+
                   if (this.#downloading) return
                   this.#downloading = true
 

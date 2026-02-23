@@ -8,7 +8,7 @@ function GetURI(element) {
       // Get base post element
       let postElement = OuterQuerySelector(element, ["[data-testid*='Screen']>div>div>div>div>div", "div:has(>div>[data-testid*='feedItem-by'])"]).lastElementChild.lastElementChild
       console.log(postElement)
-      postElement.style.border = "solid green 1px"
+      //postElement.style.border = "solid green 1px"
 
       // Get property keys
       const keys = Object.getOwnPropertyNames(postElement)
