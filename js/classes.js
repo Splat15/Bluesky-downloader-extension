@@ -588,7 +588,7 @@ class Downloadbutton {
                   const newPostInfo = await GetInfoFromThread(this.rawPostInfo, this.#atURI, this.url)
                   this.postInfo = { ...this.postInfo, ...newPostInfo }
                   this.postInfo.type = this.type.name
-                  
+
                   return
             } catch (e) { console.error(e) }
       }
@@ -643,7 +643,17 @@ const pathVars = {
       replyCount: { name: "Replies", desc: "Amount of replies to the post.", default: "0", tags: ["replies", "replys", "reply", "replied", "comments", "comment"] },
       repostCount: { name: "Reposts", desc: "Amount of reposts of the post.", default: "0", tags: ["reposts", "repost", "reposted"] },
       likeCount: { name: "Likes", desc: "Amount of likes on the post.", default: "0", tags: ["likes", "like", "liked"] },
-      mediaIndex: { name: "Media index", desc: "Number from 1-4 that indicates which of the post's media files is being downloaded.", default: "1", tags: ["index", "mediaindex"] }
+      mediaIndex: { name: "Media index", desc: "Number from 1-4 that indicates which of the post's media files is being downloaded.", default: "1", tags: ["index", "mediaindex"] },
+
+      // Date components
+      year: { name: "Year", desc: "Year of the post date.", default: "0000", tags: ["year", "y"] },
+      year2: { name: "Year (two digits)", desc: "Truncated year of the post date.", default: "00", tags: ["year2", "y2"] },
+      month: { name: "Month ", desc: "Month of the post date.", default: "0", tags: ["month", "mo"] },
+      day: { name: "Day", desc: "Day of the post date.", default: "0", tags: ["day", "d"] },
+      hour: { name: "Hour", desc: "Hour of the post date.", default: "0", tags: ["hour", "h"] },
+      hour12: { name: "Hour (12hr)", desc: "Hour of the post date in 12hr format.", default: "0", tags: ["hour12", "h12"] },
+      minute: { name: "Minute", desc: "Minute of the post date.", default: "0", tags: ["minute", "m"] },
+      second: { name: "Second", desc: "Second of the post date.", default: "0", tags: ["second", "s"] }
 }
 
 function GetFilePath(properties, pathTemplate = null) {
@@ -743,13 +753,15 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             mediaIndex++
             if (mediaIndex == 1 && media.length == 1) mediaIndex = 0
 
+            const date = new Date(record.createdAt)
+
             tryRun((() => info.postID = atURI.match(/[^\/]+$/)[0]))
             tryRun((() => info.hash = GenerateHash(url)))
 
             tryRun((() => info.username = postInfo.author.handle))
             tryRun((() => info.displayName = postInfo.author.displayName))
             tryRun((() => info.fileName = info.username + "-" + info.postID + (mediaIndex != 0 ? "-" + mediaIndex : "")))
-            tryRun((() => info.timestamp = new Date(record.createdAt)))
+            tryRun((() => info.timestamp = date))
             tryRun((() => info.language = record.langs[0]))
             tryRun((() => info.label = ProcessLabels(postInfo.labels)))
 
@@ -758,6 +770,15 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             tryRun((() => info.repostCount = postInfo.repostCount + postInfo.quoteCount))
             tryRun((() => info.likeCount = postInfo.likeCount))
             tryRun((() => info.mediaIndex = Math.max(mediaIndex, 1)))
+
+            tryRun((() => info.year = date.getFullYear()))
+            tryRun((() => info.year2 = date.getFullYear() % 1000))
+            tryRun((() => info.month = date.getMonth() + 1))
+            tryRun((() => info.day = date.getDate()))
+            tryRun((() => info.hour = date.getHours()))
+            tryRun((() => info.hour12 = convert24rTo12hr(date.getHours())))
+            tryRun((() => info.minute = date.getMinutes()))
+            tryRun((() => info.second = date.getSeconds()))
 
             return info
       }
@@ -1434,7 +1455,6 @@ function tryRun(func, log = false) {
       }
 }
 
-
 // Like querySelector but working outwards through parents
 function OuterQuerySelector(element, selector) {
       while (!element.matches(selector)) {
@@ -1443,4 +1463,17 @@ function OuterQuerySelector(element, selector) {
             element = element.parentElement
       }
       return element
+}
+
+function convert24rTo12hr(hour) {
+      if (hour <= 11) {
+            if (hour == 0)
+                  return "12AM"
+            return hour + "AM"
+      }
+      else {
+            if (hour == 12)
+                  return "12PM"
+            return (hour % 12) + "PM"
+      }
 }
