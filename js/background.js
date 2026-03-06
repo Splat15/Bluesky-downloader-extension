@@ -27,7 +27,8 @@ const standardSettings = [
             { value: true, id: "gifDownload", type: "toggle", name: "GIF downloading" }
       ],
       [
-            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" }
+            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" },
+            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp" }
       ],
       [
             { value: true, id: "downloadToast", type: "toggle", name: "Show download popups" }

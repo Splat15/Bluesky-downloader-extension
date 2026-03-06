@@ -250,6 +250,10 @@ class Downloadbutton {
                         else
                               url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "P3")
 
+                  // If reqested, change file extension to .jpg
+                  else if (this.type == Downloadbutton.Image && !GetSetting("imagesAsWEBP").value)
+                        this.#fileExtension = ".jpg"
+
                   // Fake GIFs uploaded by users need to be converted to the right format
                   if (this.type == Downloadbutton.UploadedGIF) {
                         url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
@@ -278,9 +282,21 @@ class Downloadbutton {
                               // Old method without support for file paths
                               // Used on mobile devices without browser.downloads API
                               if (this.#mobileDevice) {
+                                    let originalURL = url
+
+                                    // Decide if image should be jpeg or webp
+                                    if (this.type == Downloadbutton.Image) {
+                                          if (GetSetting("imagesAsWEBP").value)
+                                                // Remove "@jpeg" modifier if present
+                                                url = url.replaceAll(/@jpeg$/gi, "")
+                                          else
+                                                // Add "@jpeg" modifier if not present
+                                                url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
+                                    }
+
                                     // Get local URL
-                                    const webpURL = url.replaceAll(/@jpeg$/gi, "")
-                                    const file = await fetch(webpURL)
+                                    const file = await fetch(url)
+
                                     this.#progressCircle.animate(0.5, { duration: 300 })
                                     if (this.#toast) this.#toastManager.SetProgress(this.#toast, 0.5)
                                     const fileBlob = await file.blob()
@@ -306,20 +322,30 @@ class Downloadbutton {
                                     }, 800)
 
                                     window.URL.revokeObjectURL(fileURL);
-                                    this.#AddURLToHistory(url)
+                                    this.#AddURLToHistory(originalURL)
                               }
 
                               // New method
                               else {
                                     // Generate random process ID
                                     const id = Math.round(Math.random() * 1000000000)
-                                    const webpURL = url.replaceAll(/@jpeg$/gi, "")
+                                    let originalURL = url
+
+                                    // Decide if image should be jpeg or webp
+                                    if (this.type == Downloadbutton.Image) {
+                                          if (GetSetting("imagesAsWEBP").value)
+                                                // Remove "@jpeg" modifier if present
+                                                url = url.replaceAll(/@jpeg$/gi, "")
+                                          else
+                                                // Add "@jpeg" modifier if not present
+                                                url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
+                                    }
 
                                     // Add listener for progress updates
                                     browser.runtime.onMessage.addListener(message => {
                                           if (message.type == "bsky-download-progress" &&
                                                 message.id == id &&
-                                                message.url == webpURL) {
+                                                message.url == url) {
 
                                                 if (message.hasOwnProperty("error")) {
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Error
@@ -338,7 +364,7 @@ class Downloadbutton {
 
                                                 // Download is finished
                                                 if (message.progress >= 100) {
-                                                      this.#AddURLToHistory(webpURL)
+                                                      this.#AddURLToHistory(originalURL)
 
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Done
 
@@ -359,7 +385,7 @@ class Downloadbutton {
                                     browser.runtime.sendMessage({
                                           type: "bsky-download",
                                           id: id,
-                                          url: webpURL,
+                                          url: url,
                                           fileType: this.type,
                                           fileExt: this.#fileExtension,
                                           filePath: this.#filePath
@@ -489,7 +515,7 @@ class Downloadbutton {
       #DestroyProgressCircle() {
             tryRun(this.#progressCircle.destroy)
             this.#progressCircle = null;
-            
+
             this.#progressCircleElem.remove()
 
             // Dismiss toast some time after mouse left
@@ -561,7 +587,7 @@ class Downloadbutton {
       #RunPostInfoScan() {
             return new Promise(resolve => {
                   if (this.infoScanDone) resolve()
-                        
+
                   else {
                         this.infoScanDone = true
 
