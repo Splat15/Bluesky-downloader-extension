@@ -66,7 +66,7 @@ class Downloadbutton {
             Done: browser.runtime.getURL("../icons/checkbox.svg"),
             Error: browser.runtime.getURL("../icons/error.svg")
       }
-      static Image = { name: "Image", ext: ".jpg", id: "image" }
+      static Image = { name: "Image", ext: ".webp", id: "image" }
       static Video = { name: "Video", ext: ".mp4", id: "video" }
       static GIF = { name: "GIF", ext: ".webm", id: "gif" }
       static UploadedGIF = { name: "GIF", ext: ".mp4", id: "uploadedgif" }
@@ -303,6 +303,7 @@ class Downloadbutton {
                               // Used on mobile devices without browser.downloads API
                               if (this.#mobileDevice) {
                                     // Get local URL
+                                    const webpURL = url.replaceAll(/@jpeg$/gi, "")
                                     const file = await fetch(url)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
                                     if (this.#toast) this.#toastManager.SetProgress(this.#toast, 0.5)
