@@ -280,7 +280,7 @@ class Downloadbutton {
                               if (this.#mobileDevice) {
                                     // Get local URL
                                     const webpURL = url.replaceAll(/@jpeg$/gi, "")
-                                    const file = await fetch(url)
+                                    const file = await fetch(webpURL)
                                     this.#progressCircle.animate(0.5, { duration: 300 })
                                     if (this.#toast) this.#toastManager.SetProgress(this.#toast, 0.5)
                                     const fileBlob = await file.blob()
@@ -313,12 +313,13 @@ class Downloadbutton {
                               else {
                                     // Generate random process ID
                                     const id = Math.round(Math.random() * 1000000000)
+                                    const webpURL = url.replaceAll(/@jpeg$/gi, "")
 
                                     // Add listener for progress updates
                                     browser.runtime.onMessage.addListener(message => {
                                           if (message.type == "bsky-download-progress" &&
                                                 message.id == id &&
-                                                message.url == url) {
+                                                message.url == webpURL) {
 
                                                 if (message.hasOwnProperty("error")) {
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Error
@@ -337,7 +338,7 @@ class Downloadbutton {
 
                                                 // Download is finished
                                                 if (message.progress >= 100) {
-                                                      this.#AddURLToHistory(url)
+                                                      this.#AddURLToHistory(webpURL)
 
                                                       this.#downloadIcon.src = Downloadbutton.Icons.Done
 
@@ -358,7 +359,7 @@ class Downloadbutton {
                                     browser.runtime.sendMessage({
                                           type: "bsky-download",
                                           id: id,
-                                          url: url,
+                                          url: webpURL,
                                           fileType: this.type,
                                           fileExt: this.#fileExtension,
                                           filePath: this.#filePath
