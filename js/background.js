@@ -5,7 +5,7 @@ let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
 let currentVer = browser.runtime.getManifest().version
-let majorVerInfo = { version: "2.1.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.1.0" } }
+let majorVerInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
 let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version
 localStorage.setItem("lastMajorVer", majorVerInfo.version)
 
