@@ -92,6 +92,8 @@ class Downloadbutton {
       mediaElement
       postElement
 
+      infoScanDone = false
+
       rawPostInfo
       postInfoDone = false
       postInfo = {
@@ -159,34 +161,6 @@ class Downloadbutton {
             else {
                   throw new Error("Invalid download button type: " + this.type)
             }
-
-            /** Add script to doc to get uri from main thread.
-             * This looks for react properties which are only accessible in the main document thread.  */
-            let script = document.createElement("script")
-            script.id = "uriScript"
-            this.#downloadButtonDiv.appendChild(script)
-
-            new MutationObserver((mutationList, observer) => {
-                  let postData = script.getAttribute("post-data")
-                  if (postData) {
-                        try {
-                              postData = JSON.parse(postData)
-                              this.rawPostInfo = postData.postInfo
-                              this.#atURI = postData.uri || this.rawPostInfo.uri
-                              observer.disconnect()
-                        } catch { }
-                  }
-            }).observe(script, { attributes: true })
-
-            mainThreadHelperLoaded.then(() => {
-                  script.textContent = `
-                        (function () {
-                              const element = document.currentScript;
-                              const postData = GetURI(element)
-                              element.setAttribute("post-data", JSON.stringify(postData))
-                        })()`
-            })
-
       }
 
       SetVisibility(visibility) {
@@ -255,6 +229,8 @@ class Downloadbutton {
                               this.#toast = this.#toastManager.DisplayToast()
                         }
                   }, 300)
+
+                  await this.#RunPostInfoScan()
 
                   if (!this.postInfoDone) {
                         await this.#GetInfoFromThread()
@@ -512,6 +488,8 @@ class Downloadbutton {
       #DestroyProgressCircle() {
             tryRun(this.#progressCircle.destroy)
             this.#progressCircle = null;
+            
+            this.#progressCircleElem.remove()
 
             // Dismiss toast some time after mouse left
             if (this.#toast) {
@@ -575,6 +553,46 @@ class Downloadbutton {
                   console.error(error)
                   return false
             }
+      }
+
+      /** Add script to doc to get uri from main thread.
+       * This looks for react properties which are only accessible in the main document thread.  */
+      #RunPostInfoScan() {
+            return new Promise(resolve => {
+                  if (this.infoScanDone) resolve()
+                        
+                  else {
+                        this.infoScanDone = true
+
+                        let script = document.createElement("script")
+                        script.id = "uriScript"
+                        this.#downloadButtonDiv.appendChild(script)
+
+                        new MutationObserver((mutationList, observer) => {
+                              let postData = script.getAttribute("post-data")
+                              if (postData) {
+                                    try {
+                                          postData = JSON.parse(postData)
+                                          this.rawPostInfo = postData.postInfo
+                                          this.#atURI = postData.uri || this.rawPostInfo.uri
+                                          observer.disconnect()
+
+                                          resolve()
+                                    } catch { }
+                              }
+                        }).observe(script, { attributes: true })
+
+                        // Await the injection of document.js by content.js
+                        mainThreadHelperLoaded.then(() => {
+                              script.textContent = `
+                        (function () {
+                              const element = document.currentScript;
+                              const postData = GetURI(element)
+                              element.setAttribute("post-data", JSON.stringify(postData))
+                        })()`
+                        })
+                  }
+            })
       }
 
       async #GetInfoFromThread() {

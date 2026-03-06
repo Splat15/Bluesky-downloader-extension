@@ -24,7 +24,7 @@ const minUptime = 1000 // Max. ms amount of time since install of extension for 
 const mainThreadHelperLoaded = new Promise(resolve => {
       // Cleanup
       Array.from(document.querySelectorAll("#mainThreadHelper"))
-            .forEach(stylesheet => stylesheet.remove())
+            .forEach(script => script.remove())
 
       // Add main thread document
       const script = document.createElement("script")
