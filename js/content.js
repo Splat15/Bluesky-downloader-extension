@@ -32,7 +32,7 @@ const mainThreadHelperLoaded = new Promise(resolve => {
       script.src = browser.runtime.getURL("/js/document.js")
       script.id = "mainThreadHelper"
       document.head.appendChild(script)
-      
+
       new MutationObserver((mutationList, observer) => {
             let hasRun = script.getAttribute("has-run")
             if (hasRun) {
@@ -116,7 +116,8 @@ browser.runtime.onMessage.addListener((message) => {
                   }
             }
 
-            versionInfo = message.versionInfo
+// Show version info in focussed tab for at least 3 seconds.  
+                        versionInfo = message.versionInfo
             setTimeout(() => {
                   if (versionInfo) {
                         versionInfoToast = toastManager.DisplayToast(
@@ -128,14 +129,83 @@ browser.runtime.onMessage.addListener((message) => {
                                     browser.runtime.sendMessage({ type: "version-info-displayed" })
                               }
                         )
+                        let lastFocusLossTime = Date.now()
+                        const minFocusTime = 3000
+                        const DismissTime = 5000
+
+
+                        const interval = setInterval(() => {
+                              if (document.visibilityState != "visible")
+                                    lastFocusLossTime = Date.now()
+                                    
+                              else if((Date.now() - lastFocusLossTime) > minFocusTime) {
+                                    clearInterval(interval)
+                                    browser.runtime.sendMessage({ type: "version-info-displayed" })
+
+                                    // Delay dismissal until mouse has hasn't been over the toast for specified time
+                                    if (versionInfoToast) {
+                                          let timeout = null
+
+                                          // Mouse was NOT on element before
+                                          if (!versionInfoToast.mouseOn)
+                                                timeout = setTimeout(() => {
+                                                      toastManager.DismissToast(versionInfoToast, toastManager.toastList)
+                                                }, DismissTime);
+
+                                          // Mouse enters element
+                                          versionInfoToast.onMouseEnter = () => {
+                                                if (timeout) {
+                                                      clearTimeout(timeout)
+                                                      timeout = null
+                                                }
+                                          }
+
+                                          // Mouse leaves element
+                                          versionInfoToast.onMouseLeave = () => {
+                                                if (!timeout)
+                                                      timeout = setTimeout(() => {
+                                                            toastManager.DismissToast(versionInfoToast, toastManager.toastList)
+                                                      }, DismissTime);
+                                          }
+                                    }
+                              }
+                        }, 200)
                   }
             }, 2000)
       }
 
       else if (message.type == "version-info-displayed") {
             versionInfo = null
-            if (versionInfoToast)
-                  versionInfoToast.Dismiss()
+
+            const minFocusTime = 3000
+            const DismissTime = 5000
+
+            // Delay dismissal until mouse has hasn't been over the toast for specified time
+            if (versionInfoToast) {
+                  let timeout = null
+
+                  // Mouse was NOT on element before
+                  if (!versionInfoToast.mouseOn)
+                        timeout = setTimeout(() => {
+                              toastManager.DismissToast(versionInfoToast, toastManager.toastList)
+                        }, DismissTime);
+
+                  // Mouse enters element
+                  versionInfoToast.onMouseEnter = () => {
+                        if (timeout) {
+                              clearTimeout(timeout)
+                              timeout = null
+                        }
+                  }
+
+                  // Mouse leaves element
+                  versionInfoToast.onMouseLeave = () => {
+                        if (!timeout)
+                              timeout = setTimeout(() => {
+                                    toastManager.DismissToast(versionInfoToast, toastManager.toastList)
+                              }, DismissTime);
+                  }
+            }
       }
 
       // Settings updates
