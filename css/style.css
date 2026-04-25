@@ -1,4 +1,4 @@
-.dark-mode {
+.bsky-downloader-dark-mode {
   --text-loading: rgb(103, 103, 103);
   --text-color: rgb(255, 255, 255);
   --toast-surface: rgb(34, 46, 63);
@@ -7,7 +7,7 @@
   --toast-action-hover: rgb(195, 205, 218);
 }
 
-.light-mode {
+.bsky-downloader-light-mode {
   --text-loading: rgb(103, 103, 103);
   --text-color: rgb(0, 0, 0);
   --toast-surface: rgb(239, 242, 246);
@@ -97,6 +97,7 @@
 }
 
 .toast-container {
+  pointer-events: none;
   position: fixed;
   right: 0px;
   bottom: 0px;
@@ -107,6 +108,7 @@
 
 .toast {
   background-color: var(--toast-surface);
+  pointer-events: all;
   right: 25px;
   width: 300px;
   display: flex;

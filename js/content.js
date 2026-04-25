@@ -9,6 +9,7 @@ let version
 let onInit = []
 let init = false
 let lightMode = false
+console.log(log("Initializing toast manager"))
 const toastManager = new ToastManager()
 let mediaElements = [] // Prevents duplicate application of download buttons and onboarding elements
 let versionInfoToast
@@ -22,6 +23,7 @@ const minUptime = 1000 // Max. ms amount of time since install of extension for 
 
 
 const mainThreadHelperLoaded = new Promise(resolve => {
+      console.log(log("Adding main thread code to document"))
       // Cleanup
       Array.from(document.querySelectorAll("#mainThreadHelper"))
             .forEach(script => script.remove())
@@ -31,15 +33,18 @@ const mainThreadHelperLoaded = new Promise(resolve => {
       // Incorporate version number to avoid caching issue
       script.src = browser.runtime.getURL("/js/document.js")
       script.id = "mainThreadHelper"
-      document.head.appendChild(script)
 
       new MutationObserver((mutationList, observer) => {
             let hasRun = script.getAttribute("has-run")
             if (hasRun) {
                   observer.disconnect()
+                  console.log(log("Main thread code has run"))
                   resolve()
             }
       }).observe(script, { attributes: true })
+
+      document.head.appendChild(script)
+      console.log(log("Main thread code added"))
 })
 
 
@@ -50,6 +55,7 @@ browser.runtime.onMessage.addListener((message) => {
             if (init) return
 
             init = true
+            console.log(log("Init response received"))
 
             onboardingStatus = message.onboardingStatus
             settings = message.settings
@@ -62,9 +68,10 @@ browser.runtime.onMessage.addListener((message) => {
                   browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
             }
 
+            console.log(log("Running cleanup for previous versions"))
             if (message.uptime < minUptime) InstallCleanup()
 
-
+            console.log(log("Running onInit"))
             onInit.forEach(element => {
                   element()
             });
@@ -85,39 +92,34 @@ browser.runtime.onMessage.addListener((message) => {
 
             // Initialize theme
             if (lightMode)
-                  document.documentElement.classList.add("light-mode")
+                  document.documentElement.classList.add("bsky-downloader-light-mode")
             else
-                  document.documentElement.classList.add("dark-mode")
+                  document.documentElement.classList.add("bsky-downloader-dark-mode")
 
             function HandleThemeChanges() {
                   // Get bsky theme from html element class
                   let lightModeNew = document.documentElement.classList.contains("theme--light")
                   // If different to saved value, update
                   if (lightMode != lightModeNew) {
+                        console.log(log("Theme change detected"))
                         lightMode = lightModeNew;
                         browser.runtime.sendMessage({ type: "set-light-mode", value: lightMode })
 
                         if (lightMode) {
-                              document.documentElement.classList.remove("dark-mode")
-                              document.documentElement.classList.add("light-mode")
+                              console.log(log("Applying light theme"))
+                              document.documentElement.classList.remove("bsky-downloader-dark-mode")
+                              document.documentElement.classList.add("bsky-downloader-light-mode")
                         }
                         else {
-                              document.documentElement.classList.remove("light-mode")
-                              document.documentElement.classList.add("dark-mode")
+                              console.log(log("Applying dark theme"))
+                              document.documentElement.classList.remove("bsky-downloader-light-mode")
+                              document.documentElement.classList.add("bsky-downloader-dark-mode")
                         }
-                  }
-
-                  if (!document.documentElement.classList.contains("dark-mode") &&
-                        !document.documentElement.classList.contains("light-mode")) {
-                        if (lighMode)
-                              document.documentElement.classList.add("light-mode")
-                        else
-                              document.documentElement.classList.add("dark-mode")
                   }
             }
 
-// Show version info in focussed tab for at least 3 seconds.  
-                        versionInfo = message.versionInfo
+            // Show version info in focussed tab for at least 3 seconds.  
+            versionInfo = message.versionInfo
             setTimeout(() => {
                   if (versionInfo) {
                         versionInfoToast = toastManager.DisplayToast(
@@ -137,8 +139,8 @@ browser.runtime.onMessage.addListener((message) => {
                         const interval = setInterval(() => {
                               if (document.visibilityState != "visible")
                                     lastFocusLossTime = Date.now()
-                                    
-                              else if((Date.now() - lastFocusLossTime) > minFocusTime) {
+
+                              else if ((Date.now() - lastFocusLossTime) > minFocusTime) {
                                     clearInterval(interval)
                                     browser.runtime.sendMessage({ type: "version-info-displayed" })
 
@@ -210,14 +212,17 @@ browser.runtime.onMessage.addListener((message) => {
 
       // Settings updates
       else if (message.type == "settings-update") {
+            console.log(log("Received settings update"))
             // Workaround
             // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
-            if (message.repeat)
-                  browser.runtime.sendMessage({ type: "setting-update", settings: settings })
+            if (message.repeat) {
+                  console.log(log("Relaying settings update"))
+                  browser.runtime.sendMessage({ type: "settings-update", settings: settings })
+            }
 
             settings = message.settings
 
-            console.log(settings)
+            console.log(log(settings))
 
 
             let img = GetSetting("imgDownload").value
@@ -231,6 +236,7 @@ browser.runtime.onMessage.addListener((message) => {
 
       // Updates for the status of unboarding
       else if (message.type == "onboarding-update") {
+            console.log(log("Received onboarding update"))
             onboardingStatus = message.onboardingStatus
             if (onboardingStatus.image) {
                   onboardingElements.image.forEach(borderElement => borderElement.Destroy())
@@ -266,6 +272,8 @@ document.documentElement.addEventListener("touchstart", () => {
 
 // Switch input method for all relevant elements
 function HandleInputChange(method) {
+      console.log(log("Input change detected: " + method))
+      
       inputMethod = method
       browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
 
@@ -292,7 +300,7 @@ function HandleInputChange(method) {
             }
       }
       catch (error) {
-            console.error(error)
+            console.error(log(error))
       }
 
       // Videos
@@ -304,14 +312,14 @@ function HandleInputChange(method) {
             }
       }
       catch (error) {
-            console.error(error)
+            console.error(log(error))
       }
 }
 
 
 // Add download buttons to images in feed
 new NodeObserver(
-      // rudimentary test
+      // Rudimentary test
       element =>
             element.tagName == "IMG" || element.tagName == "VIDEO",
 
@@ -346,7 +354,7 @@ new NodeObserver(
                         else
                               onInit.push(func)
                   }
-                  catch (error) { console.error(error) }
+                  catch (error) { console.error(log(error)) }
             }
 
             // Video element posts
@@ -403,7 +411,7 @@ new NodeObserver(
                                           onInit.push(func)
 
                               }
-                              catch (error) { console.error(error) }
+                              catch (error) { console.error(log(error)) }
                         })
                   }
 
@@ -427,7 +435,7 @@ new NodeObserver(
                                     onInit.push(func)
                         }
                         catch (error) {
-                              console.error(error)
+                              console.error(log(error))
                         }
                   }
             }
@@ -477,7 +485,7 @@ function InstallCleanup() {
                         }
                   }
                   catch (error) {
-                        console.error(error)
+                        console.error(log(error))
                   }
             })
 
@@ -500,7 +508,7 @@ function InstallCleanup() {
                                     }
                               }
                               catch (error) {
-                                    console.error(error)
+                                    console.error(log(error))
                               }
                         }
                   })
@@ -514,20 +522,7 @@ function InstallCleanup() {
                         downloadButtons.gif.push(downloadButton)
                   }
                   catch (error) {
-                        console.error(error)
+                        console.error(log(error))
                   }
             })
-}
-
-
-// Returns setting object with specified setting ID
-function GetSetting(settingId) {
-      for (let i = 0; i < settings.length; i++) {
-            for (let j = 0; j < settings[i].length; j++) {
-                  const setting = settings[i][j]
-                  if (setting.id == settingId) {
-                        return setting
-                  }
-            }
-      }
 }

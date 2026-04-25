@@ -1,3 +1,6 @@
+const documentStartTime = Date.now()
+let numLogs = 0
+
 /**
  * Observes an element for added subnodes and executes the **`Callback`** if the **`Test`** returns `true`.
  * 
@@ -57,7 +60,6 @@ class NodeObserver {
       }
 }
 
-
 // Download button
 /** Creates a download button structure at the specified **`element`**. */
 class Downloadbutton {
@@ -70,6 +72,14 @@ class Downloadbutton {
       static Video = { name: "Video", ext: ".mp4", id: "video" }
       static GIF = { name: "GIF", ext: ".webm", id: "gif" }
       static UploadedGIF = { name: "GIF", ext: ".mp4", id: "uploadedgif" }
+
+      static MimeTypes = {
+            ".jpg": "image/jpeg",
+            ".webp": "image/webp",
+            ".gif": "image/gif",
+            ".webm": "video/webm",
+            ".mp4": "video/mp4",
+      }
 
       #mobileDevice = DetectMobileDevice()
       #inputMethod
@@ -99,11 +109,13 @@ class Downloadbutton {
       postInfo = {
             postID: undefined,
             hash: undefined,
+            did: undefined,
             username: undefined,
             displayName: undefined,
             timestamp: undefined,
             language: undefined,
             label: undefined,
+            cid: undefined,
             bookmarkCount: undefined,
             replyCount: undefined,
             repostCount: undefined,
@@ -118,6 +130,7 @@ class Downloadbutton {
             this.mediaElement = element
             this.#inputMethod = inputMethod
 
+            console.log(log("Creating download button of type " + type.name + " for URL: " + url))
 
             if (this.mediaElement.textContent == "GIF") {
                   this.type = Downloadbutton.UploadedGIF
@@ -213,7 +226,13 @@ class Downloadbutton {
       /** Downloads the url based on type of button */
       async #Download(url) {
             try {
-                  console.log("Downloading " + url)
+                  const originalURL = url
+
+                  let imagesAsWEBP = undefined;
+                  let imgQualityMode = undefined;
+                  let imgQuality = undefined;
+
+                  console.log(log("Downloading " + url))
 
                   if (this.#downloading) return
                   this.#downloading = true
@@ -241,22 +260,45 @@ class Downloadbutton {
                   this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
 
                   this.#fileExtension = this.type.ext
-                  if (this.type == Downloadbutton.GIF)
+                  if (this.type == Downloadbutton.GIF) {
                         // Tenor and the bluesky mirrors use the last two letters of the ID to indicate format
                         if (!GetSetting("gifsAsWEBM").value) {
                               this.#fileExtension = ".gif"
+
                               url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "AC")
                         }
                         else
                               url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "P3")
-
-                  // If reqested, change file extension to .jpg
-                  else if (this.type == Downloadbutton.Image && !GetSetting("imagesAsWEBP").value)
-                        this.#fileExtension = ".jpg"
+                  }
 
                   // Fake GIFs uploaded by users need to be converted to the right format
-                  if (this.type == Downloadbutton.UploadedGIF) {
+                  else if (this.type == Downloadbutton.UploadedGIF) {
                         url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
+                  }
+
+                  // If reqested, change file extension to .jpg
+                  else if (this.type == Downloadbutton.Image) {
+                        // Get relevant settings
+                        imagesAsWEBP = GetSetting("imagesAsWEBP").value
+                        imgQualityMode = GetSetting("imgQualityMode").value
+                        imgQuality = GetSetting("imgQuality").value
+
+                        // Override file extension
+                        if (!imagesAsWEBP)
+                              this.#fileExtension = ".jpg"
+
+                        if (imgQualityMode) {
+                              // Change URL to API to get better quality
+                              url = `https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${this.postInfo.did}&cid=${this.postInfo.cid}`
+                        }
+                        else {
+                              if (imagesAsWEBP)
+                                    // Remove "@jpeg" modifier if present
+                                    url = url.replaceAll(/@jpeg$/gi, "")
+                              else
+                                    // Add "@jpeg" modifier if not present
+                                    url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
+                        }
                   }
 
                   this.#filePath += this.#fileExtension
@@ -265,7 +307,7 @@ class Downloadbutton {
                         toastDisplayed = true
                         this.#toast = this.#toastManager.DisplayToast()
                   }
-                  if (this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
+                  this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
                   await new Promise((resolve) => {
@@ -276,202 +318,98 @@ class Downloadbutton {
                   })
 
                   try {
-                        // Image download
-                        if (this.type != Downloadbutton.Video && this.type != Downloadbutton.UploadedGIF) {
+                        console.log(log("Sending download to background script"))
 
-                              // Old method without support for file paths
-                              // Used on mobile devices without browser.downloads API
-                              if (this.#mobileDevice) {
-                                    let originalURL = url
+                        // Generate process ID
+                        const id = Date.now()
 
-                                    // Decide if image should be jpeg or webp
-                                    if (this.type == Downloadbutton.Image) {
-                                          if (GetSetting("imagesAsWEBP").value)
-                                                // Remove "@jpeg" modifier if present
-                                                url = url.replaceAll(/@jpeg$/gi, "")
-                                          else
-                                                // Add "@jpeg" modifier if not present
-                                                url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
-                                    }
+                        // Add listener for progress updates
+                        browser.runtime.onMessage.addListener(message => {
+                              if (message.type == "bsky-download-progress" &&
+                                    message.id == id &&
+                                    message.url == url) {
 
-                                    // Get local URL
-                                    const file = await fetch(url)
-
-                                    this.#progressCircle.animate(0.5, { duration: 300 })
-                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, 0.5)
-                                    const fileBlob = await file.blob()
-                                    this.#progressCircle.animate(1, { duration: 300 })
-                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, 1)
-                                    const fileURL = URL.createObjectURL(fileBlob)
-
-                                    // Download file
-                                    const a = document.createElement('a')
-                                    a.download = this.#filePath
-                                    a.href = fileURL
-                                    a.click()
-
-                                    this.#downloadIcon.src = Downloadbutton.Icons.Done
-
-                                    setTimeout(() => {
+                                    if (message.hasOwnProperty("error")) {
+                                          this.#downloadIcon.src = Downloadbutton.Icons.Error
                                           this.#progressCircleElem.style.opacity = 0
                                           setTimeout(() => {
                                                 this.#downloadIcon.style.opacity = 1
                                                 this.#downloading = false
                                                 this.#DestroyProgressCircle()
-                                          }, 100);
-                                    }, 800)
-
-                                    window.URL.revokeObjectURL(fileURL);
-                                    this.#AddURLToHistory(originalURL)
-                              }
-
-                              // New method
-                              else {
-                                    // Generate random process ID
-                                    const id = Math.round(Math.random() * 1000000000)
-                                    let originalURL = url
-
-                                    // Decide if image should be jpeg or webp
-                                    if (this.type == Downloadbutton.Image) {
-                                          if (GetSetting("imagesAsWEBP").value)
-                                                // Remove "@jpeg" modifier if present
-                                                url = url.replaceAll(/@jpeg$/gi, "")
-                                          else
-                                                // Add "@jpeg" modifier if not present
-                                                url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
+                                          }, 300);
+                                          throw new Error(message.error)
                                     }
 
-                                    // Add listener for progress updates
-                                    browser.runtime.onMessage.addListener(message => {
-                                          if (message.type == "bsky-download-progress" &&
-                                                message.id == id &&
-                                                message.url == url) {
+                                    const progress = message.progress / 100
+                                    this.#progressCircle.animate(progress, { duration: 300 })
+                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
 
-                                                if (message.hasOwnProperty("error")) {
-                                                      this.#downloadIcon.src = Downloadbutton.Icons.Error
-                                                      this.#progressCircleElem.style.opacity = 0
-                                                      setTimeout(() => {
-                                                            this.#downloadIcon.style.opacity = 1
-                                                            this.#downloading = false
-                                                            this.#DestroyProgressCircle()
-                                                      }, 300);
-                                                      throw new Error(message.error)
-                                                }
+                                    // Download is finished
+                                    if (message.progress >= 100) {
+                                          console.log(log("Download successful"))
 
-                                                const progress = message.progress / 100
-                                                this.#progressCircle.animate(progress, { duration: 300 })
-                                                if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
+                                          this.#AddURLToHistory(originalURL)
 
-                                                // Download is finished
-                                                if (message.progress >= 100) {
-                                                      this.#AddURLToHistory(originalURL)
+                                          if (message.fileBlob) {
+                                                let fileURL = URL.createObjectURL(message.fileBlob)
+                                                const a = document.createElement('a');
+                                                a.download = this.#fileName + this.#fileExtension;
+                                                a.href = fileURL;
 
-                                                      this.#downloadIcon.src = Downloadbutton.Icons.Done
+                                                a.click();
 
-                                                      setTimeout(() => {
-                                                            this.#progressCircleElem.style.opacity = 0
-                                                            setTimeout(() => {
-                                                                  this.#downloadIcon.style.opacity = 1
-                                                                  this.#downloading = false
-                                                                  this.#DestroyProgressCircle()
-                                                            }, 100);
-                                                      }, 800)
-                                                }
+                                                window.URL.revokeObjectURL(fileURL)
+                                                a.remove()
                                           }
 
-                                    })
-
-                                    // Send download request
-                                    browser.runtime.sendMessage({
-                                          type: "bsky-download",
-                                          id: id,
-                                          url: url,
-                                          fileType: this.type,
-                                          fileExt: this.#fileExtension,
-                                          filePath: this.#filePath
-                                    })
-                              }
-                        }
-
-                        // Video download
-                        else {
-                              // Generate unique ID for process
-                              const id = Math.round(Math.random() * 1000000000)
-
-                              // Add listener for progress updates from background script
-                              browser.runtime.onMessage.addListener((message) => {
-                                    if (message.type == "bsky-download-progress" &&
-                                          message.id == id &&
-                                          message.url == url) {
-
-                                          // Error occurred during download, skipped file 
-                                          if (message.hasOwnProperty("error")) {
-                                                this.#downloadIcon.src = Downloadbutton.Icons.Error
+                                          this.#downloadIcon.src = Downloadbutton.Icons.Done
+                                          setTimeout(() => {
                                                 this.#progressCircleElem.style.opacity = 0
                                                 setTimeout(() => {
                                                       this.#downloadIcon.style.opacity = 1
                                                       this.#downloading = false
                                                       this.#DestroyProgressCircle()
-                                                }, 300);
-                                                throw new Error(message.error)
-                                          }
-
-                                          // Progress update
-                                          const progress = message.progress / 100
-                                          this.#progressCircle.animate(progress, { duration: 300 })
-                                          if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
-
-                                          // Download done
-                                          if (message.progress == 100) {
-                                                // Save URL to history
-                                                this.#AddURLToHistory(url)
-
-                                                if (message.fileBlob) {
-                                                      let fileURL = URL.createObjectURL(message.fileBlob)
-                                                      const a = document.createElement('a');
-                                                      a.download = this.#fileName + ".mp4";
-                                                      a.href = fileURL;
-
-                                                      a.click();
-
-                                                      window.URL.revokeObjectURL(fileURL)
-                                                }
-
-                                                // transition back to static icon
-                                                this.#downloadIcon.src = Downloadbutton.Icons.Done
-                                                setTimeout(() => {
-                                                      this.#progressCircleElem.style.opacity = 0
-                                                      setTimeout(() => {
-                                                            this.#downloadIcon.style.opacity = 1
-                                                            this.#downloading = false
-                                                            this.#DestroyProgressCircle()
-                                                      }, 200);
-                                                }, 800)
-                                          }
+                                                }, 200);
+                                          }, 800)
                                     }
-                              })
+                              }
 
-                              // Send download request to background script
-                              browser.runtime.sendMessage({
-                                    type: "bsky-download",
-                                    id: id,
+                        })
+
+                        // Send download request
+                        browser.runtime.sendMessage({
+                              type: "bsky-download",
+                              id: id,
+                              downloadInfo: {
                                     url: url,
                                     fileType: this.type,
                                     fileExt: this.#fileExtension,
-                                    filePath: this.#filePath
-                              })
-                        }
+                                    filePath: this.#filePath,
+                                    mimeType: Downloadbutton.MimeTypes[this.#fileExtension],
+                                    imgCompression: imgQualityMode,
+                                    imgQuality: imgQuality
+                              }
+                        })
                   }
                   catch (error) {
-                        console.error(error)
-
+                        this.#downloading = false
                         this.#downloadIcon.src = Downloadbutton.Icons.Error
-                        this.#progressCircleElem.style.opacity = 0
+
+                        this.#toastManager.SetText(this.#toast, error)
+
                         setTimeout(() => {
-                              this.#downloadIcon.style.opacity = 1
-                              this.#downloading = false
-                              this.#DestroyProgressCircle()
-                        }, 300);
+                              this.#progressCircleElem.style.opacity = 0
+                              setTimeout(() => {
+                                    try {
+                                          this.#downloadIcon.style.opacity = 1
+                                          this.#downloading = false
+                                          this.#DestroyProgressCircle()
+                                    }
+                                    catch { }
+                              }, 100);
+                        }, 800)
+
+                        throw new Error(error)
                   }
             }
             catch (error) {
@@ -558,7 +496,7 @@ class Downloadbutton {
                   localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
             }
             catch (error) {
-                  console.error(error)
+                  console.error(log("Error while adding URL to history: " + error))
             }
       }
 
@@ -577,7 +515,7 @@ class Downloadbutton {
                   return _storage && _storage.length > 0 && _storage.indexOf(hash) !== -1
             }
             catch (error) {
-                  console.error(error)
+                  console.error(log("Error while fetching URL from history: " + error))
                   return false
             }
       }
@@ -636,7 +574,9 @@ class Downloadbutton {
                   this.postInfo.type = this.type.name
 
                   return
-            } catch (e) { console.error(e) }
+            } catch (e) {
+                  console.error(log("Error while fetching thread information: " + e))
+            }
       }
 
       #GetFilePath() {
@@ -719,7 +659,6 @@ function GetFilePath(properties, pathTemplate = null) {
 
 
             Object.keys(pathVars).forEach(key => {
-                  console.log(key + ":", tempProperties[key])
                   pathTemplate = pathTemplate.replaceAll(
                         new RegExp(`%(${pathVars[key].tags.join("|")})%`, "gi"),
                         tempProperties[key] || pathVars[key].default
@@ -738,8 +677,7 @@ function GetFilePath(properties, pathTemplate = null) {
             return pathTemplate
       }
       catch (e) {
-            console.error(e)
-            console.error("Invalid file path")
+            console.error(log("Invalid file path template: " + e))
             return "error"
       }
 }
@@ -755,6 +693,7 @@ function GetNthParent(element, n) {
 }
 
 function GetSetting(settingId) {
+      console.log(log("Fetching setting: " + settingId))
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
@@ -766,27 +705,32 @@ function GetSetting(settingId) {
 }
 
 function SetSetting(settingId, value, settings) {
+      console.log(log("Overwriting setting: " + settingId + " => " + value))
       browser.runtime.sendMessage({ type: "set-setting", settingId: settingId, value: value })
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
                   if (setting.id == settingId) {
                         setting.value = value;
-                        return
+                        return true
                   }
             }
       }
+
+      return false
 }
 
 
 async function GetInfoFromThread(postInfo, atURI, url) {
       try {
+            console.log(log("Getting post info from thread"))
             let info = {}
             let record = postInfo.record
             let media = ProcessMedia(record.embed)
 
             // URI doesn't match, try quoted post
-            let mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+            let cid = media.find(cid => url.includes(cid))
+            let mediaIndex = media.indexOf(cid)
             if (mediaIndex == -1) {
                   postInfo = postInfo.embed.record.record || postInfo.embed.record
                   record = postInfo.value
@@ -805,11 +749,13 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             tryRun((() => info.hash = GenerateHash(url)))
 
             tryRun((() => info.username = postInfo.author.handle))
+            tryRun((() => info.did = postInfo.author.did))
             tryRun((() => info.displayName = postInfo.author.displayName))
             tryRun((() => info.fileName = info.username + "-" + info.postID + (mediaIndex != 0 ? "-" + mediaIndex : "")))
             tryRun((() => info.timestamp = date))
             tryRun((() => info.language = record.langs[0]))
             tryRun((() => info.label = ProcessLabels(postInfo.labels)))
+            tryRun((() => info.cid = cid))
 
             tryRun((() => info.bookmarkCount = postInfo.bookmarkCount))
             tryRun((() => info.replyCount = postInfo.replyCount))
@@ -829,7 +775,7 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             return info
       }
       catch (e) {
-            console.error("Error while parsing post information: " + e)
+            console.error(log("Error while parsing post information: " + e))
             return false
       }
 
@@ -947,6 +893,7 @@ class FlashingBorder {
       }
 
       Start() {
+            console.log(log("Starting flashing border"))
             if (this.#active) return
             this.#active = true
 
@@ -957,6 +904,7 @@ class FlashingBorder {
       }
 
       Stop() {
+            console.log(log("Stopping flashing border"))
             return new Promise((resolve, reject) => {
                   if (!this.#active) reject
                   this.#active = false
@@ -971,6 +919,7 @@ class FlashingBorder {
 
       Destroy() {
             try {
+                  console.log(log("Destroying flashing border"))
                   this.Stop().then(() => {
                         this.borderElement.remove()
                   })
@@ -1067,6 +1016,7 @@ class ToastManager {
       }
 
       DisplayToast(text, progressBar = true, helpLink = null, onDismiss = null) {
+            console.log(log("Displaying toast"))
             let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout, helpLink, onDismiss)
             toast.onAction = () => { this.DismissToast(toast, this.toastList) }
             this.toastList.unshift(toast)
@@ -1497,7 +1447,7 @@ class FlashingBorders {
 function tryRun(func, log = false) {
       try { func() }
       catch (e) {
-            if (log) console.log(e)
+            if (log) console.error(log(e))
       }
 }
 
@@ -1522,4 +1472,23 @@ function convert24rTo12hr(hour) {
                   return "12PM"
             return (hour % 12) + "PM"
       }
+}
+
+// Add formatting, timestamps and numbering to logs
+function log(text) {
+      try {
+            numLogs++;
+            // Count up number of logs, display document time and input text
+            return `${textPadFactor(numLogs.toString(), 3)} ${textPadFactor((Date.now() - documentStartTime).toString(), 6)}   ${text}`
+      } catch (e) {
+            console.error("Error during logging")
+            console.error(e)
+      }
+}
+
+// Pads text input length to a multiple of the factor
+function textPadFactor(text, factor, paddingChar = " ", minLen) {
+      while (text.length % factor != 0)
+            text = paddingChar + text
+      return text
 }

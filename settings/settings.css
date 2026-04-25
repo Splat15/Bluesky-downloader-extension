@@ -58,7 +58,7 @@
   --button-blue: rgb(0, 106, 255);
   --button-blue-hover: rgb(0, 89, 214);
   --button-blue-active: rgb(35, 127, 255);
-  
+
   --help-popup-dismiss-filter: brightness(40%);
 
   background-color: var(--bg);
@@ -94,6 +94,7 @@ body {
   color: var(--text);
   text-align: left;
   font-weight: 400;
+  overflow-x: hidden;
 }
 
 .header {
@@ -109,11 +110,28 @@ body {
 .category {
   display: flex;
   gap: 8px;
+  padding: 0px 20px;
   flex-direction: column;
 }
 
+.category-separator {
+  width: 100%;
+  height: 0.6667px;
+  border-top: solid 1px var(--separator-border);
+  margin-top: 8px;
+  margin-bottom: 8px;
+  transition: all ease 0.2s;
+}
+
+.category-separator-hidden {
+  overflow: hidden;
+  height: 0px;
+  margin-top: -8px;
+  border-color: transparent;
+}
+
 .settings {
-  padding: 12px 20px;
+  padding: 12px 0px;
 }
 
 .setting {
@@ -173,14 +191,6 @@ body {
 
 .setting-inactive .checkbox > svg {
   opacity: 0;
-}
-
-.category-separator {
-  width: 100%;
-  height: 0.6667px;
-  border-top: solid 1px var(--separator-border);
-  margin-top: 8px;
-  margin-bottom: 8px;
 }
 
 .path-input {
@@ -594,4 +604,175 @@ body {
 .help-popup-text {
   max-height: 60%;
   overflow: scroll;
+}
+
+.slider-header {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.slider-subtext {
+  width: fit-content;
+}
+
+.slider {
+  display: flex;
+  flex-direction: column;
+  --slider-height: 5px;
+  transition: all ease 0.2s;
+}
+
+.slider-hidden {
+  margin-top: -70px;
+}
+
+.slider-body {
+  width: 100%;
+  height: 30px;
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+}
+
+.slider-container {
+  width: 100%;
+  height: 100%;
+  margin: auto;
+  position: relative;
+}
+
+.slider-input {
+  position: absolute;
+  width: calc(100% + 20px);
+  height: 100%;
+  left: -10px;
+  margin: auto;
+  opacity: 0;
+}
+
+.slider-bg {
+  user-select: none;
+  pointer-events: none;
+  position: absolute;
+  top: calc(50% - (var(--slider-height) / 2));
+  left: 0px;
+  width: 100%;
+  height: var(--slider-height);
+  background-color: var(--surface-2);
+  border-radius: 10000px;
+}
+
+.slider-active-bar {
+  user-select: none;
+  pointer-events: none;
+  position: absolute;
+  top: calc(50% - (var(--slider-height) / 2));
+  left: 0px;
+  height: var(--slider-height);
+  background-color: var(--button-blue);
+  border-radius: 10000px;
+  transition: all ease 0.1s;
+}
+
+.slider-knob {
+  user-select: none;
+  pointer-events: none;
+  --knob-inner: 8px;
+  --knob-outer: 12px;
+  position: absolute;
+  top: 0px;
+  transform: translate(
+    calc(var(--knob-outer) / (-2)),
+    calc(15px - var(--knob-outer) + (var(--knob-outer) / 2))
+  );
+  height: var(--knob-inner);
+  width: var(--knob-inner);
+  background-color: var(--text);
+  border-radius: 10000px;
+  border: solid var(--button-blue);
+  border-width: calc((var(--knob-outer) - var(--knob-inner)) / 2);
+  transition: all ease 0.1s;
+}
+
+.slider-body:hover .slider-knob {
+  --knob-inner: 12px;
+  --knob-outer: 20px;
+}
+
+.slider-knob-active {
+  --knob-inner: 12px;
+  --knob-outer: 20px;
+}
+
+.slider-input-text {
+  width: 40px;
+  text-align: center;
+  position: relative;
+  background-color: var(--surface-1);
+  color: var(--text);
+  border: none;
+  border-radius: 10px;
+  overflow: scroll;
+}
+
+.popup-val-container {
+  --border-size-slider-popup: 1px;
+  position: absolute;
+  width: 60px;
+  height: 70px;
+  transform: scale(0.8);
+  left: calc(-30px + (var(--knob-inner) / 2));
+  top: calc(-70px + (var(--knob-inner) / 2));
+  transition: all ease 0.12s;
+  opacity: 0;
+}
+
+.popup-val-container-active {
+  opacity: 1;
+  top: calc(-90px + (var(--knob-inner) / 2));
+  transform: scale(1);
+}
+
+.popup-val {
+  width: calc(100% - var(--border-size-slider-popup) * 2);
+  height: calc(50px - var(--border-size-slider-popup) * 2);
+  position: relative;
+  border: solid var(--button-blue) var(--border-size-slider-popup);
+  border-radius: 8px;
+  background-color: var(--surface-1);
+}
+
+.popup-val-text {
+  position: absolute;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  line-height: 47px;
+  text-align: center;
+}
+
+.popup-val-triangle {
+  z-index: 10;
+  width: 100%;
+  height: 30px;
+  margin: 0;
+  margin-top: calc(-1 * var(--border-size-slider-popup) + 0px);
+  position: relative;
+}
+
+.popup-triangle-svg {
+  position: absolute;
+  top: 0px;
+  left: 15px;
+  height: 20px;
+  width: 30px;
+}
+
+.triangle-path {
+  fill: var(--surface-1);
+  fill-rule: evenodd;
+  stroke: var(--button-blue);
+  stroke-width: var(--border-size-slider-popup);
 }

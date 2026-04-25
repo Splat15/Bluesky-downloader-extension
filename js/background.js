@@ -22,52 +22,70 @@ const standardSettings = [
       ],
       [
             // Settings
-            { value: true, id: "vidDownload", type: "toggle", name: "Video downloading" },
-            { value: true, id: "imgDownload", type: "toggle", name: "Image downloading" },
-            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloading" }
+            { value: true, id: "vidDownload", type: "toggle", name: "Video downloads" },
+            { value: true, id: "imgDownload", type: "toggle", name: "Image downloads" },
+            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloads" }
       ],
       [
             { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" },
-            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp" }
+            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp" },
+            { value: false, id: "imgQualityMode", type: "toggle", name: "Change image quality" }
+      ],
+      [
+            { value: 20, id: "imgQuality", type: "slider", name: "Image quality" }
       ],
       [
             { value: true, id: "downloadToast", type: "toggle", name: "Show download popups" }
       ]
 ]
 
+console.log(log("Fetching saved settings"))
 let settings = localStorage.getItem("settings")
 if (!settings) {
       // Standard configuration
       settings = standardSettings
+      console.log(log("New user, standard settings applied"))
 }
-else settings = JSON.parse(settings)
+else {
+      try {
+            // Parse saved settings
+            settings = JSON.parse(settings)
 
-for (let i = 0; i < standardSettings.length; i++) {
-      for (let j = 0; j < standardSettings[i].length; j++) {
-            const setting = standardSettings[i][j]
+            // Create temporary clone for migration
+            let newSettings = structuredClone(standardSettings)
 
-            if (GetSetting(setting.id) == null) {
-                  settings[i].push(setting)
+            // Loop through categories
+            for (let category = 0; category < newSettings.length; category++) {
+                  // Loop through individual settings
+                  for (let setting = 0; setting < newSettings[category].length; setting++) {
+                        let newSetting = newSettings[category][setting]
+                        // Fetch setting from stored settings
+                        const oldSetting = GetSetting(newSetting.id)
+
+                        // If setting is found, replace new value with old
+                        if (oldSetting) {
+                              newSetting.value = oldSetting.value
+                        }
+                  }
             }
+            settings = newSettings
+
+            console.log(log("Settings successuflly migrated"))
       }
-}
-
-// Botch fix for changed name
-for (let i = 0; i < settings.length; i++) {
-      for (let j = 0; j < settings[i].length; j++) {
-            if (settings[i][j].id == "gifsAsWEBM") {
-                  settings[i][j].name = "Download Tenor GIFs as .webm"
-                  break
-            }
+      catch (e) {
+            console.log(log("Error migrating settings: " + e))
+            console.log(settings)
       }
 }
 
 localStorage.setItem("settings", JSON.stringify(settings))
+console.log(log("Modified settings saved"))
 
 
 browser.runtime.onInstalled.addListener((details) => {
-      console.log(details)
       if (details.reason == "install") {
+            console.log(log("New install detected, initiating onboarding"))
+
             onboardingStatus = { image: false, video: false }
             localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
 
@@ -88,55 +106,84 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Downloads
       if (message.type == "bsky-download") {
+            console.log(log("Download request received"))
 
             // Empty URL provided
-            if (!message.url || message.url.length == 0) {
-                  let response = { type: "bsky-download-progress", id: message.id, url: message.url, error: "Error: URL empty" }
+            if (!message.downloadInfo.url || message.downloadInfo.url.length == 0) {
+                  console.error(log("Empty download URL"))
+
+                  let response = {
+                        type: "bsky-download-progress",
+                        id: message.id,
+                        url: message.downloadInfo.url,
+                        error: "Error: URL empty"
+                  }
                   browser.tabs.sendMessage(sender.tab.id, response)
                   return
             }
 
             // Start download
-            downloader.download(message.url, message.filePath, message.fileType, message.fileExt, (progress, error, fileBlob = null) => {
+            downloader.download(message.downloadInfo,
+                  (progress, error, fileBlob = null) => {
+                        console.log(log(`Download progress for ${message.id} at ${progress}%`))
 
-                  // Send progress messages to sender
-                  let response = { type: "bsky-download-progress", id: message.id, url: message.url, progress: progress, fileBlob: fileBlob }
-                  if (error !== null) response.error = error.toString()
+                        // Send progress messages to sender
+                        let response = {
+                              type: "bsky-download-progress",
+                              id: message.id,
+                              url: message.downloadInfo.url,
+                              progress: progress,
+                              fileBlob: fileBlob
+                        }
 
-                  browser.tabs.sendMessage(sender.tab.id, response)
-            })
+                        console.warn(message.id)
+                        if (error !== null) response.error = error.toString()
+
+                        browser.tabs.sendMessage(sender.tab.id, response)
+                  })
       }
 
       // Settings get requests
       else if (message.type == "get-settings") {
+            console.log(log("Settings get request received"))
             browser.tabs.sendMessage(sender.tab.id, { settings: settings })
       }
 
       // Setting set requests
       else if (message.type == "set-setting") {
+            console.log(log("Settings set request received"))
             SetSetting(message.settingId, message.value)
       }
 
       // Light mode status set requests
       else if (message.type == "set-light-mode") {
             lightMode = message.value
+            console.log(log("Light mode change detected, new value: " + lightMode))
             localStorage.setItem("lightMode", lightMode)
       }
 
       // Light mode status get requests
       else if (message.type == "get-light-mode") {
+            console.log(log("Light mode request received"))
             browser.tabs.sendMessage(sender.tab.id, { value: lightMode, type: "light-mode" })
       }
 
       // Input method set requests
       else if (message.type == "set-input-method") {
             if (message.value == inputMethod) return
+            console.log(log("Input method change detected"))
             inputMethod = message.value
             localStorage.setItem("inputMethod", inputMethod)
       }
 
+      // settings update relay messages from content script to popup script
+      else if (message.type == "settings-update") {
+            return
+      }
+
       // Update popup display status
       else if (message.type == "version-info-displayed") {
+            console.log(log("Version info displayed, relaying message"))
             showVerInfo = false
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
@@ -149,6 +196,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Install time request
       else if (message.type == "init") {
+            console.log(log("Init request received"))
             const uptime = Date.now() - startTime
             browser.tabs.sendMessage(sender.tab.id, {
                   type: "init",
@@ -164,6 +212,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Onboarding status updates
       else if (message.type == "onboarding-update") {
+            console.log(log("Onboarding status update received"))
             onboardingStatus.video = onboardingStatus.video || message.onboardingStatus.video
             onboardingStatus.image = onboardingStatus.image || message.onboardingStatus.image
 
@@ -179,11 +228,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Invalid message type
       else {
+            console.error(log("Invalid message type: " + message.type))
             let response = { error: `Invalid message.type "${message.type}"` }
             browser.tabs.sendMessage(sender.tab.id, response)
       }
 });
 
+// Custom implementation to support directly saving to storage and informing tabs
 function SetSetting(settingId, value) {
       if (GetSetting(settingId).value == value)
             return
@@ -195,6 +246,7 @@ function SetSetting(settingId, value) {
                         setting.value = value;
                         localStorage.setItem("settings", JSON.stringify(settings))
 
+                        console.log(log("Settings changed, relaying"))
                         for (let i = 0; i < tabIDs.length; i++) {
                               const tabID = tabIDs[i]
                               try {
@@ -210,18 +262,4 @@ function SetSetting(settingId, value) {
       }
 }
 
-
-function GetSetting(settingId) {
-      for (let i = 0; i < settings.length; i++) {
-            for (let j = 0; j < settings[i].length; j++) {
-                  const setting = settings[i][j]
-                  if (setting.id == settingId) {
-                        return setting
-                  }
-            }
-      }
-
-      return null
-}
-
-const downloader = new VideoDownloader();
+const downloader = new Downloader();

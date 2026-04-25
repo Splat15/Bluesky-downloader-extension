@@ -2,6 +2,8 @@ let cachedExamplePost
 let exampleAtURI = "at://bsky.app/app.bsky.feed.post/3lxxo3i4qzs2c"
 let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
 let onExampleReady = []
+
+console.log(log("Fetching example post info"))
 let postInfo
 fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exampleAtURI)
       .then(response =>
@@ -9,6 +11,8 @@ fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exam
                   cachedExamplePost = JSON.parse(post).thread.post
                   GetInfoFromThread(cachedExamplePost, exampleAtURI, exampleURL).then(info => {
                         postInfo = info
+
+                        console.log(log("Example post info fetched, running onExampleReady"))
                         onExampleReady.forEach(func => func())
                   })
             })
@@ -37,13 +41,14 @@ class Setting {
             this.settings = settings
             this.pathVarMenuExpanded = false
             this.originalValue = value
+            this.qualitySlider = undefined;
             const domParser = new DOMParser()
 
             // Checkbox style setting
             if (this.type == "toggle") {
                   // Parse setting HTML
                   this.element = domParser.parseFromString(`
-                  <div class="setting setting-${this.value ? "" : "in"}active" title="Toggle ${this.name}">
+                  <div class="setting setting-${this.value ? "" : "in"}active" id="${this.settingId}" title="Toggle ${this.name}">
                         <div type="checkbox" class="checkbox">
                               <svg fill="none" width="14" viewBox="0 0 24 24" height="14" style="margin: 5px;">
                                     <path fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="butt"
@@ -67,6 +72,160 @@ class Setting {
                               this.element.classList.replace("setting-active", "setting-inactive")
 
                         SetSetting(this.settingId, this.value, this.settings)
+
+                        if (this.qualitySlider) setQualSliderVis(this.value, this.qualitySlider)
+                  })
+
+                  if (this.settingId == "imgQualityMode") {
+                        this.qualitySlider = document.querySelector("#imgQuality")
+                        if (this.qualitySlider) {
+                              setQualSliderVis(this.value, this.qualitySlider)
+                        }
+                        else {
+                              new NodeObserver((e) => e.id == "imgQuality",
+                                    (e) => {
+                                          this.qualitySlider = e
+                                          setQualSliderVis(this.value, this.qualitySlider)
+                                    }, true
+                              )
+                        }
+                  }
+
+                  function setQualSliderVis(value, qualitySlider) {
+                        const category = qualitySlider.parentElement
+                        const categorySeperator = category.nextSibling
+
+                        if (value) {
+                              categorySeperator.classList.remove("category-separator-hidden")
+                              qualitySlider.classList.remove("slider-hidden")
+                              setTimeout(() => {
+                                    category.style.overflow = ""
+                              }, 200);
+                        }
+                        else {
+                              categorySeperator.classList.add("category-separator-hidden")
+                              qualitySlider.classList.add("slider-hidden")
+                              category.style.overflow = "hidden"
+                        }
+
+                  }
+
+                  // Add element to given container
+                  this.container.appendChild(this.element)
+            }
+
+            // Slider setting (image quality)
+            else if (this.type == "slider") {
+                  // Transform value from 10-100 to 0-100 for slider width percentage 
+                  const sliderPerc = ApplySliderChoppiness(this.value)
+
+                  //NOTE - TODO set default values from settings
+                  this.element = domParser.parseFromString(`
+                  <div class="setting slider"  id="${this.settingId}" title="Adjust ${this.name}">
+                        <div class="slider-header">
+                              <span class="setting-name">${this.name}</span>
+                              <span class="path-example slider-subtext" id="sliderSubtext">~${GetApproxFileSize(this.value)}</span>
+                        </div>
+                        <div class="slider-body">
+                              <input type="text" class="slider-input-text" id="textInput" value="${this.value}">
+                              <div class="slider-container">
+                                    <div class="slider-bg"></div>
+                                    <div class="slider-active-bar" id="sliderActiveBar" style="width: ${sliderPerc}%"></div>
+                                    <div class="slider-knob" id="sliderKnob" style="left: ${sliderPerc}%">
+                                          <div class="popup-val-container" id="sliderPopup">
+                                                <div style="position:relative; width:100%; height:100%;">
+                                                      <div class="popup-val">
+                                                            <span class="popup-val-text" id="sliderPopupText">${this.value}</span>
+                                                      </div>
+                                                      <div class="popup-val-triangle" id="sliderPopup">
+                                                            <svg class="popup-triangle-svg" viewBox="0 0 30 20">
+                                                                  <path d=" M 0 0 l 12.5 15 a 5 5 0 0 0 5 0 l 12.5 -15" class="triangle-path"
+                                                                        stroke-width="1px">
+                                                                  </path>
+                                                            </svg>
+                                                      </div>
+                                                </div>
+                                          </div>
+                                    </div>
+                                    <input type="range" class="slider-input" id="sliderInput" title="Adjust image quality" value="${sliderPerc * 100}" min="0" max="10000">
+                              </div>
+                        </div>
+                  </div>`, "text/html").getElementsByClassName("setting")[0]
+
+                  const sliderSubtext = this.element.querySelector("#sliderSubtext");
+                  const textInput = this.element.querySelector("#textInput");
+                  const sliderInput = this.element.querySelector("#sliderInput");
+                  const sliderActiveBar = this.element.querySelector("#sliderActiveBar");
+                  const sliderKnob = this.element.querySelector("#sliderKnob");
+                  const sliderPopupText = this.element.querySelector("#sliderPopupText");
+                  const sliderPopup = this.element.querySelector("#sliderPopup");
+
+                  let lastSliderInput = 0;
+
+                  const onInput = (save = false, text = false) => {
+
+                        let originalValue
+                        let choppyValue
+
+                        if (text) {
+                              if (lastSliderInput > Date.now() - 50) return
+
+                              originalValue = textInput.value
+                              originalValue = originalValue.replaceAll(/\D/g, ""); // Sanitize input
+                              originalValue = Number(originalValue) // Will spit out garbage without Number()
+                              originalValue = Math.min(Math.max(originalValue, 0), 100) // limit to 10-100
+
+                              choppyValue = ApplySliderChoppiness(originalValue) // Get value rounded to nearest 5, limits values to 10 - 100
+                        }
+                        else {
+                              lastSliderInput = Date.now()
+                              originalValue = Number(sliderInput.value) / 100 // Will spit out garbage without Number()
+                              //originalValue = originalValue * 0.9 + 10
+
+                              choppyValue = ApplySliderChoppiness(originalValue) // Get value rounded to nearest 5, limits values to 10 - 100
+                        }
+
+
+                        this.value = choppyValue
+
+                        sliderPopupText.textContent = this.value
+                        sliderSubtext.textContent = "~" + GetApproxFileSize(this.value)
+
+                        if (!text) textInput.value = this.value
+
+                        sliderActiveBar.style.width = choppyValue + "%"
+                        sliderKnob.style.left = choppyValue +"%"
+
+                        if (save) {
+                              SetSetting(this.settingId, this.value, this.settings)
+                              textInput.value = this.value
+                        }
+                  }
+
+                  const mouseDown = () => {
+                        sliderPopup.classList.add("popup-val-container-active")
+                        sliderKnob.classList.add("slider-knob-active")
+
+                        onInput()
+                  }
+
+                  const mouseUp = () => {
+                        sliderPopup.classList.remove("popup-val-container-active")
+                        sliderKnob.classList.remove("slider-knob-active")
+
+                        onInput(true)
+                  }
+
+                  sliderInput.addEventListener("touchstart", () => mouseDown())
+                  sliderInput.addEventListener("touchend", () => mouseUp())
+
+                  sliderInput.addEventListener("mousedown", () => mouseDown())
+                  sliderInput.addEventListener("mouseup", () => mouseUp())
+
+                  sliderInput.addEventListener("input", () => onInput())
+                  textInput.addEventListener("input", () => onInput(false, true))
+                  textInput.addEventListener("blur", () => {
+                        onInput(true, true)
                   })
 
                   // Add element to given container
@@ -76,7 +235,7 @@ class Setting {
             // Special case for download path input
             else if (this.type == "pathInput") {
                   this.element = domParser.parseFromString(`
-                        <div class="setting path-setting">
+                        <div class="setting path-setting"  id="${this.settingId}">
                               <div class="path-input-desc">
                                     <p style="margin: auto 0;">${isMobile ? "File name" : "Download path"}</p>
                                     <input id="pathUndoButton" class="path-undo-button" type="button" title="Undo changes">
@@ -396,3 +555,12 @@ browser.runtime.onMessage.addListener(message => {
             }
       }
 })
+
+//ANCHOR - TODO
+function GetApproxFileSize(quality = 50, format = ".webm") {
+      return Math.round(quality * 7 / 10) * 10 + "kb"
+}
+
+function ApplySliderChoppiness(val) {
+      return Math.round(val / 5) * 5
+}
