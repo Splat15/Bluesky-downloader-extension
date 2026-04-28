@@ -16,6 +16,15 @@
   --toast-action-hover: rgb(49, 63, 84);
 }
 
+div+button[data-testid='altTextButton'] {
+  left: 36px !important;
+}
+
+button[data-testid='altTextButton'] {
+  left: 6px ! important;
+  right: unset ! important;
+}
+
 .download-button-div-image {
   position: absolute;
   opacity: 0;

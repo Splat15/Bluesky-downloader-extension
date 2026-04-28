@@ -144,9 +144,6 @@ class Downloadbutton {
                   this.#GetDownloadButton(this.url, hidden)
                   this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
-                  altTextButtons.forEach(altTextButton => altTextButton.style.left = "16px !important")
-
                   this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
                   this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
@@ -163,9 +160,6 @@ class Downloadbutton {
                   this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
                   this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
-
-                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
-                  altTextButtons.forEach(altTextButton => altTextButton.classList.add("alt-button-left"))
 
                   this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
                   this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
