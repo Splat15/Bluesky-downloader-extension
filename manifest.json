@@ -9,14 +9,11 @@
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
-  "permissions": ["*://*.bsky.app/*", "storage", "downloads"],
+  "permissions": ["*://*.bsky.app/*", "storage", "downloads", "*://*.jsdelivr.net/*"],
   "background": {
     "scripts": [
-      "lib/ffmpeg.min.js",
-      "lib/ffmpeg-core.js",
       "js/classes.js",
-      "js/downloader.js",
-      "js/background.js"
+      "dist/main.js"
     ]
   },
   "content_scripts": [
@@ -28,8 +25,8 @@
   "browser_action": {
     "default_popup": "settings/settings.html"
   },
-  "web_accessible_resources": ["data/*", "lib/*", "icons/*"],
-  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval';",
+  "web_accessible_resources": ["data/*", "lib/*", "icons/*", "ffmpeg/*"],
+  "content_security_policy": "script-src 'self' 'wasm-unsafe-eval' 'http://*.jsdelivr.net/';",
   "browser_specific_settings": {
     "gecko": {
       "id": "{27272153-e087-4c53-a5af-5baa6df90881}",
