@@ -4,21 +4,23 @@
   "description": "",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "copy './node_modules/@ffmpeg/core/dist/umd/ffmpeg-core.js' './ffmpeg'\nwebpack --config webpack-config.js"
+    "watch": "npx watch \"npm run build\"",
+    "build": "webpack --config webpack-config.js"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Splat (https://github.com/Splat15)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Splat15/Bluesky-downloader-extension"
+  },
+  "license": "MIT",
   "devDependencies": {
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "progressbar.js": "^1.1.1",
+    "web-ext": "^10.1.0",
     "webpack": "^5.106.2",
     "webpack-cli": "^7.0.2"
-  },
-  "dependencies": {
-    "@ffmpeg/util": "^0.12.2",
-    "lodash": "^4.17.21",
-    "vite": "^8.0.10"
   }
 }

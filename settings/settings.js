@@ -74,6 +74,11 @@ class Setting {
                         SetSetting(this.settingId, this.value, this.settings)
 
                         if (this.qualitySlider) setQualSliderVis(this.value, this.qualitySlider)
+
+                        document.querySelector("#sliderSubtext").textContent =  "~" + GetApproxFileSize(
+                                    GetSetting("imgQuality", settings).value,
+                                    GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg"
+                              )
                   })
 
                   if (this.settingId == "imgQualityMode") {
@@ -124,7 +129,7 @@ class Setting {
                   <div class="setting slider"  id="${this.settingId}" title="Adjust ${this.name}">
                         <div class="slider-header">
                               <span class="setting-name">${this.name}</span>
-                              <span class="path-example slider-subtext" id="sliderSubtext">~${GetApproxFileSize(this.value)}</span>
+                              <span class="path-example slider-subtext" id="sliderSubtext">~${GetApproxFileSize(this.value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")}</span>
                         </div>
                         <div class="slider-body">
                               <input type="text" class="slider-input-text" id="textInput" value="${this.value}">
@@ -189,12 +194,12 @@ class Setting {
                         this.value = choppyValue
 
                         sliderPopupText.textContent = this.value
-                        sliderSubtext.textContent = "~" + GetApproxFileSize(this.value)
+                        sliderSubtext.textContent = "~" + GetApproxFileSize(this.value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")
 
                         if (!text) textInput.value = this.value
 
                         sliderActiveBar.style.width = choppyValue + "%"
-                        sliderKnob.style.left = choppyValue +"%"
+                        sliderKnob.style.left = choppyValue + "%"
 
                         if (save) {
                               SetSetting(this.settingId, this.value, this.settings)
@@ -470,7 +475,7 @@ class Setting {
       // Simulate an example file path using example data
       async UpdatePathExample() {
             if (cachedExamplePost) {
-                  pathExample.textContent = GetFilePath(postInfo, this.value) + ".mp4"
+                  pathExample.textContent = GetFilePath(postInfo, this.settings, this.value) + ".mp4"
             }
             else
                   pathExample.textContent = ""
@@ -538,8 +543,8 @@ for (let i = 0; i < settings.length; i++) {
 
 browser.runtime.onMessage.addListener(message => {
       // Handle settings updates
-      if (message.type == "settings-update")
-            settings = message.settings
+      //if (message.type == "settings-update")
+      //      settings = message.settings
 
       // Handle updates to theme
       if (message.type == "set-light-mode") {
@@ -555,11 +560,6 @@ browser.runtime.onMessage.addListener(message => {
             }
       }
 })
-
-//ANCHOR - TODO
-function GetApproxFileSize(quality = 50, format = ".webm") {
-      return Math.round(quality * 7 / 10) * 10 + "kb"
-}
 
 function ApplySliderChoppiness(val) {
       return Math.round(val / 5) * 5

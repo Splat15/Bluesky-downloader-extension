@@ -62,7 +62,7 @@ else {
                   for (let setting = 0; setting < newSettings[category].length; setting++) {
                         let newSetting = newSettings[category][setting]
                         // Fetch setting from stored settings
-                        const oldSetting = GetSetting(newSetting.id)
+                        const oldSetting = GetSetting(newSetting.id, settings)
 
                         // If setting is found, replace new value with old
                         if (oldSetting) {
@@ -138,7 +138,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
                               fileBlob: fileBlob
                         }
 
-                        console.warn(message.id)
                         if (error !== null) response.error = error.toString()
 
                         browser.tabs.sendMessage(sender.tab.id, response)
@@ -154,7 +153,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Setting set requests
       else if (message.type == "set-setting") {
             console.log(log("Settings set request received"))
-            SetSetting(message.settingId, message.value)
+            SetSetting(message.settingId, message.value, settings)
       }
 
       // Light mode status set requests
@@ -237,8 +236,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
 });
 
 // Custom implementation to support directly saving to storage and informing tabs
-function SetSetting(settingId, value) {
-      if (GetSetting(settingId).value == value)
+function SetSetting(settingId, value, settings) {
+      if (GetSetting(settingId, settings).value == value)
             return
 
       for (let i = 0; i < settings.length; i++) {

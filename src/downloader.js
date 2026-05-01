@@ -25,6 +25,8 @@ export class Downloader {
       #downloadReady
       #maxTries = 3
       #mobileDevice = DetectMobileDevice()
+      ffmpegLoaded = false
+      shutDownFFmpeg = null
 
       constructor() {
             this.#queue = []
@@ -33,6 +35,7 @@ export class Downloader {
             this.#onProgress = () => { }
       }
 
+      // Push new download to queue and try to start 
       download(downloadInfo,
             onProgress = () => { }) {
             if (this.#queue.find(element => element.data.url == downloadInfo.url)) return
@@ -47,10 +50,8 @@ export class Downloader {
       }
 
       async #download() {
-            console.warn("trying to start download")
             if (!this.#downloadReady) return
 
-            console.warn("Download started")
             // Block downloads until complete
             this.#downloadReady = false
 
@@ -72,9 +73,24 @@ export class Downloader {
             this.#onProgress = currentItem.onProgress
             const tries = currentItem.tries
 
+            console.log(log("Download started for: " + currentItem.data.url))
+
             // Initialize ffmpeg if needed
-            if (fileType.id == Downloadbutton.Video.id || fileType.id == Downloadbutton.UploadedGIF.id || (fileType.id == Downloadbutton.Image.id && imgCompression)) {
-                  ffmpegLoading = this.#loadFFmpeg()
+            if (!this.ffmpegLoaded &&
+                  (
+                        fileType.id == Downloadbutton.Video.id ||
+                        // fileType.id == Downloadbutton.UploadedGIF.id ||
+                        (fileType.id == Downloadbutton.Image.id && imgCompression)
+                  )) {
+
+                  if (this.shutDownFFmpeg) {
+                        console.log(log("FFmpeg shutdown aborted"))
+                        clearTimeout(this.shutDownFFmpeg)
+                  }
+                  else {
+                        console.log(log("Loading FFmpeg"))
+                        ffmpegLoading = this.#loadFFmpeg()
+                  }
             }
 
             try {
@@ -114,6 +130,19 @@ export class Downloader {
             // Start next download
             this.#downloadReady = true;
             if (this.#queue.length > 0) this.#download()
+            else {
+                  if (this.#ffmpeg.loaded) {
+                        console.log(log("Download queue empty, starting FFmpeg shutdown timer"))
+                        this.shutDownFFmpeg = setTimeout(() => {
+                              console.log(log("Shutting down FFmpeg"))
+                              this.#ffmpeg.terminate()
+                              this.shutDownFFmpeg = null
+                              this.ffmpegLoaded = false
+                        }, 10000)
+                  }
+                  else
+                        console.log(log("Download queue empty, FFmpeg not running"))
+            }
       }
 
       // Downloads for images
@@ -131,7 +160,6 @@ export class Downloader {
                   const _onProgress = (progress, blob = undefined, filePath = "") => {
                         return new Promise(resolve => {
                               this.progress = progress
-                              console.log(log("Download progress: " + this.progress))
 
                               // Download in progress
                               if (progress != 100) {
@@ -185,8 +213,7 @@ export class Downloader {
 
                         // Write file to virtual FS
                         await ffmpegLoading
-                        this.#ffmpeg.FS(
-                              "writeFile",
+                        await this.#ffmpeg.writeFile(
                               "input.jpg",
                               await fetchFile(blob)
                         );
@@ -208,15 +235,17 @@ export class Downloader {
                         console.log(log("Converting to " + mimeType + " at quality: " + imageQuality))
 
                         // Convert and compress file
-                        await this.#ffmpeg.run(
-                              "-i",
-                              "input.jpg",
-                              qualityStr,
-                              imageQuality.toString(),
-                              "output" + fileExtension
+                        await this.#ffmpeg.exec(
+                              [
+                                    "-i",
+                                    "input.jpg",
+                                    qualityStr,
+                                    imageQuality.toString(),
+                                    "output" + fileExtension
+                              ]
                         )
 
-                        const image = this.#ffmpeg.FS("readFile", `output` + fileExtension);
+                        const image = await this.#ffmpeg.readFile("output" + fileExtension);
                         const imageBlob = new Blob([image], { type: mimeType, });
 
                         await _onProgress(100, imageBlob, filePath)
@@ -322,71 +351,40 @@ export class Downloader {
       }
 
       async #convertVideo(videoBlob, fileExtension) {
-            this.#setProgress(90)
+            try {
+                  this.#setProgress(90)
 
-            // Write file to virtual FS
-            this.#ffmpeg.writeFile(
-                  "input.ts",
-                  await fetchFile(videoBlob)
-            );
+                  // Write file to virtual FS
+                  await this.#ffmpeg.writeFile(
+                        "input.ts",
+                        await fetchFile(videoBlob)
+                  );
 
-            // Convert file
-            await this.#ffmpeg.exec(
-                  "-i",
-                  "input.ts",
-                  "-map",
-                  "0",
-                  "-c",
-                  "copy",
-                  "output" + fileExtension
-            );
+                  // Convert file
+                  await this.#ffmpeg.exec(
+                        [
+                              "-i",
+                              "input.ts",
+                              "-map",
+                              "0",
+                              "-c",
+                              "copy",
+                              "output" + fileExtension
+                        ]
+                  );
 
-            // Read file and write it to blob
-            const videoData = await this.#ffmpeg.readFile(`output` + fileExtension);
-            const mp4Blob = new Blob([videoData.buffer], {
-                  type: "video/" + fileExtension.match(/[^\.]+$/)[0],
-            });
-
-            return mp4Blob
-      }
-
-      /*async #convertGIF(videoBlob) {
-            if (!this.#ffmpeg) {
-
-                  this.#ffmpeg = createFFmpeg({
-                        corePath: chrome.runtime.getURL("lib/ffmpeg-core.js"),
-                        log: true,
-                        mainName: 'main'
+                  // Read file and write it to blob
+                  const videoData = await this.#ffmpeg.readFile("output" + fileExtension);
+                  const mp4Blob = new Blob([videoData.buffer], {
+                        type: "video/" + fileExtension.match(/[^\.]+$/)[0],
                   });
+
+                  return mp4Blob
             }
-
-            if (!this.#ffmpeg.isLoaded())
-                  await this.#ffmpeg.load();
-
-            this.#ffmpeg.writeFile(
-                  "input.webm",
-                  await fetchFile(videoBlob)
-            );
-
-
-            await this.#ffmpeg.run(
-                  //ffmpeg -i test.webm -vf "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse" test.gif -y
-                  "-i",
-                  "input.webm",
-                  "-map",
-                  "0",
-                  "-vf",
-                  "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
-                  "output.gif"
-            )
-
-            const videoData = this.#ffmpeg.FS("readFile", `output.gif`);
-            const mp4Blob = new Blob([videoData.buffer], {
-                  type: "image/gif",
-            });
-
-            return mp4Blob
-      }*/
+            catch (e) {
+                  console.error(e)
+            }
+      }
 
       #setProgress(progress, error = null, videoBlob = null) {
             this.progress = progress
@@ -394,13 +392,10 @@ export class Downloader {
       }
 
       async #loadFFmpeg() {
-            const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd'
-            const core = `${baseURL}/ffmpeg-core.js`
-            const wasm = `${baseURL}/ffmpeg-core.wasm`
-
             await this.#ffmpeg.load({
                   coreURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.js"),
                   wasmURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.wasm"),
             })
+            this.ffmpegLoaded = true
       }
 }

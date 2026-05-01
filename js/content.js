@@ -217,21 +217,26 @@ browser.runtime.onMessage.addListener((message) => {
             // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
             if (message.repeat) {
                   console.log(log("Relaying settings update"))
-                  browser.runtime.sendMessage({ type: "settings-update", settings: settings })
+                  browser.runtime.sendMessage({ type: "settings-update", settings: message.settings })
             }
 
             settings = message.settings
 
-            console.log(log(settings))
+            console.log(log(JSON.stringify(settings)))
 
 
-            let img = GetSetting("imgDownload").value
-            let vid = GetSetting("vidDownload").value
-            let gif = GetSetting("gifDownload").value
+            let img = GetSetting("imgDownload", settings).value
+            let vid = GetSetting("vidDownload", settings).value
+            let gif = GetSetting("gifDownload", settings).value
 
-            downloadButtons.image.forEach(downloadButton => downloadButton.SetVisibility(img))
-            downloadButtons.video.forEach(downloadButton => downloadButton.SetVisibility(vid))
-            downloadButtons.gif.forEach(downloadButton => downloadButton.SetVisibility(gif))
+            const buttonFunc = (downloadbutton, val, settings) => {
+                  downloadbutton.SetVisibility(val)
+                  downloadbutton.settings = settings
+            }
+
+            downloadButtons.image.forEach(downloadButton => buttonFunc(downloadButton, img, settings))
+            downloadButtons.video.forEach(downloadButton => buttonFunc(downloadButton, vid, settings))
+            downloadButtons.gif.forEach(downloadButton => buttonFunc(downloadButton, gif, settings))
       }
 
       // Updates for the status of unboarding
@@ -273,7 +278,7 @@ document.documentElement.addEventListener("touchstart", () => {
 // Switch input method for all relevant elements
 function HandleInputChange(method) {
       console.log(log("Input change detected: " + method))
-      
+
       inputMethod = method
       browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
 
@@ -293,7 +298,7 @@ function HandleInputChange(method) {
       // Manually re-add onboarding elements
       // Images
       try {
-            if ((onboardingStatus && !onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload", settings).value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.image[0].element, downloadButtons.image[0], Downloadbutton.Image, inputMethod))
 
                   onboardingHasRun.image = true
@@ -305,7 +310,7 @@ function HandleInputChange(method) {
 
       // Videos
       try {
-            if ((onboardingStatus && !onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload", settings).value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.video[0].videoElement, downloadButtons.video[0], Downloadbutton.Video, inputMethod))
 
                   onboardingHasRun.video = true
@@ -339,11 +344,11 @@ new NodeObserver(
                               if (mediaElements.includes(element)) return
                               mediaElements.push(element)
 
-                              const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager, !GetSetting("imgDownload").value, inputMethod)
+                              const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
                               downloadButtons.image.push(downloadButton)
 
                               // Show flashing borders tutorial
-                              if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload").value) {
+                              if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
                                     flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Image, inputMethod))
                                     onboardingHasRun.image = true
                               }
@@ -395,11 +400,11 @@ new NodeObserver(
                                           if (mediaElements.includes(element)) return
                                           mediaElements.push(element)
 
-                                          const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, toastManager, !GetSetting("vidDownload").value, inputMethod, element)
+                                          const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, element)
                                           downloadButtons.video.push(downloadButton)
 
                                           // Show flashing borders tutorial
-                                          if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload").value) {
+                                          if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
                                                 flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
                                                 onboardingHasRun.video = true
                                           }
@@ -425,7 +430,7 @@ new NodeObserver(
                                     if (mediaElements.includes(element)) return
                                     mediaElements.push(element)
 
-                                    const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager, !GetSetting("gifDownload").value, inputMethod)
+                                    const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
                                     downloadButtons.gif.push(downloadButton)
                               }
 
@@ -475,10 +480,10 @@ function InstallCleanup() {
             .filter(element => /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) && !element.hasAttribute("draggable"))
             .forEach(element => {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager, !GetSetting("imgDownload").value, inputMethod)
+                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
                         downloadButtons.image.push(downloadButton)
 
-                        if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload").value) {
+                        if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
                               flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Image, inputMethod))
 
                               onboardingHasRun.image = true
@@ -497,11 +502,11 @@ function InstallCleanup() {
                   downloadElements.forEach(downloadElement => {
                         if (downloadElement) {
                               try {
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, toastManager, !GetSetting("vidDownload").value, inputMethod, videoElement)
+                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
                                     downloadButtons.video.push(downloadButton)
 
                                     // Onboarding procedure
-                                    if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload").value) {
+                                    if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
                                           flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
 
                                           onboardingHasRun.video = true
@@ -518,7 +523,7 @@ function InstallCleanup() {
       Array.from(document.querySelectorAll("video[playsinline][loop]"))
             .forEach(element => {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager, !GetSetting("gifDownload").value, inputMethod)
+                        const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
                         downloadButtons.gif.push(downloadButton)
                   }
                   catch (error) {

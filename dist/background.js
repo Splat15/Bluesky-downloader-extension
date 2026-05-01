@@ -1,3 +1,12 @@
+/******/ (() => { // webpackBootstrap
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "../js/classes.js"
+/*!************************!*\
+  !*** ../js/classes.js ***!
+  \************************/
+() {
+
 const documentStartTime = Date.now()
 let numLogs = 0
 
@@ -1514,3 +1523,1527 @@ function GetApproxFileSize(quality, format) {
       apprFileSize = Math.round(apprFileSize)
       return apprFileSize + "kb"
 }
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm/classes.js"
+/*!**********************************************************!*\
+  !*** ../node_modules/@ffmpeg/ffmpeg/dist/esm/classes.js ***!
+  \**********************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   FFmpeg: () => (/* binding */ FFmpeg)
+/* harmony export */ });
+/* harmony import */ var _const_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./const.js */ "../node_modules/@ffmpeg/ffmpeg/dist/esm/const.js");
+/* harmony import */ var _utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./utils.js */ "../node_modules/@ffmpeg/ffmpeg/dist/esm/utils.js");
+/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./errors.js */ "../node_modules/@ffmpeg/ffmpeg/dist/esm/errors.js");
+
+
+
+/**
+ * Provides APIs to interact with ffmpeg web worker.
+ *
+ * @example
+ * ```ts
+ * const ffmpeg = new FFmpeg();
+ * ```
+ */
+class FFmpeg {
+    #worker = null;
+    /**
+     * #resolves and #rejects tracks Promise resolves and rejects to
+     * be called when we receive message from web worker.
+     */
+    #resolves = {};
+    #rejects = {};
+    #logEventCallbacks = [];
+    #progressEventCallbacks = [];
+    loaded = false;
+    /**
+     * register worker message event handlers.
+     */
+    #registerHandlers = () => {
+        if (this.#worker) {
+            this.#worker.onmessage = ({ data: { id, type, data }, }) => {
+                switch (type) {
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.LOAD:
+                        this.loaded = true;
+                        this.#resolves[id](data);
+                        break;
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.MOUNT:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.UNMOUNT:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.EXEC:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.FFPROBE:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.WRITE_FILE:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.READ_FILE:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.DELETE_FILE:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.RENAME:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.CREATE_DIR:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.LIST_DIR:
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.DELETE_DIR:
+                        this.#resolves[id](data);
+                        break;
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.LOG:
+                        this.#logEventCallbacks.forEach((f) => f(data));
+                        break;
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.PROGRESS:
+                        this.#progressEventCallbacks.forEach((f) => f(data));
+                        break;
+                    case _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.ERROR:
+                        this.#rejects[id](data);
+                        break;
+                }
+                delete this.#resolves[id];
+                delete this.#rejects[id];
+            };
+        }
+    };
+    /**
+     * Generic function to send messages to web worker.
+     */
+    #send = ({ type, data }, trans = [], signal) => {
+        if (!this.#worker) {
+            return Promise.reject(_errors_js__WEBPACK_IMPORTED_MODULE_2__.ERROR_NOT_LOADED);
+        }
+        return new Promise((resolve, reject) => {
+            const id = (0,_utils_js__WEBPACK_IMPORTED_MODULE_1__.getMessageID)();
+            this.#worker && this.#worker.postMessage({ id, type, data }, trans);
+            this.#resolves[id] = resolve;
+            this.#rejects[id] = reject;
+            signal?.addEventListener("abort", () => {
+                reject(new DOMException(`Message # ${id} was aborted`, "AbortError"));
+            }, { once: true });
+        });
+    };
+    on(event, callback) {
+        if (event === "log") {
+            this.#logEventCallbacks.push(callback);
+        }
+        else if (event === "progress") {
+            this.#progressEventCallbacks.push(callback);
+        }
+    }
+    off(event, callback) {
+        if (event === "log") {
+            this.#logEventCallbacks = this.#logEventCallbacks.filter((f) => f !== callback);
+        }
+        else if (event === "progress") {
+            this.#progressEventCallbacks = this.#progressEventCallbacks.filter((f) => f !== callback);
+        }
+    }
+    /**
+     * Loads ffmpeg-core inside web worker. It is required to call this method first
+     * as it initializes WebAssembly and other essential variables.
+     *
+     * @category FFmpeg
+     * @returns `true` if ffmpeg core is loaded for the first time.
+     */
+    load = ({ classWorkerURL, ...config } = {}, { signal } = {}) => {
+        if (!this.#worker) {
+            this.#worker = classWorkerURL ?
+                new Worker(__webpack_require__("../node_modules/@ffmpeg/ffmpeg/dist/esm sync recursive")(classWorkerURL), {
+                    type: "module",
+                }) :
+                // We need to duplicated the code here to enable webpack
+                // to bundle worekr.js here.
+                new Worker(new URL(/* worker import */ __webpack_require__.p + __webpack_require__.u("node_modules_ffmpeg_ffmpeg_dist_esm_worker_js"), __webpack_require__.b), {
+                    type: undefined,
+                });
+            this.#registerHandlers();
+        }
+        return this.#send({
+            type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.LOAD,
+            data: config,
+        }, undefined, signal);
+    };
+    /**
+     * Execute ffmpeg command.
+     *
+     * @remarks
+     * To avoid common I/O issues, ["-nostdin", "-y"] are prepended to the args
+     * by default.
+     *
+     * @example
+     * ```ts
+     * const ffmpeg = new FFmpeg();
+     * await ffmpeg.load();
+     * await ffmpeg.writeFile("video.avi", ...);
+     * // ffmpeg -i video.avi video.mp4
+     * await ffmpeg.exec(["-i", "video.avi", "video.mp4"]);
+     * const data = ffmpeg.readFile("video.mp4");
+     * ```
+     *
+     * @returns `0` if no error, `!= 0` if timeout (1) or error.
+     * @category FFmpeg
+     */
+    exec = (
+    /** ffmpeg command line args */
+    args, 
+    /**
+     * milliseconds to wait before stopping the command execution.
+     *
+     * @defaultValue -1
+     */
+    timeout = -1, { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.EXEC,
+        data: { args, timeout },
+    }, undefined, signal);
+    /**
+     * Execute ffprobe command.
+     *
+     * @example
+     * ```ts
+     * const ffmpeg = new FFmpeg();
+     * await ffmpeg.load();
+     * await ffmpeg.writeFile("video.avi", ...);
+     * // Getting duration of a video in seconds: ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 video.avi -o output.txt
+     * await ffmpeg.ffprobe(["-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", "video.avi", "-o", "output.txt"]);
+     * const data = ffmpeg.readFile("output.txt");
+     * ```
+     *
+     * @returns `0` if no error, `!= 0` if timeout (1) or error.
+     * @category FFmpeg
+     */
+    ffprobe = (
+    /** ffprobe command line args */
+    args, 
+    /**
+     * milliseconds to wait before stopping the command execution.
+     *
+     * @defaultValue -1
+     */
+    timeout = -1, { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.FFPROBE,
+        data: { args, timeout },
+    }, undefined, signal);
+    /**
+     * Terminate all ongoing API calls and terminate web worker.
+     * `FFmpeg.load()` must be called again before calling any other APIs.
+     *
+     * @category FFmpeg
+     */
+    terminate = () => {
+        const ids = Object.keys(this.#rejects);
+        // rejects all incomplete Promises.
+        for (const id of ids) {
+            this.#rejects[id](_errors_js__WEBPACK_IMPORTED_MODULE_2__.ERROR_TERMINATED);
+            delete this.#rejects[id];
+            delete this.#resolves[id];
+        }
+        if (this.#worker) {
+            this.#worker.terminate();
+            this.#worker = null;
+            this.loaded = false;
+        }
+    };
+    /**
+     * Write data to ffmpeg.wasm.
+     *
+     * @example
+     * ```ts
+     * const ffmpeg = new FFmpeg();
+     * await ffmpeg.load();
+     * await ffmpeg.writeFile("video.avi", await fetchFile("../video.avi"));
+     * await ffmpeg.writeFile("text.txt", "hello world");
+     * ```
+     *
+     * @category File System
+     */
+    writeFile = (path, data, { signal } = {}) => {
+        const trans = [];
+        if (data instanceof Uint8Array) {
+            trans.push(data.buffer);
+        }
+        return this.#send({
+            type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.WRITE_FILE,
+            data: { path, data },
+        }, trans, signal);
+    };
+    mount = (fsType, options, mountPoint) => {
+        const trans = [];
+        return this.#send({
+            type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.MOUNT,
+            data: { fsType, options, mountPoint },
+        }, trans);
+    };
+    unmount = (mountPoint) => {
+        const trans = [];
+        return this.#send({
+            type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.UNMOUNT,
+            data: { mountPoint },
+        }, trans);
+    };
+    /**
+     * Read data from ffmpeg.wasm.
+     *
+     * @example
+     * ```ts
+     * const ffmpeg = new FFmpeg();
+     * await ffmpeg.load();
+     * const data = await ffmpeg.readFile("video.mp4");
+     * ```
+     *
+     * @category File System
+     */
+    readFile = (path, 
+    /**
+     * File content encoding, supports two encodings:
+     * - utf8: read file as text file, return data in string type.
+     * - binary: read file as binary file, return data in Uint8Array type.
+     *
+     * @defaultValue binary
+     */
+    encoding = "binary", { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.READ_FILE,
+        data: { path, encoding },
+    }, undefined, signal);
+    /**
+     * Delete a file.
+     *
+     * @category File System
+     */
+    deleteFile = (path, { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.DELETE_FILE,
+        data: { path },
+    }, undefined, signal);
+    /**
+     * Rename a file or directory.
+     *
+     * @category File System
+     */
+    rename = (oldPath, newPath, { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.RENAME,
+        data: { oldPath, newPath },
+    }, undefined, signal);
+    /**
+     * Create a directory.
+     *
+     * @category File System
+     */
+    createDir = (path, { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.CREATE_DIR,
+        data: { path },
+    }, undefined, signal);
+    /**
+     * List directory contents.
+     *
+     * @category File System
+     */
+    listDir = (path, { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.LIST_DIR,
+        data: { path },
+    }, undefined, signal);
+    /**
+     * Delete an empty directory.
+     *
+     * @category File System
+     */
+    deleteDir = (path, { signal } = {}) => this.#send({
+        type: _const_js__WEBPACK_IMPORTED_MODULE_0__.FFMessageType.DELETE_DIR,
+        data: { path },
+    }, undefined, signal);
+}
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm/const.js"
+/*!********************************************************!*\
+  !*** ../node_modules/@ffmpeg/ffmpeg/dist/esm/const.js ***!
+  \********************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   CORE_URL: () => (/* binding */ CORE_URL),
+/* harmony export */   CORE_VERSION: () => (/* binding */ CORE_VERSION),
+/* harmony export */   FFMessageType: () => (/* binding */ FFMessageType),
+/* harmony export */   MIME_TYPE_JAVASCRIPT: () => (/* binding */ MIME_TYPE_JAVASCRIPT),
+/* harmony export */   MIME_TYPE_WASM: () => (/* binding */ MIME_TYPE_WASM)
+/* harmony export */ });
+const MIME_TYPE_JAVASCRIPT = "text/javascript";
+const MIME_TYPE_WASM = "application/wasm";
+const CORE_VERSION = "0.12.9";
+const CORE_URL = `https://unpkg.com/@ffmpeg/core@${CORE_VERSION}/dist/umd/ffmpeg-core.js`;
+var FFMessageType;
+(function (FFMessageType) {
+    FFMessageType["LOAD"] = "LOAD";
+    FFMessageType["EXEC"] = "EXEC";
+    FFMessageType["FFPROBE"] = "FFPROBE";
+    FFMessageType["WRITE_FILE"] = "WRITE_FILE";
+    FFMessageType["READ_FILE"] = "READ_FILE";
+    FFMessageType["DELETE_FILE"] = "DELETE_FILE";
+    FFMessageType["RENAME"] = "RENAME";
+    FFMessageType["CREATE_DIR"] = "CREATE_DIR";
+    FFMessageType["LIST_DIR"] = "LIST_DIR";
+    FFMessageType["DELETE_DIR"] = "DELETE_DIR";
+    FFMessageType["ERROR"] = "ERROR";
+    FFMessageType["DOWNLOAD"] = "DOWNLOAD";
+    FFMessageType["PROGRESS"] = "PROGRESS";
+    FFMessageType["LOG"] = "LOG";
+    FFMessageType["MOUNT"] = "MOUNT";
+    FFMessageType["UNMOUNT"] = "UNMOUNT";
+})(FFMessageType || (FFMessageType = {}));
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm/errors.js"
+/*!*********************************************************!*\
+  !*** ../node_modules/@ffmpeg/ffmpeg/dist/esm/errors.js ***!
+  \*********************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   ERROR_IMPORT_FAILURE: () => (/* binding */ ERROR_IMPORT_FAILURE),
+/* harmony export */   ERROR_NOT_LOADED: () => (/* binding */ ERROR_NOT_LOADED),
+/* harmony export */   ERROR_TERMINATED: () => (/* binding */ ERROR_TERMINATED),
+/* harmony export */   ERROR_UNKNOWN_MESSAGE_TYPE: () => (/* binding */ ERROR_UNKNOWN_MESSAGE_TYPE)
+/* harmony export */ });
+const ERROR_UNKNOWN_MESSAGE_TYPE = new Error("unknown message type");
+const ERROR_NOT_LOADED = new Error("ffmpeg is not loaded, call `await ffmpeg.load()` first");
+const ERROR_TERMINATED = new Error("called FFmpeg.terminate()");
+const ERROR_IMPORT_FAILURE = new Error("failed to import ffmpeg-core.js");
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm/index.js"
+/*!********************************************************!*\
+  !*** ../node_modules/@ffmpeg/ffmpeg/dist/esm/index.js ***!
+  \********************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   FFFSType: () => (/* reexport safe */ _types_js__WEBPACK_IMPORTED_MODULE_1__.FFFSType),
+/* harmony export */   FFmpeg: () => (/* reexport safe */ _classes_js__WEBPACK_IMPORTED_MODULE_0__.FFmpeg)
+/* harmony export */ });
+/* harmony import */ var _classes_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./classes.js */ "../node_modules/@ffmpeg/ffmpeg/dist/esm/classes.js");
+/* harmony import */ var _types_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./types.js */ "../node_modules/@ffmpeg/ffmpeg/dist/esm/types.js");
+
+
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm/types.js"
+/*!********************************************************!*\
+  !*** ../node_modules/@ffmpeg/ffmpeg/dist/esm/types.js ***!
+  \********************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   FFFSType: () => (/* binding */ FFFSType)
+/* harmony export */ });
+var FFFSType;
+(function (FFFSType) {
+    FFFSType["MEMFS"] = "MEMFS";
+    FFFSType["NODEFS"] = "NODEFS";
+    FFFSType["NODERAWFS"] = "NODERAWFS";
+    FFFSType["IDBFS"] = "IDBFS";
+    FFFSType["WORKERFS"] = "WORKERFS";
+    FFFSType["PROXYFS"] = "PROXYFS";
+})(FFFSType || (FFFSType = {}));
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm/utils.js"
+/*!********************************************************!*\
+  !*** ../node_modules/@ffmpeg/ffmpeg/dist/esm/utils.js ***!
+  \********************************************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   getMessageID: () => (/* binding */ getMessageID)
+/* harmony export */ });
+/**
+ * Generate an unique message ID.
+ */
+const getMessageID = (() => {
+    let messageID = 0;
+    return () => messageID++;
+})();
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm sync recursive"
+/*!*****************************************************!*\
+  !*** ../node_modules/@ffmpeg/ffmpeg/dist/esm/ sync ***!
+  \*****************************************************/
+(module) {
+
+function webpackEmptyContext(req) {
+	var e = new Error("Cannot find module '" + req + "'");
+	e.code = 'MODULE_NOT_FOUND';
+	throw e;
+}
+webpackEmptyContext.keys = () => ([]);
+webpackEmptyContext.resolve = webpackEmptyContext;
+webpackEmptyContext.id = "../node_modules/@ffmpeg/ffmpeg/dist/esm sync recursive";
+module.exports = webpackEmptyContext;
+
+/***/ },
+
+/***/ "../src/background.js"
+/*!****************************!*\
+  !*** ../src/background.js ***!
+  \****************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../src/downloader.js */ "../src/downloader.js");
+
+
+let installTime = 0
+const startTime = Date.now()
+
+let tabIDs = []
+let lightMode = localStorage.getItem("lightMode") == "true"
+
+let currentVer = browser.runtime.getManifest().version
+let majorVerInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
+let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version
+localStorage.setItem("lastMajorVer", majorVerInfo.version)
+
+let inputMethod = localStorage.getItem("inputMethod")
+
+let onboardingStatus = localStorage.getItem("onboarding-status")
+if (!onboardingStatus) onboardingStatus = { image: true, video: true }
+else onboardingStatus = JSON.parse(onboardingStatus)
+
+const standardSettings = [
+      // Sections
+      [
+            { value: "%filename%", id: "downloadPath", type: "pathInput", name: "Download path" }
+      ],
+      [
+            // Settings
+            { value: true, id: "vidDownload", type: "toggle", name: "Video downloads" },
+            { value: true, id: "imgDownload", type: "toggle", name: "Image downloads" },
+            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloads" }
+      ],
+      [
+            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" },
+            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp" },
+            { value: false, id: "imgQualityMode", type: "toggle", name: "Change image quality" }
+      ],
+      [
+            { value: 20, id: "imgQuality", type: "slider", name: "Image quality" }
+      ],
+      [
+            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups" }
+      ]
+]
+
+console.log(log("Fetching saved settings"))
+let settings = localStorage.getItem("settings")
+if (!settings) {
+      // Standard configuration
+      settings = standardSettings
+      console.log(log("New user, standard settings applied"))
+}
+else {
+      try {
+            // Parse saved settings
+            settings = JSON.parse(settings)
+
+            // Create temporary clone for migration
+            let newSettings = structuredClone(standardSettings)
+
+            // Loop through categories
+            for (let category = 0; category < newSettings.length; category++) {
+                  // Loop through individual settings
+                  for (let setting = 0; setting < newSettings[category].length; setting++) {
+                        let newSetting = newSettings[category][setting]
+                        // Fetch setting from stored settings
+                        const oldSetting = GetSetting(newSetting.id, settings)
+
+                        // If setting is found, replace new value with old
+                        if (oldSetting) {
+                              newSetting.value = oldSetting.value
+                        }
+                  }
+            }
+            settings = newSettings
+
+            console.log(log("Settings successuflly migrated"))
+      }
+      catch (e) {
+            console.log(log("Error migrating settings: " + e))
+            console.log(settings)
+      }
+}
+
+localStorage.setItem("settings", JSON.stringify(settings))
+console.log(log("Modified settings saved"))
+
+
+browser.runtime.onInstalled.addListener((details) => {
+      if (details.reason == "install") {
+            console.log(log("New install detected, initiating onboarding"))
+
+            onboardingStatus = { image: false, video: false }
+            localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
+
+            showVerInfo = false
+            for (let i = 0; i < tabIDs.length; i++) {
+                  const tabID = tabIDs[i]
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "version-info-displayed" })
+                  }
+                  catch { }
+            }
+      }
+});
+
+// Add listeners for messages from content scripts
+browser.runtime.onMessage.addListener((message, sender) => {
+      if (sender.tab && !tabIDs.includes(sender.tab.id)) tabIDs.push(sender.tab.id)
+
+      // Downloads
+      if (message.type == "bsky-download") {
+            console.log(log("Download request received"))
+
+            // Empty URL provided
+            if (!message.downloadInfo.url || message.downloadInfo.url.length == 0) {
+                  console.error(log("Empty download URL"))
+
+                  let response = {
+                        type: "bsky-download-progress",
+                        id: message.id,
+                        url: message.downloadInfo.url,
+                        error: "Error: URL empty"
+                  }
+                  browser.tabs.sendMessage(sender.tab.id, response)
+                  return
+            }
+
+            // Start download
+            downloader.download(message.downloadInfo,
+                  (progress, error, fileBlob = null) => {
+                        console.log(log(`Download progress for ${message.id} at ${progress}%`))
+
+                        // Send progress messages to sender
+                        let response = {
+                              type: "bsky-download-progress",
+                              id: message.id,
+                              url: message.downloadInfo.url,
+                              progress: progress,
+                              fileBlob: fileBlob
+                        }
+
+                        if (error !== null) response.error = error.toString()
+
+                        browser.tabs.sendMessage(sender.tab.id, response)
+                  })
+      }
+
+      // Settings get requests
+      else if (message.type == "get-settings") {
+            console.log(log("Settings get request received"))
+            browser.tabs.sendMessage(sender.tab.id, { settings: settings })
+      }
+
+      // Setting set requests
+      else if (message.type == "set-setting") {
+            console.log(log("Settings set request received"))
+            SetSetting(message.settingId, message.value, settings)
+      }
+
+      // Light mode status set requests
+      else if (message.type == "set-light-mode") {
+            lightMode = message.value
+            console.log(log("Light mode change detected, new value: " + lightMode))
+            localStorage.setItem("lightMode", lightMode)
+      }
+
+      // Light mode status get requests
+      else if (message.type == "get-light-mode") {
+            console.log(log("Light mode request received"))
+            browser.tabs.sendMessage(sender.tab.id, { value: lightMode, type: "light-mode" })
+      }
+
+      // Input method set requests
+      else if (message.type == "set-input-method") {
+            if (message.value == inputMethod) return
+            console.log(log("Input method change detected"))
+            inputMethod = message.value
+            localStorage.setItem("inputMethod", inputMethod)
+      }
+
+      // settings update relay messages from content script to popup script
+      else if (message.type == "settings-update") {
+            return
+      }
+
+      // Update popup display status
+      else if (message.type == "version-info-displayed") {
+            console.log(log("Version info displayed, relaying message"))
+            showVerInfo = false
+            for (let i = 0; i < tabIDs.length; i++) {
+                  const tabID = tabIDs[i]
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "version-info-displayed" })
+                  }
+                  catch { }
+            }
+      }
+
+      // Install time request
+      else if (message.type == "init") {
+            console.log(log("Init request received"))
+            const uptime = Date.now() - startTime
+            browser.tabs.sendMessage(sender.tab.id, {
+                  type: "init",
+                  uptime: uptime,
+                  onboardingStatus: onboardingStatus,
+                  settings: settings,
+                  lightMode: lightMode,
+                  inputMethod: inputMethod,
+                  version: currentVer,
+                  versionInfo: showVerInfo ? majorVerInfo : null
+            })
+      }
+
+      // Onboarding status updates
+      else if (message.type == "onboarding-update") {
+            console.log(log("Onboarding status update received"))
+            onboardingStatus.video = onboardingStatus.video || message.onboardingStatus.video
+            onboardingStatus.image = onboardingStatus.image || message.onboardingStatus.image
+
+            localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
+
+            tabIDs.forEach(tabID => {
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "onboarding-update", onboardingStatus: onboardingStatus })
+                  }
+                  catch { }
+            })
+      }
+
+      // Invalid message type
+      else {
+            console.error(log("Invalid message type: " + message.type))
+            let response = { error: `Invalid message.type "${message.type}"` }
+            browser.tabs.sendMessage(sender.tab.id, response)
+      }
+});
+
+// Custom implementation to support directly saving to storage and informing tabs
+function SetSetting(settingId, value, settings) {
+      if (GetSetting(settingId, settings).value == value)
+            return
+
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+                  if (setting.id == settingId) {
+                        setting.value = value;
+                        localStorage.setItem("settings", JSON.stringify(settings))
+
+                        console.log(log("Settings changed, relaying"))
+                        for (let i = 0; i < tabIDs.length; i++) {
+                              const tabID = tabIDs[i]
+                              try {
+                                    // Extension popup window can only be addressed with runtime.sendMessage but background script can't access this
+                                    // Content script is tasked with repeating the message for the popup window
+                                    browser.tabs.sendMessage(tabID, { type: "settings-update", settings: settings, repeat: i == 0 })
+                              }
+                              catch { }
+                        }
+                        return
+                  }
+            }
+      }
+}
+
+const downloader = new _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__.Downloader();
+
+/***/ },
+
+/***/ "../src/downloader.js"
+/*!****************************!*\
+  !*** ../src/downloader.js ***!
+  \****************************/
+(__unused_webpack_module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   Downloader: () => (/* binding */ Downloader)
+/* harmony export */ });
+/* harmony import */ var _ffmpeg_ffmpeg__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! @ffmpeg/ffmpeg */ "../node_modules/@ffmpeg/ffmpeg/dist/esm/index.js");
+/* harmony import */ var _ffmpeg_util__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! @ffmpeg/util */ "../node_modules/@ffmpeg/util/dist/esm/index.js");
+
+
+
+// Modified downloader heavily based on down.blue
+// https://github.com/breakzplatform/downloader.notx.blue
+
+// Modified downloader to run as a standalone class
+// Removed UI values
+// Removed unused logic
+// Extracted the video conversion logic into separate function
+// Made to work with video URLs directly
+// Made compatible as a web extension based on browser-extension-ffmpeg
+// https://github.com/Aniny21/browser-extension-ffmpeg/
+// Added simple progress estimation
+
+// Side note: Firefox extensions can't run multi-core wasm
+// Ffmpeg.wasm is best run in a background script due to
+// security restrictions that some websites impose
+// The browser will throw an error because of wasm restrictions
+// This does not impact function
+class Downloader {
+      #ffmpeg = new _ffmpeg_ffmpeg__WEBPACK_IMPORTED_MODULE_0__.FFmpeg();
+      #queue
+      #onProgress
+      #downloadReady
+      #maxTries = 3
+      #mobileDevice = DetectMobileDevice()
+      ffmpegLoaded = false
+      shutDownFFmpeg = null
+
+      constructor() {
+            this.#queue = []
+            this.#downloadReady = true
+            this.progress = 0
+            this.#onProgress = () => { }
+      }
+
+      // Push new download to queue and try to start 
+      download(downloadInfo,
+            onProgress = () => { }) {
+            if (this.#queue.find(element => element.data.url == downloadInfo.url)) return
+
+            this.#queue.push({
+                  data: downloadInfo,
+                  onProgress: onProgress,
+                  tries: 0
+            })
+
+            this.#download()
+      }
+
+      async #download() {
+            if (!this.#downloadReady) return
+
+            // Block downloads until complete
+            this.#downloadReady = false
+
+            this.progress = 0
+            let ffmpegLoading
+
+            // Get next download item
+            const currentItem = this.#queue.shift()
+
+            // Get individual properties
+            const url = currentItem.data.url
+            const fileType = currentItem.data.fileType
+            const fileExt = currentItem.data.fileExt
+            const filePath = currentItem.data.filePath
+            const mimeType = currentItem.data.mimeType
+            const imgCompression = currentItem.data.imgCompression
+            const imgQuality = currentItem.data.imgQuality
+
+            this.#onProgress = currentItem.onProgress
+            const tries = currentItem.tries
+
+            console.log(log("Download started for: " + currentItem.data.url))
+
+            // Initialize ffmpeg if needed
+            if (!this.ffmpegLoaded &&
+                  (
+                        fileType.id == Downloadbutton.Video.id ||
+                        // fileType.id == Downloadbutton.UploadedGIF.id ||
+                        (fileType.id == Downloadbutton.Image.id && imgCompression)
+                  )) {
+
+                  if (this.shutDownFFmpeg) {
+                        console.log(log("FFmpeg shutdown aborted"))
+                        clearTimeout(this.shutDownFFmpeg)
+                  }
+                  else {
+                        console.log(log("Loading FFmpeg"))
+                        ffmpegLoading = this.#loadFFmpeg()
+                  }
+            }
+
+            try {
+                  if (fileType.id == Downloadbutton.Video.id || fileType.id == Downloadbutton.UploadedGIF.id)
+                        await this.downloadVideo(
+                              url,
+                              filePath,
+                              fileExt,
+                              ffmpegLoading
+                        )
+
+                  else
+                        await this.downloadImage(
+                              url,
+                              filePath,
+                              fileExt,
+                              ffmpegLoading,
+                              imgCompression,
+                              imgQuality,
+                              mimeType
+                        )
+
+            } catch (error) {
+                  console.error(error)
+
+                  if (tries < this.#maxTries) {
+                        currentItem.tries++
+                        this.#queue.push(currentItem)
+                        this.progress = 0
+                  }
+                  else {
+                        this.#setProgress(0, error)
+                  }
+
+            }
+
+            // Start next download
+            this.#downloadReady = true;
+            if (this.#queue.length > 0) this.#download()
+            else {
+                  if (this.#ffmpeg.loaded) {
+                        console.log(log("Download queue empty, starting FFmpeg shutdown timer"))
+                        this.shutDownFFmpeg = setTimeout(() => {
+                              console.log(log("Shutting down FFmpeg"))
+                              this.#ffmpeg.terminate()
+                              this.shutDownFFmpeg = null
+                              this.ffmpegLoaded = false
+                        }, 10000)
+                  }
+                  else
+                        console.log(log("Download queue empty, FFmpeg not running"))
+            }
+      }
+
+      // Downloads for images
+      async downloadImage(
+            url,
+            filePath,
+            fileExtension,
+            ffmpegLoading,
+            compressImage,
+            imageQuality,
+            mimeType
+      ) {
+            try {
+                  // Runs when progress is made
+                  const _onProgress = (progress, blob = undefined, filePath = "") => {
+                        return new Promise(resolve => {
+                              this.progress = progress
+
+                              // Download in progress
+                              if (progress != 100) {
+                                    this.#setProgress(progress)
+                                    resolve()
+                              }
+
+                              // Download finished
+                              else if (this.#mobileDevice) {
+                                    // Send blob to content script to download
+                                    this.#setProgress(progress, null, blob)
+                                    resolve()
+                              }
+                              else {
+                                    // Download using downloads API
+                                    let fileURL = URL.createObjectURL(blob)
+
+                                    // Initiate download
+                                    browser.downloads.download({
+                                          url: fileURL, filename: filePath
+                                    }).then(() => {
+                                          this.#setProgress(100)
+                                          resolve()
+
+                                          // Free up RAM, will interrupt download if done too soon for some reason
+                                          setTimeout(() => {
+                                                URL.revokeObjectURL(fileURL)
+                                          }, 5000)
+                                    })
+                              }
+                        })
+                  }
+
+                  // Fetch image
+                  let response = await fetch(url)
+                  // Set progress
+                  await _onProgress(compressImage ? 25 : 50)
+
+                  // Get image data
+                  let arrayBuffer = await response.arrayBuffer()
+                  let blob = new Blob([arrayBuffer], { type: mimeType })
+
+                  // Early exit when conversion is not needed
+                  if (!compressImage || (mimeType == "image/jpeg" && imageQuality == 100)) {
+                        await _onProgress(100, blob, filePath)
+                  }
+                  // Continue when conversion is needed
+                  else {
+                        // Set progress
+                        await _onProgress(50)
+
+                        // Write file to virtual FS
+                        await ffmpegLoading
+                        await this.#ffmpeg.writeFile(
+                              "input.jpg",
+                              await (0,_ffmpeg_util__WEBPACK_IMPORTED_MODULE_1__.fetchFile)(blob)
+                        );
+
+                        // Set argument for setting quality based on file type
+                        let qualityStr = "";
+                        if (mimeType == "image/webp") {
+                              qualityStr = "-q"
+
+                              imageQuality = Math.max(imageQuality, 1)
+                        }
+                        else {
+                              qualityStr = "-q:v"
+
+                              // Convert from quality 0% = worst => 100% best to 32 = worst => 1 = best
+                              imageQuality = Math.round(32 - 0.31 * imageQuality)
+                        }
+
+                        console.log(log("Converting to " + mimeType + " at quality: " + imageQuality))
+
+                        // Convert and compress file
+                        await this.#ffmpeg.exec(
+                              [
+                                    "-i",
+                                    "input.jpg",
+                                    qualityStr,
+                                    imageQuality.toString(),
+                                    "output" + fileExtension
+                              ]
+                        )
+
+                        const image = await this.#ffmpeg.readFile("output" + fileExtension);
+                        const imageBlob = new Blob([image], { type: mimeType, });
+
+                        await _onProgress(100, imageBlob, filePath)
+                  }
+
+            } catch (error) {
+                  console.error(error)
+                  this.#setProgress(0, error)
+            }
+      }
+
+      async downloadVideo(
+            url,
+            filePath,
+            fileExtension,
+            ffmpegLoading
+      ) {
+            // Code written https://github.com/breakzplatform
+            // Produces slightly better videos than letting ffmpeg download the video
+            const videoBlob = await this.#processPlaylist(url);
+
+            // Wait for ffmpeg to load if it hasn't yet
+            await ffmpegLoading
+            // Convert to mp4
+            let blob = await this.#convertVideo(videoBlob, fileExtension)
+
+            if (this.#mobileDevice) {
+                  // Return file to content script to download
+                  this.#setProgress(100, null, fileBlob)
+            }
+            else {
+                  // Download using downloads API
+                  let fileURL = URL.createObjectURL(blob)
+
+                  // Initiate download
+                  browser.downloads.download({
+                        url: fileURL, filename: filePath
+                  }).then(() => {
+                        this.#setProgress(100)
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
+                  })
+            }
+      }
+
+      async #processPlaylist(playlistUrl) {
+            const masterPlaylistResponse = await fetch(playlistUrl);
+            const masterPlaylist = await masterPlaylistResponse.text();
+
+            const videoPlaylistUrl = this.#parseHighestQualityVideoUrl(
+                  masterPlaylist,
+                  playlistUrl
+            );
+            const videoPlaylistResponse = await fetch(videoPlaylistUrl);
+            const videoPlaylist = await videoPlaylistResponse.text();
+            const segmentUrls = this.#parseSegmentUrls(
+                  videoPlaylist,
+                  videoPlaylistUrl
+            );
+
+            this.#setProgress(15)
+
+            return this.#downloadSegments(segmentUrls);
+      }
+
+      #parseSegmentUrls(videoPlaylist, baseUrl) {
+            return videoPlaylist
+                  .split("\n")
+                  .filter((line) => !line.startsWith("#") && line.trim() !== "")
+                  .map((segment) => new URL(segment, baseUrl).toString());
+      }
+
+      #parseHighestQualityVideoUrl(masterPlaylist, baseUrl) {
+            let highestBandwidth = 0;
+            let highestQualityUrl = "";
+            masterPlaylist.split("\n").forEach((line, i, lines) => {
+                  if (line.startsWith("#EXT-X-STREAM-INF")) {
+                        const bandwidth = parseInt(line.match(/BANDWIDTH=(\d+)/)[1]);
+                        if (bandwidth > highestBandwidth) {
+                              highestBandwidth = bandwidth;
+                              highestQualityUrl = lines[i + 1];
+                        }
+                  }
+            });
+            return new URL(highestQualityUrl, baseUrl).toString();
+      }
+
+      async #downloadSegments(segmentUrls) {
+            const chunks = [];
+            for (let i = 0; i < segmentUrls.length; i++) {
+                  let progress = Math.round(15 + (55 / segmentUrls.length) * (i + 1))
+                  console.log(progress)
+                  this.#setProgress(progress)
+
+                  const response = await fetch(segmentUrls[i]);
+                  chunks.push(await response.arrayBuffer());
+            }
+
+            return new Blob(chunks, { type: "video/MP2T" });
+      }
+
+      async #convertVideo(videoBlob, fileExtension) {
+            try {
+                  this.#setProgress(90)
+
+                  // Write file to virtual FS
+                  await this.#ffmpeg.writeFile(
+                        "input.ts",
+                        await (0,_ffmpeg_util__WEBPACK_IMPORTED_MODULE_1__.fetchFile)(videoBlob)
+                  );
+
+                  // Convert file
+                  await this.#ffmpeg.exec(
+                        [
+                              "-i",
+                              "input.ts",
+                              "-map",
+                              "0",
+                              "-c",
+                              "copy",
+                              "output" + fileExtension
+                        ]
+                  );
+
+                  // Read file and write it to blob
+                  const videoData = await this.#ffmpeg.readFile("output" + fileExtension);
+                  const mp4Blob = new Blob([videoData.buffer], {
+                        type: "video/" + fileExtension.match(/[^\.]+$/)[0],
+                  });
+
+                  return mp4Blob
+            }
+            catch (e) {
+                  console.error(e)
+            }
+      }
+
+      #setProgress(progress, error = null, videoBlob = null) {
+            this.progress = progress
+            this.#onProgress(this.progress, error, videoBlob)
+      }
+
+      async #loadFFmpeg() {
+            await this.#ffmpeg.load({
+                  coreURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.js"),
+                  wasmURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.wasm"),
+            })
+            this.ffmpegLoaded = true
+      }
+}
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/util/dist/esm/const.js"
+/*!******************************************************!*\
+  !*** ../node_modules/@ffmpeg/util/dist/esm/const.js ***!
+  \******************************************************/
+(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   HeaderContentLength: () => (/* binding */ HeaderContentLength)
+/* harmony export */ });
+const HeaderContentLength = "Content-Length";
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/util/dist/esm/errors.js"
+/*!*******************************************************!*\
+  !*** ../node_modules/@ffmpeg/util/dist/esm/errors.js ***!
+  \*******************************************************/
+(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   ERROR_INCOMPLETED_DOWNLOAD: () => (/* binding */ ERROR_INCOMPLETED_DOWNLOAD),
+/* harmony export */   ERROR_RESPONSE_BODY_READER: () => (/* binding */ ERROR_RESPONSE_BODY_READER)
+/* harmony export */ });
+const ERROR_RESPONSE_BODY_READER = new Error("failed to get response body reader");
+const ERROR_INCOMPLETED_DOWNLOAD = new Error("failed to complete download");
+
+
+/***/ },
+
+/***/ "../node_modules/@ffmpeg/util/dist/esm/index.js"
+/*!******************************************************!*\
+  !*** ../node_modules/@ffmpeg/util/dist/esm/index.js ***!
+  \******************************************************/
+(__unused_webpack___webpack_module__, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   downloadWithProgress: () => (/* binding */ downloadWithProgress),
+/* harmony export */   fetchFile: () => (/* binding */ fetchFile),
+/* harmony export */   importScript: () => (/* binding */ importScript),
+/* harmony export */   toBlobURL: () => (/* binding */ toBlobURL)
+/* harmony export */ });
+/* harmony import */ var _errors_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./errors.js */ "../node_modules/@ffmpeg/util/dist/esm/errors.js");
+/* harmony import */ var _const_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./const.js */ "../node_modules/@ffmpeg/util/dist/esm/const.js");
+
+
+const readFromBlobOrFile = (blob) => new Promise((resolve, reject) => {
+    const fileReader = new FileReader();
+    fileReader.onload = () => {
+        const { result } = fileReader;
+        if (result instanceof ArrayBuffer) {
+            resolve(new Uint8Array(result));
+        }
+        else {
+            resolve(new Uint8Array());
+        }
+    };
+    fileReader.onerror = (event) => {
+        reject(Error(`File could not be read! Code=${event?.target?.error?.code || -1}`));
+    };
+    fileReader.readAsArrayBuffer(blob);
+});
+/**
+ * An util function to fetch data from url string, base64, URL, File or Blob format.
+ *
+ * Examples:
+ * ```ts
+ * // URL
+ * await fetchFile("http://localhost:3000/video.mp4");
+ * // base64
+ * await fetchFile("data:<type>;base64,wL2dvYWwgbW9yZ...");
+ * // URL
+ * await fetchFile(new URL("video.mp4", import.meta.url));
+ * // File
+ * fileInput.addEventListener('change', (e) => {
+ *   await fetchFile(e.target.files[0]);
+ * });
+ * // Blob
+ * const blob = new Blob(...);
+ * await fetchFile(blob);
+ * ```
+ */
+const fetchFile = async (file) => {
+    let data;
+    if (typeof file === "string") {
+        /* From base64 format */
+        if (/data:_data\/([a-zA-Z]*);base64,([^"]*)/.test(file)) {
+            data = atob(file.split(",")[1])
+                .split("")
+                .map((c) => c.charCodeAt(0));
+            /* From remote server/URL */
+        }
+        else {
+            data = await (await fetch(file)).arrayBuffer();
+        }
+    }
+    else if (file instanceof URL) {
+        data = await (await fetch(file)).arrayBuffer();
+    }
+    else if (file instanceof File || file instanceof Blob) {
+        data = await readFromBlobOrFile(file);
+    }
+    else {
+        return new Uint8Array();
+    }
+    return new Uint8Array(data);
+};
+/**
+ * importScript dynamically import a script, useful when you
+ * want to use different versions of ffmpeg.wasm based on environment.
+ *
+ * Example:
+ *
+ * ```ts
+ * await importScript("http://localhost:3000/ffmpeg.js");
+ * ```
+ */
+const importScript = async (url) => new Promise((resolve) => {
+    const script = document.createElement("script");
+    const eventHandler = () => {
+        script.removeEventListener("load", eventHandler);
+        resolve();
+    };
+    script.src = url;
+    script.type = "text/javascript";
+    script.addEventListener("load", eventHandler);
+    document.getElementsByTagName("head")[0].appendChild(script);
+});
+/**
+ * Download content of a URL with progress.
+ *
+ * Progress only works when Content-Length is provided by the server.
+ *
+ */
+const downloadWithProgress = async (url, cb) => {
+    const resp = await fetch(url);
+    let buf;
+    try {
+        // Set total to -1 to indicate that there is not Content-Type Header.
+        const total = parseInt(resp.headers.get(_const_js__WEBPACK_IMPORTED_MODULE_1__.HeaderContentLength) || "-1");
+        const reader = resp.body?.getReader();
+        if (!reader)
+            throw _errors_js__WEBPACK_IMPORTED_MODULE_0__.ERROR_RESPONSE_BODY_READER;
+        const chunks = [];
+        let received = 0;
+        for (;;) {
+            const { done, value } = await reader.read();
+            const delta = value ? value.length : 0;
+            if (done) {
+                if (total != -1 && total !== received)
+                    throw _errors_js__WEBPACK_IMPORTED_MODULE_0__.ERROR_INCOMPLETED_DOWNLOAD;
+                cb && cb({ url, total, received, delta, done });
+                break;
+            }
+            chunks.push(value);
+            received += delta;
+            cb && cb({ url, total, received, delta, done });
+        }
+        const data = new Uint8Array(received);
+        let position = 0;
+        for (const chunk of chunks) {
+            data.set(chunk, position);
+            position += chunk.length;
+        }
+        buf = data.buffer;
+    }
+    catch (e) {
+        console.log(`failed to send download progress event: `, e);
+        // Fetch arrayBuffer directly when it is not possible to get progress.
+        buf = await resp.arrayBuffer();
+        cb &&
+            cb({
+                url,
+                total: buf.byteLength,
+                received: buf.byteLength,
+                delta: 0,
+                done: true,
+            });
+    }
+    return buf;
+};
+/**
+ * toBlobURL fetches data from an URL and return a blob URL.
+ *
+ * Example:
+ *
+ * ```ts
+ * await toBlobURL("http://localhost:3000/ffmpeg.js", "text/javascript");
+ * ```
+ */
+const toBlobURL = async (url, mimeType, progress = false, cb) => {
+    const buf = progress
+        ? await downloadWithProgress(url, cb)
+        : await (await fetch(url)).arrayBuffer();
+    const blob = new Blob([buf], { type: mimeType });
+    return URL.createObjectURL(blob);
+};
+
+
+/***/ }
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		if (!(moduleId in __webpack_modules__)) {
+/******/ 			delete __webpack_module_cache__[moduleId];
+/******/ 			var e = new Error("Cannot find module '" + moduleId + "'");
+/******/ 			e.code = 'MODULE_NOT_FOUND';
+/******/ 			throw e;
+/******/ 		}
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = __webpack_modules__;
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/get javascript chunk filename */
+/******/ 	(() => {
+/******/ 		// This function allow to reference async chunks
+/******/ 		__webpack_require__.u = (chunkId) => {
+/******/ 			// return url for filenames based on template
+/******/ 			return "" + chunkId + ".js";
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/global */
+/******/ 	(() => {
+/******/ 		__webpack_require__.g = (function() {
+/******/ 			if (typeof globalThis === 'object') return globalThis;
+/******/ 			try {
+/******/ 				return this || new Function('return this')();
+/******/ 			} catch (e) {
+/******/ 				if (typeof window === 'object') return window;
+/******/ 			}
+/******/ 		})();
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/publicPath */
+/******/ 	(() => {
+/******/ 		var scriptUrl;
+/******/ 		if (__webpack_require__.g.importScripts) scriptUrl = __webpack_require__.g.location + "";
+/******/ 		var document = __webpack_require__.g.document;
+/******/ 		if (!scriptUrl && document) {
+/******/ 			if (document.currentScript && document.currentScript.tagName.toUpperCase() === 'SCRIPT')
+/******/ 				scriptUrl = document.currentScript.src;
+/******/ 			if (!scriptUrl) {
+/******/ 				var scripts = document.getElementsByTagName("script");
+/******/ 				if(scripts.length) {
+/******/ 					var i = scripts.length - 1;
+/******/ 					while (i > -1 && (!scriptUrl || !/^http(s?):/.test(scriptUrl))) scriptUrl = scripts[i--].src;
+/******/ 				}
+/******/ 			}
+/******/ 		}
+/******/ 		// When supporting browsers where an automatic publicPath is not supported you must specify an output.publicPath manually via configuration
+/******/ 		// or pass an empty string ("") and set the __webpack_public_path__ variable from your code to use your own logic.
+/******/ 		if (!scriptUrl) throw new Error("Automatic publicPath is not supported in this browser");
+/******/ 		scriptUrl = scriptUrl.replace(/^blob:/, "").replace(/#.*$/, "").replace(/\?.*$/, "").replace(/\/[^\/]+$/, "/");
+/******/ 		__webpack_require__.p = scriptUrl;
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/jsonp chunk loading */
+/******/ 	(() => {
+/******/ 		__webpack_require__.b = (typeof document !== 'undefined' && document.baseURI) || self.location.href;
+/******/ 		
+/******/ 		// object to store loaded and loading chunks
+/******/ 		// undefined = chunk not loaded, null = chunk preloaded/prefetched
+/******/ 		// [resolve, reject, Promise] = chunk loading, 0 = chunk loaded
+/******/ 		var installedChunks = {
+/******/ 			"background": 0
+/******/ 		};
+/******/ 		
+/******/ 		// no chunk on demand loading
+/******/ 		
+/******/ 		// no prefetching
+/******/ 		
+/******/ 		// no preloaded
+/******/ 		
+/******/ 		// no HMR
+/******/ 		
+/******/ 		// no HMR manifest
+/******/ 		
+/******/ 		// no on chunks loaded
+/******/ 		
+/******/ 		// no jsonp function
+/******/ 	})();
+/******/ 	
+/************************************************************************/
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	__webpack_require__("../src/downloader.js");
+/******/ 	__webpack_require__("../src/background.js");
+/******/ 	var __webpack_exports__ = __webpack_require__("../js/classes.js");
+/******/ 	
+/******/ })()
+;
+//# sourceMappingURL=background.js.map
