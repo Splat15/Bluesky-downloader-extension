@@ -2342,8 +2342,8 @@ class Downloader {
             this.progress = 0
             this.#onProgress = () => { }
 
-            this.#ffmpeg.on('log', ({ message }) => {
-                  console.info(message);
+            this.#ffmpeg.on('log', ({ message, type }) => {
+                  console.info(log(message));
             });
       }
 
@@ -2480,7 +2480,7 @@ class Downloader {
                               // Download finished
                               else if (this.#mobileDevice) {
                                     // Send blob to content script to download
-                                    this.#setProgress(progress, null, blob)
+                                    this.#setProgress(100, null, blob)
                                     resolve()
                               }
                               else {
@@ -2643,7 +2643,7 @@ class Downloader {
                   videoPlaylistUrl
             );
 
-            this.#setProgress(15)
+            this.#setProgress(10)
 
             return this.#downloadSegments(segmentUrls);
       }
@@ -2673,7 +2673,7 @@ class Downloader {
       async #downloadSegments(segmentUrls) {
             const chunks = [];
             for (let i = 0; i < segmentUrls.length; i++) {
-                  let progress = Math.round(15 + (55 / segmentUrls.length) * (i + 1))
+                  let progress = Math.round(10 + (20 / segmentUrls.length) * (i + 1))
                   console.log(progress)
                   this.#setProgress(progress)
 
@@ -2686,13 +2686,21 @@ class Downloader {
 
       async #convertVideo(videoBlob, fileExtension, mimeType, command) {
             try {
-                  this.#setProgress(90)
-
+                  const startTime = Date.now()
                   // Write file to virtual FS
                   await this.#ffmpeg.writeFile(
                         "input.ts",
                         await (0,_ffmpeg_util__WEBPACK_IMPORTED_MODULE_1__.fetchFile)(videoBlob)
                   );
+
+                  this.#ffmpeg.on('progress', ({ progress, time }) => {
+                        this.#setProgress(30 + Math.round(70 * progress))
+
+                        let elapsedMS = Date.now() - startTime
+                        let remainingMS = (elapsedMS / progress) - elapsedMS
+
+                        console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
+                  });
 
                   // Convert file
                   await this.#ffmpeg.exec(command);
