@@ -385,14 +385,16 @@ export class Downloader {
                         await fetchFile(videoBlob)
                   );
 
-                  this.#ffmpeg.on('progress', ({ progress, time }) => {
+                  const _onProgress = ({ progress, time }) => {
                         this.#setProgress(30 + Math.round(70 * progress))
 
                         let elapsedMS = Date.now() - startTime
                         let remainingMS = (elapsedMS / progress) - elapsedMS
 
                         console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
-                  });
+                  }
+
+                  this.#ffmpeg.on('progress', _onProgress)
 
                   // Convert file
                   await this.#ffmpeg.exec(command);
@@ -402,6 +404,8 @@ export class Downloader {
                   const mp4Blob = new Blob([videoData.buffer], {
                         type: mimeType,
                   });
+
+                  this.#ffmpeg.off("progress", _onProgress)
 
                   return mp4Blob
             }
