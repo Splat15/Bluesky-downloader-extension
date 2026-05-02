@@ -2389,7 +2389,7 @@ class Downloader {
 
             // Initialize ffmpeg if needed
             // Always initialized unless media is an image and image compression is off
-            if (!(fileType.id == Downloadbutton.Image.id && imgCompression)) {
+            if (fileType.id != Downloadbutton.Image.id || imgCompression) {
 
                   if (this.shutDownFFmpeg) {
                         console.log(log("FFmpeg shutdown aborted"))
@@ -2472,7 +2472,7 @@ class Downloader {
                               this.progress = progress
 
                               // Download in progress
-                              if (progress != 100) {
+                              if (!blob) {
                                     this.#setProgress(progress)
                                     resolve()
                               }
@@ -2506,7 +2506,7 @@ class Downloader {
                   // Fetch image
                   let response = await fetch(url)
                   // Set progress
-                  await _onProgress(compressImage ? 25 : 50)
+                  await _onProgress(compressImage ? 20 : 50)
 
                   // Get image data
                   let arrayBuffer = await response.arrayBuffer()
@@ -2519,7 +2519,7 @@ class Downloader {
                   // Continue when conversion is needed
                   else {
                         // Set progress
-                        await _onProgress(50)
+                        await _onProgress(40)
 
                         // Write file to virtual FS
                         await ffmpegLoading
@@ -2544,6 +2544,18 @@ class Downloader {
 
                         console.log(log("Converting to " + mimeType + " at quality: " + imageQuality))
 
+                        const startTime = Date.now()
+                        const onFFmpegProgress = ({ progress, time }) => {
+                              _onProgress(40 + Math.round(50 * progress))
+
+                              let elapsedMS = Date.now() - startTime
+                              let remainingMS = (elapsedMS / progress) - elapsedMS
+
+                              console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
+                        }
+
+                        this.#ffmpeg.on('progress', onFFmpegProgress)
+
                         // Convert and compress file
                         await this.#ffmpeg.exec(
                               [
@@ -2554,6 +2566,8 @@ class Downloader {
                                     "output" + fileExtension
                               ]
                         )
+
+                        this.#ffmpeg.off("progress", onFFmpegProgress)
 
                         const image = await this.#ffmpeg.readFile("output" + fileExtension);
                         const imageBlob = new Blob([image], { type: mimeType, });
@@ -2686,14 +2700,14 @@ class Downloader {
 
       async #convertVideo(videoBlob, fileExtension, mimeType, command) {
             try {
-                  const startTime = Date.now()
                   // Write file to virtual FS
                   await this.#ffmpeg.writeFile(
                         "input.ts",
                         await (0,_ffmpeg_util__WEBPACK_IMPORTED_MODULE_1__.fetchFile)(videoBlob)
                   );
-
-                  const _onProgress = ({ progress, time }) => {
+                  
+                  const startTime = Date.now()
+                  const onFFmpegProgress = ({ progress, time }) => {
                         this.#setProgress(30 + Math.round(70 * progress))
 
                         let elapsedMS = Date.now() - startTime
@@ -2702,7 +2716,7 @@ class Downloader {
                         console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
                   }
 
-                  this.#ffmpeg.on('progress', _onProgress)
+                  this.#ffmpeg.on('progress', onFFmpegProgress)
 
                   // Convert file
                   await this.#ffmpeg.exec(command);
@@ -2712,8 +2726,6 @@ class Downloader {
                   const mp4Blob = new Blob([videoData.buffer], {
                         type: mimeType,
                   });
-
-                  this.#ffmpeg.off("progress", _onProgress)
 
                   return mp4Blob
             }
