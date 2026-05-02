@@ -33,6 +33,10 @@ export class Downloader {
             this.#downloadReady = true
             this.progress = 0
             this.#onProgress = () => { }
+
+            this.#ffmpeg.on('log', ({ message }) => {
+                  console.info(message);
+            });
       }
 
       // Push new download to queue and try to start 
@@ -76,18 +80,15 @@ export class Downloader {
             console.log(log("Download started for: " + currentItem.data.url))
 
             // Initialize ffmpeg if needed
-            if (!this.ffmpegLoaded &&
-                  (
-                        fileType.id == Downloadbutton.Video.id ||
-                        // fileType.id == Downloadbutton.UploadedGIF.id ||
-                        (fileType.id == Downloadbutton.Image.id && imgCompression)
-                  )) {
+            // Always initialized unless media is an image and image compression is off
+            if (!(fileType.id == Downloadbutton.Image.id && imgCompression)) {
 
                   if (this.shutDownFFmpeg) {
                         console.log(log("FFmpeg shutdown aborted"))
                         clearTimeout(this.shutDownFFmpeg)
                   }
-                  else {
+
+                  if (!this.ffmpegLoaded) {
                         console.log(log("Loading FFmpeg"))
                         ffmpegLoading = this.#loadFFmpeg()
                   }
@@ -99,7 +100,8 @@ export class Downloader {
                               url,
                               filePath,
                               fileExt,
-                              ffmpegLoading
+                              ffmpegLoading,
+                              mimeType
                         )
 
                   else
@@ -132,7 +134,7 @@ export class Downloader {
             if (this.#queue.length > 0) this.#download()
             else {
                   if (this.#ffmpeg.loaded) {
-                        console.log(log("Download queue empty, starting FFmpeg shutdown timer"))
+                        console.log(log("Download queue empty, stopping FFmpeg in 10s"))
                         this.shutDownFFmpeg = setTimeout(() => {
                               console.log(log("Shutting down FFmpeg"))
                               this.#ffmpeg.terminate()
@@ -261,16 +263,40 @@ export class Downloader {
             url,
             filePath,
             fileExtension,
-            ffmpegLoading
+            ffmpegLoading,
+            mimeType
       ) {
-            // Code written https://github.com/breakzplatform
+            // Code largely written https://github.com/breakzplatform
             // Produces slightly better videos than letting ffmpeg download the video
             const videoBlob = await this.#processPlaylist(url);
 
             // Wait for ffmpeg to load if it hasn't yet
             await ffmpegLoading
             // Convert to mp4
-            let blob = await this.#convertVideo(videoBlob, fileExtension)
+
+            let command;
+            if (mimeType == "image/gif")
+                  command = [
+                        "-i",
+                        "input.ts",
+                        "-map",
+                        "0",
+                        "-vf",
+                        "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                        "output.gif"
+                  ]
+            else
+                  command = [
+                        "-i",
+                        "input.ts",
+                        "-map",
+                        "0",
+                        "-c",
+                        "copy",
+                        "output" + fileExtension
+                  ]
+
+            let blob = await this.#convertVideo(videoBlob, fileExtension, mimeType, command)
 
             if (this.#mobileDevice) {
                   // Return file to content script to download
@@ -350,7 +376,7 @@ export class Downloader {
             return new Blob(chunks, { type: "video/MP2T" });
       }
 
-      async #convertVideo(videoBlob, fileExtension) {
+      async #convertVideo(videoBlob, fileExtension, mimeType, command) {
             try {
                   this.#setProgress(90)
 
@@ -361,22 +387,12 @@ export class Downloader {
                   );
 
                   // Convert file
-                  await this.#ffmpeg.exec(
-                        [
-                              "-i",
-                              "input.ts",
-                              "-map",
-                              "0",
-                              "-c",
-                              "copy",
-                              "output" + fileExtension
-                        ]
-                  );
+                  await this.#ffmpeg.exec(command);
 
                   // Read file and write it to blob
                   const videoData = await this.#ffmpeg.readFile("output" + fileExtension);
                   const mp4Blob = new Blob([videoData.buffer], {
-                        type: "video/" + fileExtension.match(/[^\.]+$/)[0],
+                        type: mimeType,
                   });
 
                   return mp4Blob
@@ -393,8 +409,8 @@ export class Downloader {
 
       async #loadFFmpeg() {
             await this.#ffmpeg.load({
-                  coreURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.js"),
-                  wasmURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.wasm"),
+                  coreURL: browser.runtime.getURL("lib/ffmpeg-core.js"),
+                  wasmURL: browser.runtime.getURL("lib/ffmpeg-core.wasm"),
             })
             this.ffmpegLoaded = true
       }

@@ -29,7 +29,7 @@ const standardSettings = [
             { value: true, id: "gifDownload", type: "toggle", name: "GIF downloads" }
       ],
       [
-            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" },
+            { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif" },
             { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp" },
             { value: false, id: "imgQualityMode", type: "toggle", name: "Change image quality" }
       ],
@@ -60,13 +60,27 @@ else {
             for (let category = 0; category < newSettings.length; category++) {
                   // Loop through individual settings
                   for (let setting = 0; setting < newSettings[category].length; setting++) {
-                        let newSetting = newSettings[category][setting]
-                        // Fetch setting from stored settings
-                        const oldSetting = GetSetting(newSetting.id, settings)
+                        try {
+                              let newSetting = newSettings[category][setting]
+                              let oldSetting
 
-                        // If setting is found, replace new value with old
-                        if (oldSetting) {
-                              newSetting.value = oldSetting.value
+                              // Patch for old setting
+                              // Setting needs to be migrated to new ID and inverted
+                              if (newSetting.id == "gifsAsGIF" && GetSetting("gifsAsWEBM", settings)) {
+                                    oldSetting = GetSetting("gifsAsWEBM", settings)
+                                    oldSetting.value = !oldSetting.value
+                              }
+                              else
+                                    oldSetting = GetSetting(newSetting.id, settings)
+
+                              // If setting is found, replace new value with old
+                              if (oldSetting) {
+                                    newSetting.value = oldSetting.value
+                              }
+                        }
+                        catch (e) {
+                              console.error(log("Error importing setting"))
+                              console.error(e)
                         }
                   }
             }

@@ -261,7 +261,7 @@ class Downloadbutton {
                   this.#fileExtension = this.type.ext
                   if (this.type == Downloadbutton.GIF) {
                         // Tenor and the bluesky mirrors use the last two letters of the ID to indicate format
-                        if (!GetSetting("gifsAsWEBM", this.settings).value) {
+                        if (GetSetting("gifsAsGIF", this.settings).value) {
                               this.#fileExtension = ".gif"
 
                               url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "AC")
@@ -273,6 +273,9 @@ class Downloadbutton {
                   // Fake GIFs uploaded by users need to be converted to the right format
                   else if (this.type == Downloadbutton.UploadedGIF) {
                         url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
+
+                        if (GetSetting("gifsAsGIF", this.settings).value) 
+                              this.#fileExtension = ".gif"
                   }
 
                   // If reqested, change file extension to .jpg

@@ -270,7 +270,7 @@ class Downloadbutton {
                   this.#fileExtension = this.type.ext
                   if (this.type == Downloadbutton.GIF) {
                         // Tenor and the bluesky mirrors use the last two letters of the ID to indicate format
-                        if (!GetSetting("gifsAsWEBM", this.settings).value) {
+                        if (GetSetting("gifsAsGIF", this.settings).value) {
                               this.#fileExtension = ".gif"
 
                               url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "AC")
@@ -282,6 +282,9 @@ class Downloadbutton {
                   // Fake GIFs uploaded by users need to be converted to the right format
                   else if (this.type == Downloadbutton.UploadedGIF) {
                         url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
+
+                        if (GetSetting("gifsAsGIF", this.settings).value) 
+                              this.#fileExtension = ".gif"
                   }
 
                   // If reqested, change file extension to .jpg
@@ -2038,7 +2041,7 @@ const standardSettings = [
             { value: true, id: "gifDownload", type: "toggle", name: "GIF downloads" }
       ],
       [
-            { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" },
+            { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif" },
             { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp" },
             { value: false, id: "imgQualityMode", type: "toggle", name: "Change image quality" }
       ],
@@ -2069,13 +2072,27 @@ else {
             for (let category = 0; category < newSettings.length; category++) {
                   // Loop through individual settings
                   for (let setting = 0; setting < newSettings[category].length; setting++) {
-                        let newSetting = newSettings[category][setting]
-                        // Fetch setting from stored settings
-                        const oldSetting = GetSetting(newSetting.id, settings)
+                        try {
+                              let newSetting = newSettings[category][setting]
+                              let oldSetting
 
-                        // If setting is found, replace new value with old
-                        if (oldSetting) {
-                              newSetting.value = oldSetting.value
+                              // Patch for old setting
+                              // Setting needs to be migrated to new ID and inverted
+                              if (newSetting.id == "gifsAsGIF" && GetSetting("gifsAsWEBM", settings)) {
+                                    oldSetting = GetSetting("gifsAsWEBM", settings)
+                                    oldSetting.value = !oldSetting.value
+                              }
+                              else
+                                    oldSetting = GetSetting(newSetting.id, settings)
+
+                              // If setting is found, replace new value with old
+                              if (oldSetting) {
+                                    newSetting.value = oldSetting.value
+                              }
+                        }
+                        catch (e) {
+                              console.error(log("Error importing setting"))
+                              console.error(e)
                         }
                   }
             }
@@ -2324,6 +2341,10 @@ class Downloader {
             this.#downloadReady = true
             this.progress = 0
             this.#onProgress = () => { }
+
+            this.#ffmpeg.on('log', ({ message }) => {
+                  console.info(message);
+            });
       }
 
       // Push new download to queue and try to start 
@@ -2367,18 +2388,15 @@ class Downloader {
             console.log(log("Download started for: " + currentItem.data.url))
 
             // Initialize ffmpeg if needed
-            if (!this.ffmpegLoaded &&
-                  (
-                        fileType.id == Downloadbutton.Video.id ||
-                        // fileType.id == Downloadbutton.UploadedGIF.id ||
-                        (fileType.id == Downloadbutton.Image.id && imgCompression)
-                  )) {
+            // Always initialized unless media is an image and image compression is off
+            if (!(fileType.id == Downloadbutton.Image.id && imgCompression)) {
 
                   if (this.shutDownFFmpeg) {
                         console.log(log("FFmpeg shutdown aborted"))
                         clearTimeout(this.shutDownFFmpeg)
                   }
-                  else {
+
+                  if (!this.ffmpegLoaded) {
                         console.log(log("Loading FFmpeg"))
                         ffmpegLoading = this.#loadFFmpeg()
                   }
@@ -2390,7 +2408,8 @@ class Downloader {
                               url,
                               filePath,
                               fileExt,
-                              ffmpegLoading
+                              ffmpegLoading,
+                              mimeType
                         )
 
                   else
@@ -2423,7 +2442,7 @@ class Downloader {
             if (this.#queue.length > 0) this.#download()
             else {
                   if (this.#ffmpeg.loaded) {
-                        console.log(log("Download queue empty, starting FFmpeg shutdown timer"))
+                        console.log(log("Download queue empty, stopping FFmpeg in 10s"))
                         this.shutDownFFmpeg = setTimeout(() => {
                               console.log(log("Shutting down FFmpeg"))
                               this.#ffmpeg.terminate()
@@ -2552,16 +2571,40 @@ class Downloader {
             url,
             filePath,
             fileExtension,
-            ffmpegLoading
+            ffmpegLoading,
+            mimeType
       ) {
-            // Code written https://github.com/breakzplatform
+            // Code largely written https://github.com/breakzplatform
             // Produces slightly better videos than letting ffmpeg download the video
             const videoBlob = await this.#processPlaylist(url);
 
             // Wait for ffmpeg to load if it hasn't yet
             await ffmpegLoading
             // Convert to mp4
-            let blob = await this.#convertVideo(videoBlob, fileExtension)
+
+            let command;
+            if (mimeType == "image/gif")
+                  command = [
+                        "-i",
+                        "input.ts",
+                        "-map",
+                        "0",
+                        "-vf",
+                        "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                        "output.gif"
+                  ]
+            else
+                  command = [
+                        "-i",
+                        "input.ts",
+                        "-map",
+                        "0",
+                        "-c",
+                        "copy",
+                        "output" + fileExtension
+                  ]
+
+            let blob = await this.#convertVideo(videoBlob, fileExtension, mimeType, command)
 
             if (this.#mobileDevice) {
                   // Return file to content script to download
@@ -2641,7 +2684,7 @@ class Downloader {
             return new Blob(chunks, { type: "video/MP2T" });
       }
 
-      async #convertVideo(videoBlob, fileExtension) {
+      async #convertVideo(videoBlob, fileExtension, mimeType, command) {
             try {
                   this.#setProgress(90)
 
@@ -2652,22 +2695,12 @@ class Downloader {
                   );
 
                   // Convert file
-                  await this.#ffmpeg.exec(
-                        [
-                              "-i",
-                              "input.ts",
-                              "-map",
-                              "0",
-                              "-c",
-                              "copy",
-                              "output" + fileExtension
-                        ]
-                  );
+                  await this.#ffmpeg.exec(command);
 
                   // Read file and write it to blob
                   const videoData = await this.#ffmpeg.readFile("output" + fileExtension);
                   const mp4Blob = new Blob([videoData.buffer], {
-                        type: "video/" + fileExtension.match(/[^\.]+$/)[0],
+                        type: mimeType,
                   });
 
                   return mp4Blob
@@ -2684,8 +2717,8 @@ class Downloader {
 
       async #loadFFmpeg() {
             await this.#ffmpeg.load({
-                  coreURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.js"),
-                  wasmURL: browser.runtime.getURL("ffmpeg/ffmpeg-core.wasm"),
+                  coreURL: browser.runtime.getURL("lib/ffmpeg-core.js"),
+                  wasmURL: browser.runtime.getURL("lib/ffmpeg-core.wasm"),
             })
             this.ffmpegLoaded = true
       }
