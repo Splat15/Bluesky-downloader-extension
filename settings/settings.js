@@ -75,10 +75,10 @@ class Setting {
 
                         if (this.qualitySlider) setQualSliderVis(this.value, this.qualitySlider)
 
-                        document.querySelector("#sliderSubtext").textContent =  "~" + GetApproxFileSize(
-                                    GetSetting("imgQuality", settings).value,
-                                    GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg"
-                              )
+                        document.querySelector("#sliderSubtext").textContent = "~" + GetApproxFileSize(
+                              GetSetting("imgQuality", settings).value,
+                              GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg"
+                        )
                   })
 
                   if (this.settingId == "imgQualityMode") {
@@ -523,7 +523,26 @@ helpPopup.addEventListener("click", (e) => e.stopPropagation())
 
 
 const settingsContainer = document.getElementById("settings")
+const scrollFadeTop = document.getElementById("scrollFadeTop")
+const scrollFadeBottom = document.getElementById("scrollFadeBottom")
+
+const onDocumentScroll = () => {
+      let boundingRect = document.documentElement.getBoundingClientRect()
+
+      const accuracy = 5
+      const top = document.documentElement.scrollTop < accuracy
+      const bottom = (window.innerHeight - (boundingRect.height - document.documentElement.scrollTop)) > -accuracy
+
+      scrollFadeTop.style.opacity = top ? 0 : 1;
+      scrollFadeBottom.style.opacity = bottom ? 0 : 1;
+}
+
+document.addEventListener("scroll", onDocumentScroll)
+window.addEventListener("resize", onDocumentScroll)
+onDocumentScroll()
+
 for (let i = 0; i < settings.length; i++) {
+      console.log("moved")
       const categoryElem = document.createElement("div")
       categoryElem.classList.add("category")
       settingsContainer.appendChild(categoryElem)

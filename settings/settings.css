@@ -98,13 +98,29 @@ body {
 }
 
 .header {
+  width: calc(max(100vw, 300px));
+  max-width: 500px;
+  position: fixed;
+  top: 0px;
   margin: 0;
-  width: 100%;
-  text-align: center;
-  font-size: 25px;
   font-weight: bolder;
-  padding-top: 15px;
   padding-bottom: 0;
+  z-index: 1000;
+}
+
+.header-text {
+  padding-top: 10px;
+  height: 46px;
+  background-color: var(--bg);
+  text-align: center;
+  font-size: 23px;
+}
+
+.scroll-fade {
+  width: 100%;
+  height: 50px;
+  background: linear-gradient(var(--bg), transparent);
+  transition: all ease 0.12s;
 }
 
 .category {
@@ -121,6 +137,9 @@ body {
   margin-top: 8px;
   margin-bottom: 8px;
   transition: all ease 0.2s;
+  z-index: 1000;
+  position: sticky;
+  top: 54px;
 }
 
 .category-separator-hidden {
@@ -131,7 +150,9 @@ body {
 }
 
 .settings {
-  padding: 12px 0px;
+  padding: 0px;
+  padding-top: 56px;
+  padding-bottom: 8px;
 }
 
 .setting {
