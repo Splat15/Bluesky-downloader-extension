@@ -6,10 +6,27 @@ const startTime = Date.now()
 let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
-let currentVer = browser.runtime.getManifest().version
-let majorVerInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
-let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version
-localStorage.setItem("lastMajorVer", majorVerInfo.version)
+
+// Set info for last major version. Will only be displayed if the extension has been updated from a version BELOW this one.
+const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
+// Get current version, including patches
+const currentVersion = browser.runtime.getManifest().version
+// Get version from when the bg script last ran
+const lastVersion = localStorage.getItem("lastVersion")
+// Dertermine whether the extension has been updated, including patches
+const updated = isVersionNewer(lastVersion, currentVersion)
+// Determine if the previous version of the extension was lower than the current major version. 
+// This means that a major version update must have been installed.
+const showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInfo.version)
+
+if (updated) {
+      console.log(log(`Version updated from v${lastVersion} to v${currentVersion}`))
+      if (showVersionInfo)
+            console.log(log(`New version info for v${majorVersionInfo.version} availible`))
+}
+
+localStorage.setItem("lastVersion", currentVersion)
+
 
 let inputMethod = localStorage.getItem("inputMethod")
 
@@ -220,8 +237,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   settings: settings,
                   lightMode: lightMode,
                   inputMethod: inputMethod,
-                  version: currentVer,
-                  versionInfo: showVerInfo ? majorVerInfo : null
+                  versionInfo: showVersionInfo ? majorVersionInfo : null
             })
       }
 

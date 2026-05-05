@@ -1,3 +1,4 @@
 web-ext-artifacts
 .vscode/settings.json
 node_modules
+test

@@ -283,7 +283,7 @@ class Downloadbutton {
                   else if (this.type == Downloadbutton.UploadedGIF) {
                         url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
-                        if (GetSetting("gifsAsGIF", this.settings).value) 
+                        if (GetSetting("gifsAsGIF", this.settings).value)
                               this.#fileExtension = ".gif"
                   }
 
@@ -1527,6 +1527,29 @@ function GetApproxFileSize(quality, format) {
       return apprFileSize + "kb"
 }
 
+function isVersionNewer(oldVer, newVer) {
+      try {
+            if (!oldVer) return true
+            if(!newVer) return undefined
+            oldVer = oldVer.split(".")
+            newVer = newVer.split(".")
+
+            for (let i = 0; i < newVer.length; i++) {
+                  const newVerComp = Number(newVer[i])
+                  const oldVerComp = Number(oldVer[i])
+
+                  if (newVerComp > oldVerComp)
+                        return true
+                  else if (newVerComp < oldVerComp)
+                        return false
+            }
+            return false
+      } catch (e) {
+            console.error(e)
+            return undefined
+      }
+}
+
 /***/ },
 
 /***/ "../node_modules/@ffmpeg/ffmpeg/dist/esm/classes.js"
@@ -2018,10 +2041,27 @@ const startTime = Date.now()
 let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
-let currentVer = browser.runtime.getManifest().version
-let majorVerInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
-let showVerInfo = localStorage.getItem("lastMajorVer") != majorVerInfo.version
-localStorage.setItem("lastMajorVer", majorVerInfo.version)
+
+// Set info for last major version. Will only be displayed if the extension has been updated from a version BELOW this one.
+const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
+// Get current version, including patches
+const currentVersion = browser.runtime.getManifest().version
+// Get version from when the bg script last ran
+const lastVersion = localStorage.getItem("lastVersion")
+// Dertermine whether the extension has been updated, including patches
+const updated = isVersionNewer(lastVersion, currentVersion)
+// Determine if the previous version of the extension was lower than the current major version. 
+// This means that a major version update must have been installed.
+const showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInfo.version)
+
+if (updated) {
+      console.log(log(`Version updated from v${lastVersion} to v${currentVersion}`))
+      if (showVersionInfo)
+            console.log(log(`New version info for v${majorVersionInfo.version} availible`))
+}
+
+localStorage.setItem("lastVersion", currentVersion)
+
 
 let inputMethod = localStorage.getItem("inputMethod")
 
@@ -2232,8 +2272,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   settings: settings,
                   lightMode: lightMode,
                   inputMethod: inputMethod,
-                  version: currentVer,
-                  versionInfo: showVerInfo ? majorVerInfo : null
+                  versionInfo: showVersionInfo ? majorVersionInfo : null
             })
       }
 

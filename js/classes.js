@@ -274,7 +274,7 @@ class Downloadbutton {
                   else if (this.type == Downloadbutton.UploadedGIF) {
                         url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
 
-                        if (GetSetting("gifsAsGIF", this.settings).value) 
+                        if (GetSetting("gifsAsGIF", this.settings).value)
                               this.#fileExtension = ".gif"
                   }
 
@@ -1516,4 +1516,27 @@ function GetApproxFileSize(quality, format) {
       }
       apprFileSize = Math.round(apprFileSize)
       return apprFileSize + "kb"
+}
+
+function isVersionNewer(oldVer, newVer) {
+      try {
+            if (!oldVer) return true
+            if(!newVer) return undefined
+            oldVer = oldVer.split(".")
+            newVer = newVer.split(".")
+
+            for (let i = 0; i < newVer.length; i++) {
+                  const newVerComp = Number(newVer[i])
+                  const oldVerComp = Number(oldVer[i])
+
+                  if (newVerComp > oldVerComp)
+                        return true
+                  else if (newVerComp < oldVerComp)
+                        return false
+            }
+            return false
+      } catch (e) {
+            console.error(e)
+            return undefined
+      }
 }
