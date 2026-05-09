@@ -164,7 +164,7 @@ class Downloadbutton {
 
                   this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.mediaElement.parentElement.insertBefore(this.#downloadButtonDiv, this.mediaElement)
+                  this.mediaElement.after(this.#downloadButtonDiv)
             }
 
             else if (this.type == Downloadbutton.GIF || this.type == Downloadbutton.UploadedGIF) {
@@ -1530,7 +1530,7 @@ function GetApproxFileSize(quality, format) {
 function isVersionNewer(oldVer, newVer) {
       try {
             if (!oldVer) return true
-            if(!newVer) return undefined
+            if (!newVer) return undefined
             oldVer = oldVer.split(".")
             newVer = newVer.split(".")
 

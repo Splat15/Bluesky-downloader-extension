@@ -369,55 +369,34 @@ new NodeObserver(
                   if (element.preload == "none" &&
                         element.hasAttribute("poster")) {
                         let downloadElement;
-                        // Create download button
-                        new Promise(resolve => {
-                              // Wait for element next to downloadButton to load
-                              let observer = new NodeObserver(
-                                    element2 => element2.tagName == "DIV" &&
-                                          element2.dir == "auto" &&
-                                          !element2.parentElement.hasAttribute("aria-label"),
-                                    // Create download button
-                                    element2 => {
-                                          downloadElement = element2
-                                          resolve()
-                                    },
-                                    true,
-                                    element.parentElement.parentElement
-                              )
 
-                              // Check if element next to downloadButton is already loaded
-                              const element2 = element.parentElement.parentElement.querySelector("div[dir='auto']")
-                              if (element2) {
+                        // Get blank spacer element, after which the download button should be inserted
+                        downloadElement = element.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
+                        console.log(downloadElement)
 
-                                    // Stop node observer from triggering
-                                    observer.Stop()
-                                    downloadElement = element2
-                                    resolve()
-                              }
-                        }).then(() => {
-                              try {
-                                    const func = () => {
-                                          if (mediaElements.includes(element)) return
-                                          mediaElements.push(element)
+                        try {
+                              const func = () => {
+                                    // Early return if element has already been processed
+                                    if (mediaElements.includes(element)) return
+                                    mediaElements.push(element)
 
-                                          const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, element)
-                                          downloadButtons.video.push(downloadButton)
+                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, element)
+                                    downloadButtons.video.push(downloadButton)
 
-                                          // Show flashing borders tutorial
-                                          if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
-                                                flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
-                                                onboardingHasRun.video = true
-                                          }
+                                    // Show flashing borders tutorial
+                                    if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                                          flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
+                                          onboardingHasRun.video = true
                                     }
-
-                                    if (init)
-                                          func()
-                                    else
-                                          onInit.push(func)
-
                               }
-                              catch (error) { console.error(log(error)) }
-                        })
+
+                              if (init)
+                                    func()
+                              else
+                                    onInit.push(func)
+
+                        }
+                        catch (error) { console.error(log(error)) }
                   }
 
                   // GIF posts (webm)
@@ -497,26 +476,24 @@ function InstallCleanup() {
       // Videos
       Array.from(document.querySelectorAll("video[poster][playsinline][preload='none']"))
             .forEach(videoElement => {
-                  const downloadElements = Array.from(videoElement.parentElement.parentElement.querySelectorAll('div:not([aria-label])>div[dir=auto]'))
-                        .filter(element => !element.parentElement.hasAttribute("aria-label"))
-                  downloadElements.forEach(downloadElement => {
-                        if (downloadElement) {
-                              try {
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
-                                    downloadButtons.video.push(downloadButton)
+                  const downloadElement = videoElement.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
 
-                                    // Onboarding procedure
-                                    if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
-                                          flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
+                  if (downloadElement) {
+                        try {
+                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
+                              downloadButtons.video.push(downloadButton)
 
-                                          onboardingHasRun.video = true
-                                    }
-                              }
-                              catch (error) {
-                                    console.error(log(error))
+                              // Onboarding procedure
+                              if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                                    flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
+
+                                    onboardingHasRun.video = true
                               }
                         }
-                  })
+                        catch (error) {
+                              console.error(log(error))
+                        }
+                  }
             })
 
       // GIFs
