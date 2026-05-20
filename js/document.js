@@ -1,47 +1,57 @@
 // This document runs on the main thread of the website to access things that the normal thread can't
 
+let knownURIPaths = []
+
 /** Gets at uri */
-function GetURI(element) {
+async function GetURI(element) {
       let uri
       let postInfo
       let resultPath
       // Get base post element
       let postElement = OuterQuerySelector(element, ["[data-testid*='Screen']>div>div>div>div>div", "div:has(>div>[data-testid*='feedItem-by'])"]).lastElementChild.lastElementChild
       console.log(postElement)
+
       //postElement.style.border = "solid green 1px"
 
       // Get property keys
       const keys = Object.getOwnPropertyNames(postElement)
+      const key = keys.find(element => element.startsWith("__reactProps"))
 
-      if (keys && keys.length > 0)
-            // Filter for __reactProps
-            for (let i = 0; i < keys.length; i++) {
-                  const key = keys[i]
-                  if (key.startsWith("__reactProps")) {
-                        let result = ScanObject(postElement[key], (element, path) => {
-                              return (path.endsWith("key") || path.endsWith("post.uri")) && element.startsWith("at://")
-                        }, 20,
-                              (resultElem, resultPath, stopSearch) => {
-                                    if (resultPath.endsWith("uri")) {
-                                          stopSearch()
-                                          console.log("uri found")
-                                    }
-                                    else {
-                                          console.log("key found, continuing")
-                                    }
-                              }
-                        )
-                        resultPath = result.path /*+ " (" + (Array.from(result.path.matchAll(/\./gi)).length + 1) + ")"*/
-                        result = result.result
-                        if (result && result.hasOwnProperty("key")) {
-                              uri = result.key.replace(/lineartop$/i, "")
+      // Test saved paths
+      let result = TestSavedPaths(postElement[key])
+
+      // One of the saved paths has worked. Skipping old procedure
+      if (result) {
+            console.log("Path cached")
+      }
+      else {
+            result = await ScanObject(postElement[key], (element, path) => {
+                  return (path.endsWith("key") || path.endsWith("post.uri")) && element.startsWith("at://")
+            }, 20,
+                  (resultElem, resultPath, stopSearch) => {
+                        if (resultPath.endsWith("uri")) {
+                              stopSearch()
+                              //console.log("uri found")
                         }
                         else {
-                              postInfo = result
+                              //console.log("key found, continuing")
                         }
-                        break
                   }
-            }
+            )
+
+            // Add discovered path to array of known paths
+            if (!knownURIPaths.contains(result.path))
+                  knownURIPaths.push(result.path)
+      }
+
+      resultPath = result.path
+      result = result.result
+      if (result && result.hasOwnProperty("key")) {
+            uri = result.key.replace(/lineartop$/i, "")
+      }
+      else {
+            postInfo = result
+      }
 
       console.log(uri, postInfo, resultPath)
 
@@ -62,7 +72,7 @@ function OuterQuerySelector(element, selectors) {
 
 /**Scan object by specifying desired path with dot notation. 
  * Will return element and its path */
-function ScanObject(object_, test, maxDepth, onResult = null, path = null, depth = 0, knownElements = []) {
+async function ScanObject(object_, test, maxDepth, onResult = null, path = null, depth = 0, knownElements = []) {
       let resultElem;
       let resultPath;
       let stopped = false
@@ -77,7 +87,7 @@ function ScanObject(object_, test, maxDepth, onResult = null, path = null, depth
 
                         // If child is unknown
                         if (child && !knownElements.includes(child)) {
-                              if(typeof child != "string") knownElements.push(child)
+                              if (typeof child != "string") knownElements.push(child)
 
                               // Join child path
                               let childPath = (path ? path + "." : "") + keys[i]
@@ -96,7 +106,7 @@ function ScanObject(object_, test, maxDepth, onResult = null, path = null, depth
 
                               // Process child
                               if (typeof child !== "string") {
-                                    let results = ScanObject(child, test, maxDepth, onResult, childPath, depth + 1, knownElements)
+                                    let results = await ScanObject(child, test, maxDepth, onResult, childPath, depth + 1, knownElements)
                                     knownElements = results.knownElements
                                     resultElem = results.result
                                     resultPath = results.path
@@ -119,4 +129,39 @@ function ScanObject(object_, test, maxDepth, onResult = null, path = null, depth
       }
 }
 
+// Test whether a saved path works on this element
+function TestSavedPaths(element) {
+      // Loop through all known paths
+      for (let i = 0; i < knownURIPaths.length; i++) {
+            let tempElement
+            let path
+            try {
+                  path = knownURIPaths[i]
+                  // Split path into components
+                  let components = path.split(".")
+                  // Navigate into first subelement
+                  tempElement = element[components.shift()]
+
+                  // Iterate through every component of the path
+                  components.forEach(component => {
+                        // Save the last element to use it as a result later
+                        previousElement = tempElement
+                        // Try to navigate into a subelement
+                        tempElement = tempElement[component]
+
+                        // Not the right path, abort
+                        if (!tempElement) break
+                  })
+            }
+            catch { }
+
+            // The current path has worked
+            if (tempElement) {
+                  const results = { path: knownURIPaths[i], result: previousElement }
+                  return results
+            }
+      }
+}
+
+// Let the content script know that this document has initialitzed
 document.currentScript.setAttribute("has-run", "true")

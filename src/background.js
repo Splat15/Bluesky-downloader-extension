@@ -17,7 +17,7 @@ const lastVersion = localStorage.getItem("lastVersion")
 const updated = isVersionNewer(lastVersion, currentVersion)
 // Determine if the previous version of the extension was lower than the current major version. 
 // This means that a major version update must have been installed.
-const showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInfo.version)
+let showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInfo.version)
 
 if (updated) {
       console.log(log(`Version updated from v${lastVersion} to v${currentVersion}`))
@@ -122,7 +122,7 @@ browser.runtime.onInstalled.addListener((details) => {
             onboardingStatus = { image: false, video: false }
             localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
 
-            showVerInfo = false
+            showVersionInfo = false
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
                   try {
@@ -216,7 +216,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Update popup display status
       else if (message.type == "version-info-displayed") {
             console.log(log("Version info displayed, relaying message"))
-            showVerInfo = false
+            showVersionInfo = false
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
                   try {
