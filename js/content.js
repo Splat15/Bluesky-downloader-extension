@@ -607,7 +607,7 @@ const onImgIntersection = (entries) => {
 };
 
 const intersectionObserver = new IntersectionObserver(
-      callBack,
+      onImgIntersection,
       {
             // Configure to test if the element is on screen
             root: document,

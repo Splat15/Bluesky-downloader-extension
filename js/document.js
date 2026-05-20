@@ -38,9 +38,9 @@ async function GetURI(element) {
                         }
                   }
             )
-
+            
             // Add discovered path to array of known paths
-            if (!knownURIPaths.contains(result.path))
+            if (knownURIPaths.indexOf(result.path) == -1)
                   knownURIPaths.push(result.path)
       }
 
@@ -143,15 +143,17 @@ function TestSavedPaths(element) {
                   tempElement = element[components.shift()]
 
                   // Iterate through every component of the path
-                  components.forEach(component => {
+                  for (let i = 0; i < components.length; i++) {
+                        let component = components[i]
                         // Save the last element to use it as a result later
                         previousElement = tempElement
                         // Try to navigate into a subelement
                         tempElement = tempElement[component]
 
                         // Not the right path, abort
-                        if (!tempElement) break
-                  })
+                        if (!tempElement)
+                              break;
+                  }
             }
             catch { }
 
