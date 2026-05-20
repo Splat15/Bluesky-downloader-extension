@@ -163,8 +163,8 @@ class Downloadbutton {
                   this.#GetDownloadButton(this.url, hidden)
                   this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.mediaElement.parentElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.mediaElement.parentElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
 
             else {
@@ -207,7 +207,7 @@ class Downloadbutton {
                   "click",
                   (event) => {
                         event.stopPropagation()
-                        this.#Download(url);
+                        this.Download(url);
                   })
 
             return downloadButton
@@ -220,7 +220,7 @@ class Downloadbutton {
       }
 
       /** Downloads the url based on type of button */
-      async #Download(url) {
+      async Download(url) {
             try {
                   const originalURL = url
 
@@ -379,6 +379,8 @@ class Downloadbutton {
                               }
 
                         })
+
+                        console.log(url)
 
                         // Send download request
                         browser.runtime.sendMessage({
@@ -554,9 +556,9 @@ class Downloadbutton {
                         // Await the injection of document.js by content.js
                         mainThreadHelperLoaded.then(() => {
                               script.textContent = `
-                        (function () {
+                        (async function () {
                               const element = document.currentScript;
-                              const postData = GetURI(element)
+                              const postData = await GetURI(element)
                               element.setAttribute("post-data", JSON.stringify(postData))
                         })()`
                         })

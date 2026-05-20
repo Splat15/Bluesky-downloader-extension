@@ -172,8 +172,8 @@ class Downloadbutton {
                   this.#GetDownloadButton(this.url, hidden)
                   this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.mediaElement.parentElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.mediaElement.parentElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
 
             else {
@@ -216,7 +216,7 @@ class Downloadbutton {
                   "click",
                   (event) => {
                         event.stopPropagation()
-                        this.#Download(url);
+                        this.Download(url);
                   })
 
             return downloadButton
@@ -229,7 +229,7 @@ class Downloadbutton {
       }
 
       /** Downloads the url based on type of button */
-      async #Download(url) {
+      async Download(url) {
             try {
                   const originalURL = url
 
@@ -388,6 +388,8 @@ class Downloadbutton {
                               }
 
                         })
+
+                        console.log(url)
 
                         // Send download request
                         browser.runtime.sendMessage({
@@ -563,9 +565,9 @@ class Downloadbutton {
                         // Await the injection of document.js by content.js
                         mainThreadHelperLoaded.then(() => {
                               script.textContent = `
-                        (function () {
+                        (async function () {
                               const element = document.currentScript;
-                              const postData = GetURI(element)
+                              const postData = await GetURI(element)
                               element.setAttribute("post-data", JSON.stringify(postData))
                         })()`
                         })
@@ -2052,7 +2054,7 @@ const lastVersion = localStorage.getItem("lastVersion")
 const updated = isVersionNewer(lastVersion, currentVersion)
 // Determine if the previous version of the extension was lower than the current major version. 
 // This means that a major version update must have been installed.
-const showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInfo.version)
+let showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInfo.version)
 
 if (updated) {
       console.log(log(`Version updated from v${lastVersion} to v${currentVersion}`))
@@ -2157,7 +2159,7 @@ browser.runtime.onInstalled.addListener((details) => {
             onboardingStatus = { image: false, video: false }
             localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
 
-            showVerInfo = false
+            showVersionInfo = false
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
                   try {
@@ -2251,7 +2253,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Update popup display status
       else if (message.type == "version-info-displayed") {
             console.log(log("Version info displayed, relaying message"))
-            showVerInfo = false
+            showVersionInfo = false
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
                   try {

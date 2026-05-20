@@ -326,9 +326,12 @@ function HandleInputChange(method) {
 new NodeObserver(
       // Rudimentary test
       element =>
-            element.tagName == "IMG" || element.tagName == "VIDEO",
+            element.tagName == "IMG" || element.tagName == "VIDEO" || element.tagName == "DIV" || element.tagName == "BUTTON",
 
       element => {
+            if (element.tagName == "FIGURE")
+                  console.log(element)
+
             if (element.downloadButton == true) return
 
             // Image elements
@@ -346,6 +349,8 @@ new NodeObserver(
 
                               const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
                               downloadButtons.image.push(downloadButton)
+                              //if (Math.random() < 0.3)
+                              //      setTimeout(() => downloadButton.Download(element.src), 0 + Math.random() * 5000)
 
                               // Show flashing borders tutorial
                               if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
@@ -363,64 +368,94 @@ new NodeObserver(
             }
 
             // Video element posts
-            else if (element.tagName == "VIDEO" && element.hasAttribute("playsinline")) {
+            else if (element.tagName == "DIV" &&
+                  element.previousElementSibling &&
+                  element.previousElementSibling.tagName == "FIGURE" &&
+                  element.previousElementSibling.children[0].tagName == "VIDEO" &&
+                  element.downloadButton !== true) {
+
+                  element = element.previousElementSibling.firstElementChild
 
                   // Video posts
-                  if (element.preload == "none" &&
-                        element.hasAttribute("poster")) {
-                        let downloadElement;
+                  let downloadElement;
 
-                        // Get blank spacer element, after which the download button should be inserted
-                        downloadElement = element.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
-                        console.log(downloadElement)
+                  // Get blank spacer element, after which the download button should be inserted
+                  downloadElement = element.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
+                  console.log(downloadElement)
 
-                        try {
-                              const func = () => {
-                                    // Early return if element has already been processed
-                                    if (mediaElements.includes(element)) return
-                                    mediaElements.push(element)
+                  try {
+                        const func = () => {
+                              // Early return if element has already been processed
+                              if (mediaElements.includes(element)) return
+                              mediaElements.push(element)
 
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, element)
-                                    downloadButtons.video.push(downloadButton)
+                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, element)
+                              downloadButtons.video.push(downloadButton)
 
-                                    // Show flashing borders tutorial
-                                    if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
-                                          flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
-                                          onboardingHasRun.video = true
-                                    }
+                              // Show flashing borders tutorial
+                              if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                                    flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
+                                    onboardingHasRun.video = true
                               }
-
-                              if (init)
-                                    func()
-                              else
-                                    onInit.push(func)
-
                         }
-                        catch (error) { console.error(log(error)) }
+
+                        if (init)
+                              func()
+                        else
+                              onInit.push(func)
+
                   }
+                  catch (error) { console.error(log(error)) }
+            }
 
-                  // GIF posts (webm)
-                  else if (element.getAttribute("playsinline") === "" &&
-                        element.getAttribute("loop") === "" &&
-                        element.downloadButton !== true) {
-                        try {
-                              // Create download button
-                              const func = () => {
-                                    if (mediaElements.includes(element)) return
-                                    mediaElements.push(element)
+            // User GIF posts
+            else if (element.tagName == "BUTTON" &&
+                  element.previousElementSibling &&
+                  element.previousElementSibling.tagName == "FIGURE" &&
+                  element.previousElementSibling.children[0].tagName == "VIDEO" &&
+                  element.downloadButton !== true) {
+                  try {
+                        element = element.previousElementSibling.firstElementChild
+                        // Create download button
+                        const func = () => {
+                              if (mediaElements.includes(element)) return
+                              mediaElements.push(element)
 
-                                    const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
-                                    downloadButtons.gif.push(downloadButton)
-                              }
-
-                              if (init)
-                                    func()
-                              else
-                                    onInit.push(func)
+                              const downloadButton = new Downloadbutton(Downloadbutton.UploadedGIF, element, element.poster, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
+                              downloadButtons.gif.push(downloadButton)
                         }
-                        catch (error) {
-                              console.error(log(error))
+
+                        if (init)
+                              func()
+                        else
+                              onInit.push(func)
+                  }
+                  catch (error) {
+                        console.error(log(error))
+                  }
+            }
+
+            // Tenor GIF posts
+            else if (element.tagName == "VIDEO" &&
+                  element.src.includes("gifs.bsky.app") &&
+                  element.downloadButton !== true) {
+                  try {
+                        // Create download button
+                        const func = () => {
+                              if (mediaElements.includes(element)) return
+                              mediaElements.push(element)
+
+                              const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
+                              downloadButtons.gif.push(downloadButton)
                         }
+
+                        if (init)
+                              func()
+                        else
+                              onInit.push(func)
+                  }
+                  catch (error) {
+                        console.error(log(error))
                   }
             }
       }
@@ -474,30 +509,45 @@ function InstallCleanup() {
             })
 
       // Videos
-      Array.from(document.querySelectorAll("video[poster][playsinline][preload='none']"))
+      Array.from(document.querySelectorAll("figure:has(+div)>video[poster][playsinline][preload='none']"))
             .forEach(videoElement => {
-                  const downloadElement = videoElement.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
+                  try {
+                        const downloadButton = new Downloadbutton(Downloadbutton.UploadedGIF, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
+                        downloadButtons.video.push(downloadButton)
 
-                  if (downloadElement) {
-                        try {
-                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
-                              downloadButtons.video.push(downloadButton)
+                        // Onboarding procedure
+                        if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                              flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
 
-                              // Onboarding procedure
-                              if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
-                                    flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
-
-                                    onboardingHasRun.video = true
-                              }
+                              onboardingHasRun.video = true
                         }
-                        catch (error) {
-                              console.error(log(error))
+                  }
+                  catch (error) {
+                        console.error(log(error))
+                  }
+            })
+
+      // User gifs
+      Array.from(document.querySelectorAll("figure:has(+button)>video"))
+            .forEach(videoElement => {
+                  try {
+                        const downloadButton = new Downloadbutton(Downloadbutton.UploadedGIF, videoElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
+                        downloadButtons.gif.push(downloadButton)
+
+                        // Onboarding procedure
+                        if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                              flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
+
+                              onboardingHasRun.video = true
                         }
+                  }
+                  catch (error) {
+                        console.error(log(error))
                   }
             })
 
       // GIFs
-      Array.from(document.querySelectorAll("video[playsinline][loop]"))
+      Array.from(document.querySelectorAll("video[src*='gifs.bsky.app']"))
             .forEach(element => {
                   try {
                         const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
@@ -508,3 +558,71 @@ function InstallCleanup() {
                   }
             })
 }
+
+const onImgIntersection = (entries) => {
+      // Iterate though every intersection
+      entries.forEach(entry => {
+            const isVisible = entry.isIntersecting
+            const element = entry.target
+            let refreshInterval = null
+
+            if (isVisible) {
+                  // If element is visible and has failed to load
+                  if (element.naturalWidth == 0) {
+                        // Refresh the source to initialize loading the image again
+                        element.src = element.src
+
+                        // Check if the image has loaded in a regular interval
+                        refreshInterval = setInterval(() => {
+                              // Image hasn't loaded yet
+                              if (element.naturalWidth == 0) {
+                                    // Refresh the source to initialize loading the image again
+                                    element.src = element.src
+                              }
+                              // Image has loaded
+                              else {
+                                    // Stop interval and intersection observer for this element
+                                    intersectionObserver.unobserve(element)
+                                    clearInterval(refreshInterval)
+                              }
+                              // Inverval of 1000ms ± 500ms to prevent simultaneous updates
+                        }, 500 + (1000 * Math.random()));
+
+                        // Save interval ID to element to stop interval once the element goes off screen
+                        element.refreshInterval = refreshInterval
+                  }
+                  // If element has successfully loaded 
+                  else {
+                        // Remove element from intersection observer list to prevent future activation
+                        intersectionObserver.unobserve(element)
+                  }
+            }
+            // If element goes off screen
+            else if (element.refreshInterval) {
+                  // Stop interval if it exists
+                  clearInterval(element.refreshInterval)
+                  element.refreshInterval = null
+            }
+      })
+};
+
+const intersectionObserver = new IntersectionObserver(
+      callBack,
+      {
+            // Configure to test if the element is on screen
+            root: document,
+            threshold: 0
+      });
+
+new NodeObserver(
+      element => element.tagName == "IMG",
+      element => {
+            // Apply the intersection observer to every image
+            intersectionObserver.observe(element)
+      }
+)
+
+// Add all images that loaded before the node observer executed
+Array.from(document.querySelectorAll("img")).forEach(image => {
+      intersectionObserver.observe(image)
+})
