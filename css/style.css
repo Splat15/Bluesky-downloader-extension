@@ -16,13 +16,17 @@
   --toast-action-hover: rgb(49, 63, 84);
 }
 
-div+button[data-testid='altTextButton'] {
+img {
+  background-color: yellow !important;
+}
+
+div + button[data-testid="altTextButton"] {
   left: 36px !important;
 }
 
-button[data-testid='altTextButton'] {
-  left: 6px ! important;
-  right: unset ! important;
+button[data-testid="altTextButton"] {
+  left: 6px !important;
+  right: unset !important;
 }
 
 .download-button-div-image {
@@ -179,8 +183,8 @@ button[data-testid='altTextButton'] {
   color: var(--text-loading) !important;
 }
 
-.toast-help-link{
-  color: rgb(0, 106, 255)
+.toast-help-link {
+  color: rgb(0, 106, 255);
 }
 
 .toast-text-overflow {
