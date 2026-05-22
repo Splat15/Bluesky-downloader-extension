@@ -349,8 +349,6 @@ new NodeObserver(
 
                               const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
                               downloadButtons.image.push(downloadButton)
-                              //if (Math.random() < 0.3)
-                              //      setTimeout(() => downloadButton.Download(element.src), 0 + Math.random() * 5000)
 
                               // Show flashing borders tutorial
                               if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
@@ -380,7 +378,7 @@ new NodeObserver(
                   let downloadElement;
 
                   // Get blank spacer element, after which the download button should be inserted
-                  downloadElement = element.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
+                  downloadElement = element.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
                   console.log(downloadElement)
 
                   try {

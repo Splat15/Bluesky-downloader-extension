@@ -1,6 +1,6 @@
 // This document runs on the main thread of the website to access things that the normal thread can't
 
-let knownURIPaths = []
+var knownURIPaths = []
 
 /** Gets at uri */
 async function GetURI(element) {

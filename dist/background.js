@@ -912,7 +912,6 @@ class FlashingBorder {
       }
 
       Start() {
-            console.log(log("Starting flashing border"))
             if (this.#active) return
             this.#active = true
 
@@ -923,7 +922,6 @@ class FlashingBorder {
       }
 
       Stop() {
-            console.log(log("Stopping flashing border"))
             return new Promise((resolve, reject) => {
                   if (!this.#active) reject
                   this.#active = false
@@ -938,7 +936,6 @@ class FlashingBorder {
 
       Destroy() {
             try {
-                  console.log(log("Destroying flashing border"))
                   this.Stop().then(() => {
                         this.borderElement.remove()
                   })
@@ -1001,6 +998,10 @@ class ToastManager {
             this.toastContainer = document.createElement("div")
             this.toastContainer.classList.add("toast-container")
             this.toastContainer.id = "bskyDownloaderToastContainer"
+            if (this.mobileLayout)
+                  this.toastContainer.style.top = "0px"
+            else
+                  this.toastContainer.style.top = ""
             document.body.appendChild(this.toastContainer)
 
             window.addEventListener("resize", () => {
@@ -1008,6 +1009,11 @@ class ToastManager {
 
                   if (this.mobileLayout != mobileLayout) {
                         this.mobileLayout = mobileLayout
+
+                        if (this.mobileLayout)
+                              this.toastContainer.style.top = "0px"
+                        else
+                              this.toastContainer.style.top = ""
 
                         this.toastList.forEach(toast => {
                               toast.mobileLayout = this.mobileLayout
@@ -1060,15 +1066,12 @@ class ToastManager {
       }
 
       DismissToast(toast, toastList) {
-            try {
-                  const toastIndex = toastList.indexOf(toast)
+            return
+            // removed by dead control flow
 
-                  toast.Dismiss(toastIndex == 0)
-                  toastList.splice(toastIndex, 1)
-            }
-            catch { }
 
-            this.AlignItems()
+            // removed by dead control flow
+
       }
 
 
