@@ -10,7 +10,7 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util';
 // Extracted the video conversion logic into separate function
 // Made to work with video URLs directly
 // Made compatible as a web extension based on browser-extension-ffmpeg
-// https://github.com/Aniny21/browser-extension-ffmpeg/
+// https://github.com/Aniny21/browser-extension-ffmpeg/ ///TODO - Remove
 // Added simple progress estimation
 
 // Side note: Firefox extensions can't run multi-core wasm
@@ -27,8 +27,10 @@ export class Downloader {
       #mobileDevice = DetectMobileDevice()
       ffmpegLoaded = false
       shutDownFFmpeg = null
+      unfinishedDownloads
 
-      constructor() {
+      constructor(unfinishedDownloads) {
+            this.unfinishedDownloads = unfinishedDownloads
             this.#queue = []
             this.#downloadReady = true
             this.progress = 0
@@ -44,7 +46,14 @@ export class Downloader {
             onProgress = () => { }) {
             if (this.#queue.find(element => element.data.url == downloadInfo.url)) return
 
+            // Save it as an unfinished download in case it doesn't complete
+            if (!this.unfinishedDownloads.find(element => element.id == downloadInfo.id)) {
+                  this.unfinishedDownloads.push(downloadInfo)
+                  localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
+            }
+
             this.#queue.push({
+                  id: downloadInfo.id,
                   data: downloadInfo,
                   onProgress: onProgress,
                   tries: 0
@@ -66,6 +75,7 @@ export class Downloader {
             const currentItem = this.#queue.shift()
 
             // Get individual properties
+            const id = currentItem.id
             const url = currentItem.data.url
             const fileType = currentItem.data.fileType
             const fileExt = currentItem.data.fileExt
@@ -84,12 +94,12 @@ export class Downloader {
             if (fileType.id != Downloadbutton.Image.id || imgCompression) {
 
                   if (this.shutDownFFmpeg) {
-                        console.log(log("FFmpeg shutdown aborted"))
+                        console.info(log("FFmpeg shutdown aborted"))
                         clearTimeout(this.shutDownFFmpeg)
                   }
 
                   if (!this.ffmpegLoaded) {
-                        console.log(log("Loading FFmpeg"))
+                        console.info(log("Loading FFmpeg"))
                         ffmpegLoading = this.#loadFFmpeg()
                   }
             }
@@ -120,7 +130,7 @@ export class Downloader {
 
                   if (tries < this.#maxTries) {
                         currentItem.tries++
-                        this.#queue.push(currentItem)
+                        this.#queue.unshift(currentItem)
                         this.progress = 0
                   }
                   else {
@@ -129,21 +139,25 @@ export class Downloader {
 
             }
 
+            // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
+            this.unfinishedDownloads = this.unfinishedDownloads.filter(element => element.id != id)
+            localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
+
             // Start next download
             this.#downloadReady = true;
             if (this.#queue.length > 0) this.#download()
             else {
                   if (this.#ffmpeg.loaded) {
-                        console.log(log("Download queue empty, stopping FFmpeg in 10s"))
+                        console.info(log("Download queue empty, stopping FFmpeg in 10s"))
                         this.shutDownFFmpeg = setTimeout(() => {
-                              console.log(log("Shutting down FFmpeg"))
+                              console.info(log("Shutting down FFmpeg"))
                               this.#ffmpeg.terminate()
                               this.shutDownFFmpeg = null
                               this.ffmpegLoaded = false
                         }, 10000)
                   }
                   else
-                        console.log(log("Download queue empty, FFmpeg not running"))
+                        console.info(log("Download queue empty, FFmpeg not running"))
             }
       }
 
@@ -234,7 +248,7 @@ export class Downloader {
                               imageQuality = Math.round(32 - 0.31 * imageQuality)
                         }
 
-                        console.log(log("Converting to " + mimeType + " at quality: " + imageQuality))
+                        console.info(log("Converting to " + mimeType + " at quality: " + imageQuality))
 
                         const startTime = Date.now()
                         const onFFmpegProgress = ({ progress, time }) => {
@@ -243,7 +257,7 @@ export class Downloader {
                               let elapsedMS = Date.now() - startTime
                               let remainingMS = (elapsedMS / progress) - elapsedMS
 
-                              console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
+                              console.info(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
                         }
 
                         this.#ffmpeg.on('progress', onFFmpegProgress)
@@ -380,7 +394,6 @@ export class Downloader {
             const chunks = [];
             for (let i = 0; i < segmentUrls.length; i++) {
                   let progress = Math.round(10 + (20 / segmentUrls.length) * (i + 1))
-                  console.log(progress)
                   this.#setProgress(progress)
 
                   const response = await fetch(segmentUrls[i]);
@@ -397,7 +410,7 @@ export class Downloader {
                         "input.ts",
                         await fetchFile(videoBlob)
                   );
-                  
+
                   const startTime = Date.now()
                   const onFFmpegProgress = ({ progress, time }) => {
                         this.#setProgress(30 + Math.round(70 * progress))
@@ -405,7 +418,7 @@ export class Downloader {
                         let elapsedMS = Date.now() - startTime
                         let remainingMS = (elapsedMS / progress) - elapsedMS
 
-                        console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
+                        console.info(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
                   }
 
                   this.#ffmpeg.on('progress', onFFmpegProgress)

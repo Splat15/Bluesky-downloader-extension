@@ -6,6 +6,9 @@ const startTime = Date.now()
 let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
+let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
+const downloader = new Downloader(unfinishedDownloads);
+
 
 // Set info for last major version. Will only be displayed if the extension has been updated from a version BELOW this one.
 const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
@@ -58,12 +61,12 @@ const standardSettings = [
       ]
 ]
 
-console.log(log("Fetching saved settings"))
+console.info(log("Fetching saved settings"))
 let settings = localStorage.getItem("settings")
 if (!settings) {
       // Standard configuration
       settings = standardSettings
-      console.log(log("New user, standard settings applied"))
+      console.info(log("New user, standard settings applied"))
 }
 else {
       try {
@@ -103,21 +106,21 @@ else {
             }
             settings = newSettings
 
-            console.log(log("Settings successuflly migrated"))
+            console.info(log("Settings successuflly migrated"))
       }
       catch (e) {
-            console.log(log("Error migrating settings: " + e))
-            console.log(settings)
+            console.info(log("Error migrating settings: " + e))
+            console.info(settings)
       }
 }
 
 localStorage.setItem("settings", JSON.stringify(settings))
-console.log(log("Modified settings saved"))
+console.info(log("Modified settings saved"))
 
 
 browser.runtime.onInstalled.addListener((details) => {
       if (details.reason == "install") {
-            console.log(log("New install detected, initiating onboarding"))
+            console.info(log("New install detected, initiating onboarding"))
 
             onboardingStatus = { image: false, video: false }
             localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
@@ -158,12 +161,12 @@ browser.runtime.onMessage.addListener((message, sender) => {
             // Start download
             downloader.download(message.downloadInfo,
                   (progress, error, fileBlob = null) => {
-                        console.log(log(`Download progress for ${message.id} at ${progress}%`))
+                        console.info(log(`Download progress for ${message.downloadInfo.id} at ${progress}%`))
 
                         // Send progress messages to sender
                         let response = {
                               type: "bsky-download-progress",
-                              id: message.id,
+                              id: message.downloadInfo.id,
                               url: message.downloadInfo.url,
                               progress: progress,
                               fileBlob: fileBlob
@@ -213,6 +216,22 @@ browser.runtime.onMessage.addListener((message, sender) => {
             return
       }
 
+      // Clear the queue of unfinished downloads
+      else if (message.type == "clear-unfinished-downloads") {
+            console.log(log("Clearing unfinished download queue"))
+
+            downloader.unfinishedDownloads = []
+            localStorage.setItem("unfinished-downloads", JSON.stringify(downloader.unfinishedDownloads))
+            
+            for (let i = 0; i < tabIDs.length; i++) {
+                  const tabID = tabIDs[i]
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "clear-unfinished-downloads-popup" }) /// TODO
+                  }
+                  catch { }
+            }
+      }
+
       // Update popup display status
       else if (message.type == "version-info-displayed") {
             console.log(log("Version info displayed, relaying message"))
@@ -237,7 +256,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   settings: settings,
                   lightMode: lightMode,
                   inputMethod: inputMethod,
-                  versionInfo: showVersionInfo ? majorVersionInfo : null
+                  versionInfo: showVersionInfo ? majorVersionInfo : null,
+                  unfinishedDownloads: downloader.unfinishedDownloads
             })
       }
 
@@ -277,7 +297,7 @@ function SetSetting(settingId, value, settings) {
                         setting.value = value;
                         localStorage.setItem("settings", JSON.stringify(settings))
 
-                        console.log(log("Settings changed, relaying"))
+                        console.info(log("Settings changed, relaying"))
                         for (let i = 0; i < tabIDs.length; i++) {
                               const tabID = tabIDs[i]
                               try {
@@ -292,5 +312,3 @@ function SetSetting(settingId, value, settings) {
             }
       }
 }
-
-const downloader = new Downloader();

@@ -9,7 +9,7 @@ let version
 let onInit = []
 let init = false
 let lightMode = false
-console.log(log("Initializing toast manager"))
+console.info(log("Initializing toast manager"))
 const toastManager = new ToastManager()
 let mediaElements = [] // Prevents duplicate application of download buttons and onboarding elements
 let versionInfoToast
@@ -23,7 +23,7 @@ const minUptime = 1000 // Max. ms amount of time since install of extension for 
 
 
 const mainThreadHelperLoaded = new Promise(resolve => {
-      console.log(log("Adding main thread code to document"))
+      console.info(log("Adding main thread code to document"))
       // Cleanup
       Array.from(document.querySelectorAll("#mainThreadHelper"))
             .forEach(script => script.remove())
@@ -38,13 +38,13 @@ const mainThreadHelperLoaded = new Promise(resolve => {
             let hasRun = script.getAttribute("has-run")
             if (hasRun) {
                   observer.disconnect()
-                  console.log(log("Main thread code has run"))
+                  console.info(log("Main thread code has run"))
                   resolve()
             }
       }).observe(script, { attributes: true })
 
       document.head.appendChild(script)
-      console.log(log("Main thread code added"))
+      console.info(log("Main thread code added"))
 })
 
 
@@ -55,7 +55,7 @@ browser.runtime.onMessage.addListener((message) => {
             if (init) return
 
             init = true
-            console.log(log("Init response received"))
+            console.info(log("Init response received"))
 
             onboardingStatus = message.onboardingStatus
             settings = message.settings
@@ -63,15 +63,66 @@ browser.runtime.onMessage.addListener((message) => {
             inputMethod = message.inputMethod
             version = message.version
 
+            // If there are unfinished downloads from the last session, ask to restart them
+            if (message.unfinishedDownloads && message.unfinishedDownloads.length > 0) {
+                  setTimeout(() => {
+                        let popup
+                        let userHasAccepted = false
+
+                        const downloadsAmount = message.unfinishedDownloads.length || 0
+                        const numbers = ["Zero", "One", "Two", "Three"] // Friendly names for 0-3
+                        const amountText = downloadsAmount < 3 ? numbers[downloadsAmount] : downloadsAmount
+                        const multipleDownloads = downloadsAmount != 1 // For grammar
+
+                        const popupText = `${amountText} download${multipleDownloads ? "s" : ""} didn't finish. Do you want to restart ${multipleDownloads ? "them" : "it"}?`
+
+                        
+                        const onPopupDismiss = () => {
+                              // If the user didn't restart the downloads
+                              if (!userHasAccepted)
+                                    // Clear the unfinished downloads
+                                    browser.runtime.sendMessage({ type: "clear-unfinished-downloads" })
+                        }
+
+                        // Popup option for restarting the downloads
+                        const optionYes = new FullScreenPopup.PopupOption(
+                              `Restart download${multipleDownloads ? "s" : ""}`,
+                              () => {
+                                    userHasAccepted = true
+                                    popup.Dismiss()
+
+                                    message.unfinishedDownloads.forEach(downloadJob =>
+                                          ResumeUnfinishedDownload(downloadJob, toastManager)
+                                    )
+                              }
+                        )
+
+                        // Popup option for dismissing the popup
+                        const optionNo = new FullScreenPopup.PopupOption(
+                              "Cancel",
+                              null,
+                              false
+                        )
+
+                        // Display the popup
+                        popup = new FullScreenPopup(
+                              `Unfinished download${multipleDownloads ? "s" : ""}`,
+                              popupText,
+                              [optionYes, optionNo],
+                              onPopupDismiss
+                        )
+                  }, 1000)
+            }
+
             if (!inputMethod) {
                   inputMethod = navigator.maxTouchPoints > 0 ? "touch" : "mouse"
                   browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
             }
 
-            console.log(log("Running cleanup for previous versions"))
+            console.info(log("Running cleanup for previous versions"))
             if (message.uptime < minUptime) InstallCleanup()
 
-            console.log(log("Running onInit"))
+            console.info(log("Running onInit"))
             onInit.forEach(element => {
                   element()
             });
@@ -101,17 +152,17 @@ browser.runtime.onMessage.addListener((message) => {
                   let lightModeNew = document.documentElement.classList.contains("theme--light")
                   // If different to saved value, update
                   if (lightMode != lightModeNew) {
-                        console.log(log("Theme change detected"))
+                        console.info(log("Theme change detected"))
                         lightMode = lightModeNew;
                         browser.runtime.sendMessage({ type: "set-light-mode", value: lightMode })
 
                         if (lightMode) {
-                              console.log(log("Applying light theme"))
+                              console.info(log("Applying light theme"))
                               document.documentElement.classList.remove("bsky-downloader-dark-mode")
                               document.documentElement.classList.add("bsky-downloader-light-mode")
                         }
                         else {
-                              console.log(log("Applying dark theme"))
+                              console.info(log("Applying dark theme"))
                               document.documentElement.classList.remove("bsky-downloader-light-mode")
                               document.documentElement.classList.add("bsky-downloader-dark-mode")
                         }
@@ -212,17 +263,17 @@ browser.runtime.onMessage.addListener((message) => {
 
       // Settings updates
       else if (message.type == "settings-update") {
-            console.log(log("Received settings update"))
+            console.info(log("Received settings update"))
             // Workaround
             // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
             if (message.repeat) {
-                  console.log(log("Relaying settings update"))
+                  console.info(log("Relaying settings update"))
                   browser.runtime.sendMessage({ type: "settings-update", settings: message.settings })
             }
 
             settings = message.settings
 
-            console.log(log(JSON.stringify(settings)))
+            console.info(log(JSON.stringify(settings)))
 
 
             let img = GetSetting("imgDownload", settings).value
@@ -241,7 +292,7 @@ browser.runtime.onMessage.addListener((message) => {
 
       // Updates for the status of unboarding
       else if (message.type == "onboarding-update") {
-            console.log(log("Received onboarding update"))
+            console.info(log("Received onboarding update"))
             onboardingStatus = message.onboardingStatus
             if (onboardingStatus.image) {
                   onboardingElements.image.forEach(borderElement => borderElement.Destroy())
@@ -277,7 +328,7 @@ document.documentElement.addEventListener("touchstart", () => {
 
 // Switch input method for all relevant elements
 function HandleInputChange(method) {
-      console.log(log("Input change detected: " + method))
+      console.info(log("Input change detected: " + method))
 
       inputMethod = method
       browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
@@ -329,9 +380,6 @@ new NodeObserver(
             element.tagName == "IMG" || element.tagName == "VIDEO" || element.tagName == "DIV" || element.tagName == "BUTTON",
 
       element => {
-            if (element.tagName == "FIGURE")
-                  console.log(element)
-
             if (element.downloadButton == true) return
 
             // Image elements
@@ -379,7 +427,6 @@ new NodeObserver(
 
                   // Get blank spacer element, after which the download button should be inserted
                   downloadElement = element.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
-                  console.log(downloadElement)
 
                   try {
                         const func = () => {

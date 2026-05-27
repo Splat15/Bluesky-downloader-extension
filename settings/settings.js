@@ -542,7 +542,6 @@ window.addEventListener("resize", onDocumentScroll)
 onDocumentScroll()
 
 for (let i = 0; i < settings.length; i++) {
-      console.log("moved")
       const categoryElem = document.createElement("div")
       categoryElem.classList.add("category")
       settingsContainer.appendChild(categoryElem)

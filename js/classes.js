@@ -132,7 +132,7 @@ class Downloadbutton {
             this.mediaElement = element
             this.#inputMethod = inputMethod
 
-            console.log(log("Creating download button of type " + type.name + " for URL: " + url))
+            console.info(log("Creating download button of type " + type.name + " for URL: " + url))
 
             if (this.mediaElement.textContent == "GIF") {
                   this.type = Downloadbutton.UploadedGIF
@@ -322,15 +322,15 @@ class Downloadbutton {
                   })
 
                   try {
-                        console.log(log("Sending download to background script"))
+                        console.info(log("Sending download to background script"))
 
                         // Generate process ID
-                        const id = Date.now()
+                        const downloadProcessId = Date.now()
 
                         // Add listener for progress updates
                         browser.runtime.onMessage.addListener(message => {
                               if (message.type == "bsky-download-progress" &&
-                                    message.id == id &&
+                                    message.id == downloadProcessId &&
                                     message.url == url) {
 
                                     if (message.hasOwnProperty("error")) {
@@ -352,7 +352,7 @@ class Downloadbutton {
                                     if (message.progress >= 100) {
                                           console.log(log("Download successful"))
 
-                                          this.#AddURLToHistory(originalURL)
+                                          Downloadbutton.AddURLToHistory(originalURL)
 
                                           if (message.fileBlob) {
                                                 let fileURL = URL.createObjectURL(message.fileBlob)
@@ -380,15 +380,15 @@ class Downloadbutton {
 
                         })
 
-                        console.log(url)
-
                         // Send download request
                         browser.runtime.sendMessage({
                               type: "bsky-download",
-                              id: id,
                               downloadInfo: {
+                                    id: downloadProcessId,
                                     url: url,
+                                    originalURL: originalURL,
                                     fileType: this.type,
+                                    fileName: this.#fileName,
                                     fileExt: this.#fileExtension,
                                     filePath: this.#filePath,
                                     mimeType: Downloadbutton.MimeTypes[this.#fileExtension],
@@ -492,14 +492,16 @@ class Downloadbutton {
       }
 
       /** Adds downloaded URL to local storage */
-      #AddURLToHistory(url) {
+      static AddURLToHistory(url) {
             try {
-                  const hash = GenerateHash(url)
+                  let _storage = JSON.parse(localStorage.getItem("downloadedURLs")) || [];
 
-                  let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-                  if (_storage == null) _storage = []
-                  if (_storage.indexOf(hash) == -1) _storage.push(hash)
-                  localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
+                  const hash = GenerateHash(url)
+                  if (_storage.indexOf(hash) == -1) {
+                        _storage.push(hash)
+
+                        localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
+                  }
             }
             catch (error) {
                   console.error(log("Error while adding URL to history: " + error))
@@ -589,6 +591,52 @@ class Downloadbutton {
             return GetFilePath(this.postInfo, this.settings)
       }
 }
+
+// Resume a download without a download button
+function ResumeUnfinishedDownload(downloadInfo, toastManager) {
+      // Display toast
+      const toast = toastManager.DisplayToast(downloadInfo.fileName)
+
+      browser.runtime.onMessage.addListener(message => {
+            if (message.type == "bsky-download-progress" &&
+                  message.id == downloadInfo.id &&
+                  message.url == downloadInfo.url) {
+
+                  if (message.hasOwnProperty("error")) {
+                        throw new Error(message.error)
+                  }
+
+                  const progress = message.progress / 100
+                  if (toast) toastManager.SetProgress(toast, progress)
+
+                  // Download is finished
+                  if (message.progress >= 100) {
+                        console.log(log("Download successful"))
+
+                        Downloadbutton.AddURLToHistory(downloadInfo.originalURL)
+
+                        if (message.fileBlob) {
+                              let fileURL = URL.createObjectURL(message.fileBlob)
+                              const a = document.createElement('a');
+                              a.download = downloadInfo.fileName + downloadInfo.fileExt;
+                              a.href = fileURL;
+
+                              a.click();
+
+                              window.URL.revokeObjectURL(fileURL)
+                              a.remove()
+                        }
+                  }
+            }
+      })
+
+      // Send job to background script
+      browser.runtime.sendMessage({
+            type: "bsky-download",
+            downloadInfo: downloadInfo
+      })
+}
+
 
 /** Detect if a mobile device is used in the least intrusive way.
  * 
@@ -699,7 +747,7 @@ function GetNthParent(element, n) {
 }
 
 function GetSetting(settingId, settings) {
-      console.log(log("Fetching setting: " + settingId))
+      console.info(log("Fetching setting: " + settingId))
       if (!settings) {
             console.error(log("No settings provided"))
             return
@@ -715,7 +763,7 @@ function GetSetting(settingId, settings) {
 }
 
 function SetSetting(settingId, value, settings) {
-      console.log(log("Overwriting setting: " + settingId + " => " + value))
+      console.info(log("Overwriting setting: " + settingId + " => " + value))
       browser.runtime.sendMessage({ type: "set-setting", settingId: settingId, value: value })
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
@@ -733,7 +781,7 @@ function SetSetting(settingId, value, settings) {
 
 async function GetInfoFromThread(postInfo, atURI, url) {
       try {
-            console.log(log("Getting post info from thread"))
+            console.info(log("Getting post info from thread"))
             let info = {}
             let record = postInfo.record
             let media = ProcessMedia(record.embed)
@@ -1057,7 +1105,6 @@ class ToastManager {
       }
 
       DismissToast(toast, toastList) {
-            return
             try {
                   const toastIndex = toastList.indexOf(toast)
 
@@ -1547,5 +1594,99 @@ function isVersionNewer(oldVer, newVer) {
       } catch (e) {
             console.error(e)
             return undefined
+      }
+}
+
+class FullScreenPopup {
+      headerText
+      text
+      options
+      onDismiss
+
+      containerElem
+      popupElem
+      buttonDiv
+
+      constructor(headerText, text = "", options = [], onDismiss = () => { }) {
+            this.headerText = headerText
+            this.text = text
+            this.options = options
+            this.onDismiss = onDismiss
+
+            const domParser = new DOMParser()
+            this.containerElem = domParser.parseFromString(`
+            <div class="bsky-downloader-popup-container" id="downloaderPopupContainer">
+                  <div class="bsky-downloader-popup" id="downloaderPopup">
+                        <div style="padding: 24px;">
+                              <div class="bsky-downloader-popup-text-container">
+                                    <p class="bsky-downloader-popup-header" id="downloaderPopupHeader">${this.headerText}</p>
+                                    <p class="bsky-downloader-popup-text" id="downloaderPopupText">${this.text}</p>
+                              </div>
+                              <div class="bsky-downloader-popup-button-div" id="downloaderPopupButtonDiv">
+                              </div>
+                        </div>
+                  </div>
+            </div>
+            `, "text/html").body.firstElementChild
+
+            this.popupElem = this.containerElem.querySelector("#downloaderPopup");
+            this.buttonDiv = this.containerElem.querySelector("#downloaderPopupButtonDiv");
+
+            for (let i = 0; i < options.length; i++) {
+                  const option = options[i]
+                  const button = option.GetElement()
+
+                  button.addEventListener("click", option.onClick || (() => this.Dismiss()))
+
+                  this.buttonDiv.appendChild(button)
+            }
+
+            this.popupElem.addEventListener("click", e => e.stopPropagation())
+
+            this.containerElem.addEventListener("click", () => {
+                  this.containerElem.remove()
+            })
+
+            document.body.appendChild(this.containerElem)
+
+            setTimeout(() => {
+                  this.containerElem.style.opacity = "1"
+                  this.popupElem.style.transform = "scale(1)"
+            }, 50)
+      }
+
+      Dismiss() {
+            this.containerElem.style.opacity = "0"
+            this.popupElem.style.transform = "scale(0.95)"
+            this.containerElem.style.pointerEvents = "none"
+            setTimeout(() => {
+                  this.containerElem.remove()
+            }, 300)
+
+            this.onDismiss()
+      }
+
+      static PopupOption = class PopupOption {
+            text;
+            onClick;
+            primaryButton;
+
+            constructor(text = "Empty", onClick = null, primaryButton = true) {
+                  this.text = text
+                  this.onClick = onClick
+                  this.primaryButton = primaryButton
+            }
+
+            GetElement() {
+                  const button = document.createElement("input")
+                  button.type = "button"
+                  button.value = this.text
+
+                  button.classList.add("bsky-downloader-popup-button")
+                  if (!this.primaryButton)
+                        button.classList.add("bsky-downloader-popup-button-secondary")
+
+                  return button
+            }
       }
 }

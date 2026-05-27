@@ -141,7 +141,7 @@ class Downloadbutton {
             this.mediaElement = element
             this.#inputMethod = inputMethod
 
-            console.log(log("Creating download button of type " + type.name + " for URL: " + url))
+            console.info(log("Creating download button of type " + type.name + " for URL: " + url))
 
             if (this.mediaElement.textContent == "GIF") {
                   this.type = Downloadbutton.UploadedGIF
@@ -331,15 +331,15 @@ class Downloadbutton {
                   })
 
                   try {
-                        console.log(log("Sending download to background script"))
+                        console.info(log("Sending download to background script"))
 
                         // Generate process ID
-                        const id = Date.now()
+                        const downloadProcessId = Date.now()
 
                         // Add listener for progress updates
                         browser.runtime.onMessage.addListener(message => {
                               if (message.type == "bsky-download-progress" &&
-                                    message.id == id &&
+                                    message.id == downloadProcessId &&
                                     message.url == url) {
 
                                     if (message.hasOwnProperty("error")) {
@@ -361,7 +361,7 @@ class Downloadbutton {
                                     if (message.progress >= 100) {
                                           console.log(log("Download successful"))
 
-                                          this.#AddURLToHistory(originalURL)
+                                          Downloadbutton.AddURLToHistory(originalURL)
 
                                           if (message.fileBlob) {
                                                 let fileURL = URL.createObjectURL(message.fileBlob)
@@ -389,15 +389,15 @@ class Downloadbutton {
 
                         })
 
-                        console.log(url)
-
                         // Send download request
                         browser.runtime.sendMessage({
                               type: "bsky-download",
-                              id: id,
                               downloadInfo: {
+                                    id: downloadProcessId,
                                     url: url,
+                                    originalURL: originalURL,
                                     fileType: this.type,
+                                    fileName: this.#fileName,
                                     fileExt: this.#fileExtension,
                                     filePath: this.#filePath,
                                     mimeType: Downloadbutton.MimeTypes[this.#fileExtension],
@@ -501,14 +501,16 @@ class Downloadbutton {
       }
 
       /** Adds downloaded URL to local storage */
-      #AddURLToHistory(url) {
+      static AddURLToHistory(url) {
             try {
-                  const hash = GenerateHash(url)
+                  let _storage = JSON.parse(localStorage.getItem("downloadedURLs")) || [];
 
-                  let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-                  if (_storage == null) _storage = []
-                  if (_storage.indexOf(hash) == -1) _storage.push(hash)
-                  localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
+                  const hash = GenerateHash(url)
+                  if (_storage.indexOf(hash) == -1) {
+                        _storage.push(hash)
+
+                        localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
+                  }
             }
             catch (error) {
                   console.error(log("Error while adding URL to history: " + error))
@@ -598,6 +600,52 @@ class Downloadbutton {
             return GetFilePath(this.postInfo, this.settings)
       }
 }
+
+// Resume a download without a download button
+function ResumeUnfinishedDownload(downloadInfo, toastManager) {
+      // Display toast
+      const toast = toastManager.DisplayToast(downloadInfo.fileName)
+
+      browser.runtime.onMessage.addListener(message => {
+            if (message.type == "bsky-download-progress" &&
+                  message.id == downloadInfo.id &&
+                  message.url == downloadInfo.url) {
+
+                  if (message.hasOwnProperty("error")) {
+                        throw new Error(message.error)
+                  }
+
+                  const progress = message.progress / 100
+                  if (toast) toastManager.SetProgress(toast, progress)
+
+                  // Download is finished
+                  if (message.progress >= 100) {
+                        console.log(log("Download successful"))
+
+                        Downloadbutton.AddURLToHistory(downloadInfo.originalURL)
+
+                        if (message.fileBlob) {
+                              let fileURL = URL.createObjectURL(message.fileBlob)
+                              const a = document.createElement('a');
+                              a.download = downloadInfo.fileName + downloadInfo.fileExt;
+                              a.href = fileURL;
+
+                              a.click();
+
+                              window.URL.revokeObjectURL(fileURL)
+                              a.remove()
+                        }
+                  }
+            }
+      })
+
+      // Send job to background script
+      browser.runtime.sendMessage({
+            type: "bsky-download",
+            downloadInfo: downloadInfo
+      })
+}
+
 
 /** Detect if a mobile device is used in the least intrusive way.
  * 
@@ -708,7 +756,7 @@ function GetNthParent(element, n) {
 }
 
 function GetSetting(settingId, settings) {
-      console.log(log("Fetching setting: " + settingId))
+      console.info(log("Fetching setting: " + settingId))
       if (!settings) {
             console.error(log("No settings provided"))
             return
@@ -724,7 +772,7 @@ function GetSetting(settingId, settings) {
 }
 
 function SetSetting(settingId, value, settings) {
-      console.log(log("Overwriting setting: " + settingId + " => " + value))
+      console.info(log("Overwriting setting: " + settingId + " => " + value))
       browser.runtime.sendMessage({ type: "set-setting", settingId: settingId, value: value })
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
@@ -742,7 +790,7 @@ function SetSetting(settingId, value, settings) {
 
 async function GetInfoFromThread(postInfo, atURI, url) {
       try {
-            console.log(log("Getting post info from thread"))
+            console.info(log("Getting post info from thread"))
             let info = {}
             let record = postInfo.record
             let media = ProcessMedia(record.embed)
@@ -1066,12 +1114,15 @@ class ToastManager {
       }
 
       DismissToast(toast, toastList) {
-            return
-            // removed by dead control flow
+            try {
+                  const toastIndex = toastList.indexOf(toast)
 
+                  toast.Dismiss(toastIndex == 0)
+                  toastList.splice(toastIndex, 1)
+            }
+            catch { }
 
-            // removed by dead control flow
-
+            this.AlignItems()
       }
 
 
@@ -1552,6 +1603,100 @@ function isVersionNewer(oldVer, newVer) {
       } catch (e) {
             console.error(e)
             return undefined
+      }
+}
+
+class FullScreenPopup {
+      headerText
+      text
+      options
+      onDismiss
+
+      containerElem
+      popupElem
+      buttonDiv
+
+      constructor(headerText, text = "", options = [], onDismiss = () => { }) {
+            this.headerText = headerText
+            this.text = text
+            this.options = options
+            this.onDismiss = onDismiss
+
+            const domParser = new DOMParser()
+            this.containerElem = domParser.parseFromString(`
+            <div class="bsky-downloader-popup-container" id="downloaderPopupContainer">
+                  <div class="bsky-downloader-popup" id="downloaderPopup">
+                        <div style="padding: 24px;">
+                              <div class="bsky-downloader-popup-text-container">
+                                    <p class="bsky-downloader-popup-header" id="downloaderPopupHeader">${this.headerText}</p>
+                                    <p class="bsky-downloader-popup-text" id="downloaderPopupText">${this.text}</p>
+                              </div>
+                              <div class="bsky-downloader-popup-button-div" id="downloaderPopupButtonDiv">
+                              </div>
+                        </div>
+                  </div>
+            </div>
+            `, "text/html").body.firstElementChild
+
+            this.popupElem = this.containerElem.querySelector("#downloaderPopup");
+            this.buttonDiv = this.containerElem.querySelector("#downloaderPopupButtonDiv");
+
+            for (let i = 0; i < options.length; i++) {
+                  const option = options[i]
+                  const button = option.GetElement()
+
+                  button.addEventListener("click", option.onClick || (() => this.Dismiss()))
+
+                  this.buttonDiv.appendChild(button)
+            }
+
+            this.popupElem.addEventListener("click", e => e.stopPropagation())
+
+            this.containerElem.addEventListener("click", () => {
+                  this.containerElem.remove()
+            })
+
+            document.body.appendChild(this.containerElem)
+
+            setTimeout(() => {
+                  this.containerElem.style.opacity = "1"
+                  this.popupElem.style.transform = "scale(1)"
+            }, 50)
+      }
+
+      Dismiss() {
+            this.containerElem.style.opacity = "0"
+            this.popupElem.style.transform = "scale(0.95)"
+            this.containerElem.style.pointerEvents = "none"
+            setTimeout(() => {
+                  this.containerElem.remove()
+            }, 300)
+
+            this.onDismiss()
+      }
+
+      static PopupOption = class PopupOption {
+            text;
+            onClick;
+            primaryButton;
+
+            constructor(text = "Empty", onClick = null, primaryButton = true) {
+                  this.text = text
+                  this.onClick = onClick
+                  this.primaryButton = primaryButton
+            }
+
+            GetElement() {
+                  const button = document.createElement("input")
+                  button.type = "button"
+                  button.value = this.text
+
+                  button.classList.add("bsky-downloader-popup-button")
+                  if (!this.primaryButton)
+                        button.classList.add("bsky-downloader-popup-button-secondary")
+
+                  return button
+            }
       }
 }
 
@@ -2046,6 +2191,9 @@ const startTime = Date.now()
 let tabIDs = []
 let lightMode = localStorage.getItem("lightMode") == "true"
 
+let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
+const downloader = new _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__.Downloader(unfinishedDownloads);
+
 
 // Set info for last major version. Will only be displayed if the extension has been updated from a version BELOW this one.
 const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
@@ -2098,12 +2246,12 @@ const standardSettings = [
       ]
 ]
 
-console.log(log("Fetching saved settings"))
+console.info(log("Fetching saved settings"))
 let settings = localStorage.getItem("settings")
 if (!settings) {
       // Standard configuration
       settings = standardSettings
-      console.log(log("New user, standard settings applied"))
+      console.info(log("New user, standard settings applied"))
 }
 else {
       try {
@@ -2143,21 +2291,21 @@ else {
             }
             settings = newSettings
 
-            console.log(log("Settings successuflly migrated"))
+            console.info(log("Settings successuflly migrated"))
       }
       catch (e) {
-            console.log(log("Error migrating settings: " + e))
-            console.log(settings)
+            console.info(log("Error migrating settings: " + e))
+            console.info(settings)
       }
 }
 
 localStorage.setItem("settings", JSON.stringify(settings))
-console.log(log("Modified settings saved"))
+console.info(log("Modified settings saved"))
 
 
 browser.runtime.onInstalled.addListener((details) => {
       if (details.reason == "install") {
-            console.log(log("New install detected, initiating onboarding"))
+            console.info(log("New install detected, initiating onboarding"))
 
             onboardingStatus = { image: false, video: false }
             localStorage.setItem("onboarding-status", JSON.stringify(onboardingStatus))
@@ -2198,12 +2346,12 @@ browser.runtime.onMessage.addListener((message, sender) => {
             // Start download
             downloader.download(message.downloadInfo,
                   (progress, error, fileBlob = null) => {
-                        console.log(log(`Download progress for ${message.id} at ${progress}%`))
+                        console.info(log(`Download progress for ${message.downloadInfo.id} at ${progress}%`))
 
                         // Send progress messages to sender
                         let response = {
                               type: "bsky-download-progress",
-                              id: message.id,
+                              id: message.downloadInfo.id,
                               url: message.downloadInfo.url,
                               progress: progress,
                               fileBlob: fileBlob
@@ -2253,6 +2401,22 @@ browser.runtime.onMessage.addListener((message, sender) => {
             return
       }
 
+      // Clear the queue of unfinished downloads
+      else if (message.type == "clear-unfinished-downloads") {
+            console.log(log("Clearing unfinished download queue"))
+
+            downloader.unfinishedDownloads = []
+            localStorage.setItem("unfinished-downloads", JSON.stringify(downloader.unfinishedDownloads))
+            
+            for (let i = 0; i < tabIDs.length; i++) {
+                  const tabID = tabIDs[i]
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "clear-unfinished-downloads-popup" }) /// TODO
+                  }
+                  catch { }
+            }
+      }
+
       // Update popup display status
       else if (message.type == "version-info-displayed") {
             console.log(log("Version info displayed, relaying message"))
@@ -2277,7 +2441,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   settings: settings,
                   lightMode: lightMode,
                   inputMethod: inputMethod,
-                  versionInfo: showVersionInfo ? majorVersionInfo : null
+                  versionInfo: showVersionInfo ? majorVersionInfo : null,
+                  unfinishedDownloads: downloader.unfinishedDownloads
             })
       }
 
@@ -2317,7 +2482,7 @@ function SetSetting(settingId, value, settings) {
                         setting.value = value;
                         localStorage.setItem("settings", JSON.stringify(settings))
 
-                        console.log(log("Settings changed, relaying"))
+                        console.info(log("Settings changed, relaying"))
                         for (let i = 0; i < tabIDs.length; i++) {
                               const tabID = tabIDs[i]
                               try {
@@ -2332,8 +2497,6 @@ function SetSetting(settingId, value, settings) {
             }
       }
 }
-
-const downloader = new _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__.Downloader();
 
 /***/ },
 
@@ -2362,7 +2525,7 @@ __webpack_require__.r(__webpack_exports__);
 // Extracted the video conversion logic into separate function
 // Made to work with video URLs directly
 // Made compatible as a web extension based on browser-extension-ffmpeg
-// https://github.com/Aniny21/browser-extension-ffmpeg/
+// https://github.com/Aniny21/browser-extension-ffmpeg/ ///TODO - Remove
 // Added simple progress estimation
 
 // Side note: Firefox extensions can't run multi-core wasm
@@ -2379,8 +2542,10 @@ class Downloader {
       #mobileDevice = DetectMobileDevice()
       ffmpegLoaded = false
       shutDownFFmpeg = null
+      unfinishedDownloads
 
-      constructor() {
+      constructor(unfinishedDownloads) {
+            this.unfinishedDownloads = unfinishedDownloads
             this.#queue = []
             this.#downloadReady = true
             this.progress = 0
@@ -2396,7 +2561,14 @@ class Downloader {
             onProgress = () => { }) {
             if (this.#queue.find(element => element.data.url == downloadInfo.url)) return
 
+            // Save it as an unfinished download in case it doesn't complete
+            if (!this.unfinishedDownloads.find(element => element.id == downloadInfo.id)) {
+                  this.unfinishedDownloads.push(downloadInfo)
+                  localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
+            }
+
             this.#queue.push({
+                  id: downloadInfo.id,
                   data: downloadInfo,
                   onProgress: onProgress,
                   tries: 0
@@ -2418,6 +2590,7 @@ class Downloader {
             const currentItem = this.#queue.shift()
 
             // Get individual properties
+            const id = currentItem.id
             const url = currentItem.data.url
             const fileType = currentItem.data.fileType
             const fileExt = currentItem.data.fileExt
@@ -2436,12 +2609,12 @@ class Downloader {
             if (fileType.id != Downloadbutton.Image.id || imgCompression) {
 
                   if (this.shutDownFFmpeg) {
-                        console.log(log("FFmpeg shutdown aborted"))
+                        console.info(log("FFmpeg shutdown aborted"))
                         clearTimeout(this.shutDownFFmpeg)
                   }
 
                   if (!this.ffmpegLoaded) {
-                        console.log(log("Loading FFmpeg"))
+                        console.info(log("Loading FFmpeg"))
                         ffmpegLoading = this.#loadFFmpeg()
                   }
             }
@@ -2472,7 +2645,7 @@ class Downloader {
 
                   if (tries < this.#maxTries) {
                         currentItem.tries++
-                        this.#queue.push(currentItem)
+                        this.#queue.unshift(currentItem)
                         this.progress = 0
                   }
                   else {
@@ -2481,21 +2654,25 @@ class Downloader {
 
             }
 
+            // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
+            this.unfinishedDownloads = this.unfinishedDownloads.filter(element => element.id != id)
+            localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
+
             // Start next download
             this.#downloadReady = true;
             if (this.#queue.length > 0) this.#download()
             else {
                   if (this.#ffmpeg.loaded) {
-                        console.log(log("Download queue empty, stopping FFmpeg in 10s"))
+                        console.info(log("Download queue empty, stopping FFmpeg in 10s"))
                         this.shutDownFFmpeg = setTimeout(() => {
-                              console.log(log("Shutting down FFmpeg"))
+                              console.info(log("Shutting down FFmpeg"))
                               this.#ffmpeg.terminate()
                               this.shutDownFFmpeg = null
                               this.ffmpegLoaded = false
                         }, 10000)
                   }
                   else
-                        console.log(log("Download queue empty, FFmpeg not running"))
+                        console.info(log("Download queue empty, FFmpeg not running"))
             }
       }
 
@@ -2586,7 +2763,7 @@ class Downloader {
                               imageQuality = Math.round(32 - 0.31 * imageQuality)
                         }
 
-                        console.log(log("Converting to " + mimeType + " at quality: " + imageQuality))
+                        console.info(log("Converting to " + mimeType + " at quality: " + imageQuality))
 
                         const startTime = Date.now()
                         const onFFmpegProgress = ({ progress, time }) => {
@@ -2595,7 +2772,7 @@ class Downloader {
                               let elapsedMS = Date.now() - startTime
                               let remainingMS = (elapsedMS / progress) - elapsedMS
 
-                              console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
+                              console.info(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
                         }
 
                         this.#ffmpeg.on('progress', onFFmpegProgress)
@@ -2732,7 +2909,6 @@ class Downloader {
             const chunks = [];
             for (let i = 0; i < segmentUrls.length; i++) {
                   let progress = Math.round(10 + (20 / segmentUrls.length) * (i + 1))
-                  console.log(progress)
                   this.#setProgress(progress)
 
                   const response = await fetch(segmentUrls[i]);
@@ -2749,7 +2925,7 @@ class Downloader {
                         "input.ts",
                         await (0,_ffmpeg_util__WEBPACK_IMPORTED_MODULE_1__.fetchFile)(videoBlob)
                   );
-                  
+
                   const startTime = Date.now()
                   const onFFmpegProgress = ({ progress, time }) => {
                         this.#setProgress(30 + Math.round(70 * progress))
@@ -2757,7 +2933,7 @@ class Downloader {
                         let elapsedMS = Date.now() - startTime
                         let remainingMS = (elapsedMS / progress) - elapsedMS
 
-                        console.log(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
+                        console.info(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
                   }
 
                   this.#ffmpeg.on('progress', onFFmpegProgress)
