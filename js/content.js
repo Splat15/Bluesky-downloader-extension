@@ -64,7 +64,7 @@ browser.runtime.onMessage.addListener((message) => {
             version = message.version
 
             // If there are unfinished downloads from the last session, ask to restart them
-            if (true /*message.unfinishedDownloads && message.unfinishedDownloads.length > 0*/) { ///FIXME - 
+            if (message.unfinishedDownloads && message.unfinishedDownloads.length > 0) {
                   setTimeout(() => {
                         let popup
                         let userHasAccepted = false
@@ -471,15 +471,18 @@ new NodeObserver(
 
             // Tenor GIF posts
             else if (element.tagName == "VIDEO" &&
-                  element.src.includes("gifs.bsky.app") &&
+                  element.firstElementChild.src.includes("gifs.bsky.app") &&
                   element.downloadButton !== true) {
                   try {
+                        const mp4Src = Array.from(element.children)
+                              .find(element => /gifs\.bsky\.app\/[^\/]+\/[^.]+\.mp4/gi.test(element.src))
+                        
                         // Create download button
                         const func = () => {
                               if (mediaElements.includes(element)) return
                               mediaElements.push(element)
 
-                              const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
+                              const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, mp4Src.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
                               downloadButtons.gif.push(downloadButton)
                         }
 
@@ -581,10 +584,13 @@ function InstallCleanup() {
             })
 
       // GIFs
-      Array.from(document.querySelectorAll("video[src*='gifs.bsky.app']"))
+      Array.from(document.querySelectorAll("video:has(>[src*='gifs.bsky.app'])"))
             .forEach(element => {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
+                        const mp4Src = Array.from(element.children)
+                              .find(element => /gifs\.bsky\.app\/[^\/]+\/[^.]+\.mp4/gi.test(element.src))
+                        
+                        const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, mp4Src.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
                         downloadButtons.gif.push(downloadButton)
                   }
                   catch (error) {

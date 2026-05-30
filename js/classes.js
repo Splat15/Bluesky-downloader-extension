@@ -70,7 +70,7 @@ class Downloadbutton {
       }
       static Image = { name: "Image", ext: ".webp", id: "image" }
       static Video = { name: "Video", ext: ".mp4", id: "video" }
-      static GIF = { name: "GIF", ext: ".webm", id: "gif" }
+      static GIF = { name: "GIF", ext: ".mp4", id: "gif" }
       static UploadedGIF = { name: "GIF", ext: ".mp4", id: "uploadedgif" }
 
       static MimeTypes = {
@@ -259,23 +259,14 @@ class Downloadbutton {
                   this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
 
                   this.#fileExtension = this.type.ext
-                  if (this.type == Downloadbutton.GIF) {
-                        // Tenor and the bluesky mirrors use the last two letters of the ID to indicate format
-                        if (GetSetting("gifsAsGIF", this.settings).value) {
-                              this.#fileExtension = ".gif"
 
-                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "AC")
-                        }
-                        else
-                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "P3")
-                  }
-
-                  // Fake GIFs uploaded by users need to be converted to the right format
-                  else if (this.type == Downloadbutton.UploadedGIF) {
-                        url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
-
+                  // If the post is a user uploaded or tenor GIF
+                  if (this.type == Downloadbutton.GIF || this.type == Downloadbutton.UploadedGIF) {
                         if (GetSetting("gifsAsGIF", this.settings).value)
                               this.#fileExtension = ".gif"
+
+                        if (this.type == Downloadbutton.UploadedGIF)
+                              url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
                   }
 
                   // If reqested, change file extension to .jpg
@@ -790,7 +781,7 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             let cid = media.find(cid => url.includes(cid))
             let mediaIndex = media.indexOf(cid)
             if (mediaIndex == -1) {
-                  postInfo = postInfo.embed.record.record || postInfo.embed.record
+                  postInfo = postInfo.embed.record.record || postInfo.embed.record || postInfo.record
                   record = postInfo.value
 
                   atURI = postInfo.uri

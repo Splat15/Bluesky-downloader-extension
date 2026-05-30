@@ -105,8 +105,19 @@ export class Downloader {
             }
 
             try {
-                  if (fileType.id == Downloadbutton.Video.id || fileType.id == Downloadbutton.UploadedGIF.id)
-                        await this.downloadVideo(
+                  if (fileType.id == Downloadbutton.Image.id)
+                        await this.downloadImage(
+                              url,
+                              filePath,
+                              fileExt,
+                              ffmpegLoading,
+                              imgCompression,
+                              imgQuality,
+                              mimeType
+                        )
+
+                  else if (fileType.id == Downloadbutton.GIF.id)
+                        await this.downloadTenorGIF(
                               url,
                               filePath,
                               fileExt,
@@ -115,13 +126,11 @@ export class Downloader {
                         )
 
                   else
-                        await this.downloadImage(
+                        await this.downloadVideo(
                               url,
                               filePath,
                               fileExt,
                               ffmpegLoading,
-                              imgCompression,
-                              imgQuality,
                               mimeType
                         )
 
@@ -348,6 +357,80 @@ export class Downloader {
             }
       }
 
+      async downloadTenorGIF(
+            url,
+            filePath,
+            fileExtension,
+            ffmpegLoading,
+            mimeType
+      ) {
+            let gif = await fetch(url)
+            gif = await gif.arrayBuffer()
+            const fileBlob = new Blob([gif], { type: mimeType, });
+
+            if (mimeType == "video/mp4") {
+                  if (this.#mobileDevice) {
+                        // Return file to content script to download
+                        this.#setProgress(100, null, fileBlob)
+                  }
+                  else {
+                        // Download using downloads API
+                        let fileURL = URL.createObjectURL(fileBlob)
+
+                        // Initiate download
+                        browser.downloads.download({
+                              url: fileURL, filename: filePath
+                        }).then(() => {
+                              this.#setProgress(100)
+
+                              // Free up RAM, will interrupt download if done too soon for some reason
+                              setTimeout(() => {
+                                    URL.revokeObjectURL(fileURL)
+                              }, 5000)
+                        })
+                  }
+
+                  return
+            }
+
+            // Wait for ffmpeg to load if it hasn't yet
+            await ffmpegLoading
+            // Convert to mp4
+
+            let command = [
+                  "-i",
+                  "input.mp4",
+                  "-map",
+                  "0",
+                  "-vf",
+                  "split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse",
+                  "output.gif"
+            ]
+
+            let blob = await this.#convertVideo(fileBlob, fileExtension, mimeType, command, ".mp4")
+
+            if (this.#mobileDevice) {
+                  // Return file to content script to download
+                  this.#setProgress(100, null, fileBlob)
+            }
+            else {
+                  // Download using downloads API
+                  let fileURL = URL.createObjectURL(blob)
+
+                  // Initiate download
+                  browser.downloads.download({
+                        url: fileURL, filename: filePath
+                  }).then(() => {
+                        this.#setProgress(100)
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
+                  })
+            }
+      }
+
       async #processPlaylist(playlistUrl) {
             const masterPlaylistResponse = await fetch(playlistUrl);
             const masterPlaylist = await masterPlaylistResponse.text();
@@ -403,11 +486,11 @@ export class Downloader {
             return new Blob(chunks, { type: "video/MP2T" });
       }
 
-      async #convertVideo(videoBlob, fileExtension, mimeType, command) {
+      async #convertVideo(videoBlob, fileExtension, mimeType, command, inputFileExtension = ".ts") {
             try {
                   // Write file to virtual FS
                   await this.#ffmpeg.writeFile(
-                        "input.ts",
+                        "input" + inputFileExtension,
                         await fetchFile(videoBlob)
                   );
 
