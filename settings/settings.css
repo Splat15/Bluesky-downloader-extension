@@ -608,11 +608,11 @@ body {
 
 .help-popup {
   position: absolute;
-  width: calc(100% - 80px);
+  width: calc(100vw - 80px);
   max-width: 400px;
   overflow: hidden;
-  top: 50%;
-  transform: translate(-50%, -50%);
+  top: 10vh;
+  transform: translateX(-50%);
   left: 50%;
   background-color: var(--bg);
   border-radius: 10px;

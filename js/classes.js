@@ -1608,6 +1608,9 @@ class FullScreenPopup {
       buttonDiv
 
       constructor(headerText, text = "", options = [], onDismiss = () => { }) {
+            Array.from(document.querySelectorAll("#downloaderPopupContainer"))
+                  .forEach(element => element.remove())
+
             this.headerText = headerText
             this.text = text
             this.options = options

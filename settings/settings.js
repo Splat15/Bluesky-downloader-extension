@@ -2,6 +2,8 @@ let cachedExamplePost
 let exampleAtURI = "at://bsky.app/app.bsky.feed.post/3lxxo3i4qzs2c"
 let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
 let onExampleReady = []
+let pathVarHelpPopup
+
 let theme = localStorage.getItem("theme") || "theme--light"
 SetThemeClass(theme)
 
@@ -345,7 +347,22 @@ class Setting {
 
                   // Display help popup
                   pathActionHelp.addEventListener("click", () => {
-                        helpPopupDiv.classList.add("help-popup-div-active")
+                        let helpTextMobile = `With this setting you can specify the name of downloaded files.<br />
+                        A preview of your file name is shown below the input.<br />
+                        Variables can be used to add extra data like the username of the author and more.<br />
+                        Click the Variables button to use them.`
+
+                        let helpText = `With this setting you can specify the location and name of downloaded files.<br />
+                        A preview of your path is shown below the input.<br />
+                        A subfolder inside your download folder can be specified with a slash.<br />
+                        Variables can be used to add extra data like the username, date and more.<br />
+                        Click the Variables button to use them.`
+
+                        pathVarHelpPopup = new FullScreenPopup(
+                              "Download path",
+                              isMobile ? helpTextMobile : helpText,
+                              [new FullScreenPopup.PopupOption("OK")]
+                        )
                   })
 
                   // Insert selected variable into input
@@ -501,24 +518,6 @@ let isMobile = DetectMobileDevice()
 let settings = JSON.parse(localStorage.getItem("settings"))
 let toastManager = new ToastManager()
 let mobilePathWarning;
-
-if (isMobile) {
-      document.getElementById("helpPopupTextMobile").style.display = "block"
-      document.getElementById("helpPopupText").style.display = "none"
-
-      document.getElementById("helpPopupTitle").textContent = "File name"
-}
-
-const helpPopup = document.getElementById("helpPopup")
-const helpPopupDismiss = document.getElementById("helpPopupDismiss")
-const helpPopupText = document.getElementById("helpPopupText")
-
-// Enable dismissing of help popup with dismiss button or by clicking the background
-helpPopupDiv.addEventListener("click", () => helpPopupDiv.classList.remove("help-popup-div-active"))
-helpPopupDismiss.addEventListener("click", () => helpPopupDiv.classList.remove("help-popup-div-active"))
-// Stop dismissing action when clicking help popup
-helpPopup.addEventListener("click", (e) => e.stopPropagation())
-
 
 const settingsContainer = document.getElementById("settings")
 const scrollFadeTop = document.getElementById("scrollFadeTop")

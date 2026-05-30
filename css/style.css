@@ -277,6 +277,7 @@ div.loading-bar > svg {
 }
 
 .bsky-downloader-popup-container {
+  z-index: 1000000;
   inset: 0;
   position: fixed;
   top: 0px;
@@ -308,6 +309,7 @@ div.loading-bar > svg {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 20px;
 }
 
 .bsky-downloader-popup-button {
@@ -397,5 +399,4 @@ div.loading-bar > svg {
   gap: 8px;
   display: flex;
   flex-direction: column;
-  margin-bottom: 20px;
 }
