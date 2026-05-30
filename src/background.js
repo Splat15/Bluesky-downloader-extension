@@ -4,7 +4,7 @@ let installTime = 0
 const startTime = Date.now()
 
 let tabIDs = []
-let lightMode = localStorage.getItem("lightMode") == "true"
+let theme = localStorage.getItem("theme") || "theme--dim"
 
 let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
 const downloader = new Downloader(unfinishedDownloads);
@@ -190,17 +190,17 @@ browser.runtime.onMessage.addListener((message, sender) => {
             SetSetting(message.settingId, message.value, settings)
       }
 
-      // Light mode status set requests
-      else if (message.type == "set-light-mode") {
-            lightMode = message.value
-            console.log(log("Light mode change detected, new value: " + lightMode))
-            localStorage.setItem("lightMode", lightMode)
+      // Theme set requests
+      else if (message.type == "set-theme") {
+            theme = message.value
+            console.log(log("Theme change detected, new value: " + theme))
+            localStorage.setItem("theme", theme)
       }
 
-      // Light mode status get requests
-      else if (message.type == "get-light-mode") {
-            console.log(log("Light mode request received"))
-            browser.tabs.sendMessage(sender.tab.id, { value: lightMode, type: "light-mode" })
+      // Theme get requests
+      else if (message.type == "get-theme") {
+            console.log(log("Theme request received"))
+            browser.tabs.sendMessage(sender.tab.id, { value: theme, type: "theme" })
       }
 
       // Input method set requests
@@ -254,7 +254,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   uptime: uptime,
                   onboardingStatus: onboardingStatus,
                   settings: settings,
-                  lightMode: lightMode,
+                  theme: theme,
                   inputMethod: inputMethod,
                   versionInfo: showVersionInfo ? majorVersionInfo : null,
                   unfinishedDownloads: downloader.unfinishedDownloads

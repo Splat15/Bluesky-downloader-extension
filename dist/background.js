@@ -1652,9 +1652,7 @@ class FullScreenPopup {
 
             this.popupElem.addEventListener("click", e => e.stopPropagation())
 
-            this.containerElem.addEventListener("click", () => {
-                  this.containerElem.remove()
-            })
+            this.containerElem.addEventListener("click", () => this.Dismiss())
 
             document.body.appendChild(this.containerElem)
 
@@ -1698,6 +1696,24 @@ class FullScreenPopup {
                   return button
             }
       }
+}
+
+
+// Set light / dark / dim mode for extension UI
+function SetThemeClass(theme) {
+      // This prevents bluesky from randomly deleting the class
+      // theme--dark => theme-dark
+      theme = theme.replace(/(?<=theme)--/i, "-")
+
+      // Remove old classes
+      document.documentElement.classList.remove(
+            "bsky-downloader-theme-light",
+            "bsky-downloader-theme-dim",
+            "bsky-downloader-theme-dark"
+      )
+
+      // Add new theme class
+      document.documentElement.classList.add("bsky-downloader-" + theme)
 }
 
 /***/ },
@@ -2189,7 +2205,7 @@ let installTime = 0
 const startTime = Date.now()
 
 let tabIDs = []
-let lightMode = localStorage.getItem("lightMode") == "true"
+let theme = localStorage.getItem("theme") || "theme--dim"
 
 let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
 const downloader = new _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__.Downloader(unfinishedDownloads);
@@ -2375,17 +2391,17 @@ browser.runtime.onMessage.addListener((message, sender) => {
             SetSetting(message.settingId, message.value, settings)
       }
 
-      // Light mode status set requests
-      else if (message.type == "set-light-mode") {
-            lightMode = message.value
-            console.log(log("Light mode change detected, new value: " + lightMode))
-            localStorage.setItem("lightMode", lightMode)
+      // Theme set requests
+      else if (message.type == "set-theme") {
+            theme = message.value
+            console.log(log("Theme change detected, new value: " + theme))
+            localStorage.setItem("theme", theme)
       }
 
-      // Light mode status get requests
-      else if (message.type == "get-light-mode") {
-            console.log(log("Light mode request received"))
-            browser.tabs.sendMessage(sender.tab.id, { value: lightMode, type: "light-mode" })
+      // Theme get requests
+      else if (message.type == "get-theme") {
+            console.log(log("Theme request received"))
+            browser.tabs.sendMessage(sender.tab.id, { value: theme, type: "theme" })
       }
 
       // Input method set requests
@@ -2439,7 +2455,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   uptime: uptime,
                   onboardingStatus: onboardingStatus,
                   settings: settings,
-                  lightMode: lightMode,
+                  theme: theme,
                   inputMethod: inputMethod,
                   versionInfo: showVersionInfo ? majorVersionInfo : null,
                   unfinishedDownloads: downloader.unfinishedDownloads

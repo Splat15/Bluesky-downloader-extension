@@ -8,7 +8,7 @@ let settings
 let version
 let onInit = []
 let init = false
-let lightMode = false
+let theme = "theme--dim"
 console.info(log("Initializing toast manager"))
 const toastManager = new ToastManager()
 let mediaElements = [] // Prevents duplicate application of download buttons and onboarding elements
@@ -59,12 +59,12 @@ browser.runtime.onMessage.addListener((message) => {
 
             onboardingStatus = message.onboardingStatus
             settings = message.settings
-            lightMode = message.lightMode
+            theme = message.theme
             inputMethod = message.inputMethod
             version = message.version
 
             // If there are unfinished downloads from the last session, ask to restart them
-            if (message.unfinishedDownloads && message.unfinishedDownloads.length > 0) {
+            if (true /*message.unfinishedDownloads && message.unfinishedDownloads.length > 0*/) { ///FIXME - 
                   setTimeout(() => {
                         let popup
                         let userHasAccepted = false
@@ -76,7 +76,7 @@ browser.runtime.onMessage.addListener((message) => {
 
                         const popupText = `${amountText} download${multipleDownloads ? "s" : ""} didn't finish. Do you want to restart ${multipleDownloads ? "them" : "it"}?`
 
-                        
+
                         const onPopupDismiss = () => {
                               // If the user didn't restart the downloads
                               if (!userHasAccepted)
@@ -142,30 +142,19 @@ browser.runtime.onMessage.addListener((message) => {
 
 
             // Initialize theme
-            if (lightMode)
-                  document.documentElement.classList.add("bsky-downloader-light-mode")
-            else
-                  document.documentElement.classList.add("bsky-downloader-dark-mode")
+            SetThemeClass(theme)
 
             function HandleThemeChanges() {
-                  // Get bsky theme from html element class
-                  let lightModeNew = document.documentElement.classList.contains("theme--light")
-                  // If different to saved value, update
-                  if (lightMode != lightModeNew) {
-                        console.info(log("Theme change detected"))
-                        lightMode = lightModeNew;
-                        browser.runtime.sendMessage({ type: "set-light-mode", value: lightMode })
+                  let newTheme = Array.from(document.documentElement.classList)
+                        .find(cssClass => cssClass.startsWith("theme--"))
 
-                        if (lightMode) {
-                              console.info(log("Applying light theme"))
-                              document.documentElement.classList.remove("bsky-downloader-dark-mode")
-                              document.documentElement.classList.add("bsky-downloader-light-mode")
-                        }
-                        else {
-                              console.info(log("Applying dark theme"))
-                              document.documentElement.classList.remove("bsky-downloader-light-mode")
-                              document.documentElement.classList.add("bsky-downloader-dark-mode")
-                        }
+                  if (theme != newTheme) {
+                        console.info(log("Theme change detected, new theme is " + newTheme))
+
+                        theme = newTheme
+                        browser.runtime.sendMessage({ type: "set-theme", value: theme })
+
+                        SetThemeClass(theme)
                   }
             }
 

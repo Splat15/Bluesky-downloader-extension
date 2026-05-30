@@ -1,4 +1,22 @@
-.bsky-downloader-dark-mode {
+.bsky-downloader-theme-light {
+  --text-loading: rgb(103, 103, 103);
+  --text-color: rgb(0, 0, 0);
+  --toast-surface: rgb(239, 242, 246);
+  --toast-border-hover: rgb(220, 226, 234);
+  --toast-action: rgb(102, 123, 153);
+  --toast-action-hover: rgb(49, 63, 84);
+
+  --popup-bg: white;
+
+  --button-blue: rgb(0, 106, 255);
+  --button-blue-hover: rgb(0, 89, 214);
+
+  --button-dark: rgb(229, 240, 255);
+  --button-dark-hover: rgb(204, 225, 255);
+  --button-dark-text: rgb(0, 89, 214);
+}
+
+.bsky-downloader-theme-dim {
   --text-loading: rgb(103, 103, 103);
   --text-color: rgb(255, 255, 255);
   --toast-surface: rgb(34, 46, 63);
@@ -16,22 +34,22 @@
   --button-dark-text: rgb(77, 151, 255);
 }
 
-.bsky-downloader-light-mode {
+.bsky-downloader-theme-dark {
   --text-loading: rgb(103, 103, 103);
-  --text-color: rgb(0, 0, 0);
-  --toast-surface: rgb(239, 242, 246);
-  --toast-border-hover: rgb(220, 226, 234);
-  --toast-action: rgb(102, 123, 153);
-  --toast-action-hover: rgb(49, 63, 84);
+  --text-color: rgb(255, 255, 255);
+  --toast-surface: rgb(34, 46, 63);
+  --toast-border-hover: rgb(34, 58, 78);
+  --toast-action: rgb(111, 131, 159);
+  --toast-action-hover: rgb(195, 205, 218);
 
-  --popup-bg: white;
+  --popup-bg: rgb(0, 0, 0);
 
   --button-blue: rgb(0, 106, 255);
-  --button-blue-hover: rgb(0, 89, 214);
+  --button-blue-hover: rgb(66, 145, 255);
 
-  --button-dark: rgb(229, 240, 255);
-  --button-dark-hover: rgb(204, 225, 255);
-  --button-dark-text: rgb(0, 89, 214);
+  --button-dark: rgb(0, 30, 71);
+  --button-dark-hover: rgb(0, 40, 97);
+  --button-dark-text: rgb(66, 145, 255);
 }
 
 div + button[data-testid="altTextButton"] {

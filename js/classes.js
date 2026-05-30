@@ -1643,9 +1643,7 @@ class FullScreenPopup {
 
             this.popupElem.addEventListener("click", e => e.stopPropagation())
 
-            this.containerElem.addEventListener("click", () => {
-                  this.containerElem.remove()
-            })
+            this.containerElem.addEventListener("click", () => this.Dismiss())
 
             document.body.appendChild(this.containerElem)
 
@@ -1689,4 +1687,22 @@ class FullScreenPopup {
                   return button
             }
       }
+}
+
+
+// Set light / dark / dim mode for extension UI
+function SetThemeClass(theme) {
+      // This prevents bluesky from randomly deleting the class
+      // theme--dark => theme-dark
+      theme = theme.replace(/(?<=theme)--/i, "-")
+
+      // Remove old classes
+      document.documentElement.classList.remove(
+            "bsky-downloader-theme-light",
+            "bsky-downloader-theme-dim",
+            "bsky-downloader-theme-dark"
+      )
+
+      // Add new theme class
+      document.documentElement.classList.add("bsky-downloader-" + theme)
 }

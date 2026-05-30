@@ -2,6 +2,8 @@ let cachedExamplePost
 let exampleAtURI = "at://bsky.app/app.bsky.feed.post/3lxxo3i4qzs2c"
 let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
 let onExampleReady = []
+let theme = localStorage.getItem("theme") || "theme--light"
+SetThemeClass(theme)
 
 console.log(log("Fetching example post info"))
 let postInfo
@@ -495,10 +497,6 @@ class Setting {
       }
 }
 
-let lightMode = localStorage.getItem("lightMode") == "true"
-if (lightMode) document.documentElement.classList.add("light-mode")
-else document.documentElement.classList.add("dark-mode")
-
 let isMobile = DetectMobileDevice()
 let settings = JSON.parse(localStorage.getItem("settings"))
 let toastManager = new ToastManager()
@@ -560,22 +558,11 @@ for (let i = 0; i < settings.length; i++) {
 }
 
 browser.runtime.onMessage.addListener(message => {
-      // Handle settings updates
-      //if (message.type == "settings-update")
-      //      settings = message.settings
+      // Handle updates to theme from content script
+      if (message.type == "set-theme") {
+            theme = message.value
 
-      // Handle updates to theme
-      if (message.type == "set-light-mode") {
-            lightMode = message.lightMode
-
-            if (lightMode) {
-                  document.documentElement.classList.remove("dark-mode")
-                  document.documentElement.classList.add("light-mode")
-            }
-            else {
-                  document.documentElement.classList.remove("light-mode")
-                  document.documentElement.classList.add("dark-mode")
-            }
+            SetThemeClass(theme)
       }
 })
 

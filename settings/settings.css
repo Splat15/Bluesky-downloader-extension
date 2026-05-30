@@ -1,43 +1,12 @@
-.dark-mode {
-  --text: rgb(255, 255, 255);
-  --text-suggestion: rgba(255, 255, 255, 0.497);
-  --text-locked: rgb(189, 189, 189);
-  --bg: rgb(21, 29, 40);
-  --surface-1: rgb(34, 46, 63);
-  --surface-2: rgb(49, 64, 86);
-
-  --checkbox-bg: rgb(28, 39, 54);
-  --checkbox-border: rgb(44, 58, 78);
-  --checkbox-hover-bg: var(--surface-1);
-  --checkbox-hover-border: rgb(57, 73, 96);
-
-  --separator-border: var(--checkbox-border);
-
-  --button-grey: rgb(18, 41, 73);
-  --button-grey-hover: rgb(18, 52, 100);
-  --button-grey-active: rgb(32, 66, 112);
-  --button-grey-text: rgb(77, 151, 255);
-
-  --button-red: rgb(244, 38, 38);
-  --button-red-hover: rgb(203, 41, 41);
-  --button-red-active: rgb(255, 66, 66);
-
-  --button-blue: rgb(15, 115, 255);
-  --button-blue-hover: rgb(7, 103, 238);
-  --button-blue-active: rgb(29, 123, 255);
-
-  --help-popup-dismiss-filter: ;
-
-  background-color: var(--bg);
-}
-
-.light-mode {
+.bsky-downloader-theme-light {
   --text: rgb(0, 0, 0);
   --text-suggestion: rgb(102, 123, 153);
   --text-locked: rgb(64, 81, 104);
   --bg: rgb(255, 255, 255);
   --surface-1: rgb(239, 242, 246);
-  --surface-2: rgb(206, 206, 206);
+  --surface-2: rgb(220, 226, 234);
+
+  --var-input-active: rgb(245, 249, 255);
 
   --checkbox-bg: rgb(249, 250, 251);
   --checkbox-border: rgb(220, 226, 234);
@@ -48,18 +17,88 @@
 
   --button-grey: rgb(229, 240, 255);
   --button-grey-hover: rgb(204, 225, 255);
-  --button-grey-active: rgb(240, 247, 255);
+  --button-grey-active: rgb(204, 225, 255);
   --button-grey-text: rgb(0, 89, 214);
 
-  --button-red: rgb(244, 38, 38);
-  --button-red-hover: rgb(203, 41, 41);
+  --button-red: rgb(255, 15, 15);
+  --button-red-hover: rgb(214, 0, 0);
+  --button-red-active: rgb(214, 0, 0);
+
+  --button-blue: rgb(15, 115, 255);
+  --button-blue-hover: rgb(0, 89, 214);
+  --button-blue-active: rgb(0, 89, 214);
+
+  --help-popup-dismiss-filter: brightness(40%);
+
+  background-color: var(--bg);
+}
+
+.bsky-downloader-theme-dim {
+  --text: rgb(255, 255, 255);
+  --text-suggestion: rgba(255, 255, 255, 0.497);
+  --text-locked: rgb(189, 189, 189);
+  --bg: rgb(21, 29, 40);
+  --surface-1: rgb(34, 46, 63);
+  --surface-2: rgb(44, 58, 78);
+
+  --var-input-active: rgb(18, 33, 54);
+
+  --checkbox-bg: rgb(28, 39, 54);
+  --checkbox-border: rgb(44, 58, 78);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(57, 73, 96);
+
+  --separator-border: var(--checkbox-border);
+
+  --button-grey: rgb(18, 41, 73);
+  --button-grey-hover: rgb(18, 52, 100);
+  --button-grey-active: rgb(18, 52, 100);
+  --button-grey-text: rgb(77, 151, 255);
+
+  --button-red: rgb(255, 15, 15);
+  --button-red-hover: rgb(255, 77, 77);
+  --button-red-active: rgb(255, 77, 77);
+
+  --button-blue: rgb(15, 115, 255);
+  --button-blue-hover: rgb(77, 151, 255);
+  --button-blue-active: rgb(77, 151, 255);
+
+  --help-popup-dismiss-filter: ;
+
+  background-color: var(--bg);
+}
+
+.bsky-downloader-theme-dark {
+  --text: rgb(255, 255, 255);
+  --text-suggestion: rgba(255, 255, 255, 0.497);
+  --text-locked: rgb(189, 189, 189);
+  --bg: black;
+  --surface-1: rgb(25, 34, 46);
+  --surface-2: rgb(35, 46, 62);
+
+  --var-input-active: rgb(0, 21, 51);
+
+  --checkbox-bg: rgb(28, 39, 54);
+  --checkbox-border: rgb(44, 58, 78);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(57, 73, 96);
+
+  --separator-border: var(--checkbox-border);
+
+  --button-grey: rgb(0, 30, 71);
+  --button-grey-hover: rgb(0, 40, 97);
+  --button-grey-active: rgb(0, 40, 97);
+  --button-grey-text: rgb(66, 145, 255);
+
+  --button-red: rgb(255, 0, 0);
+  --button-red-hover: rgb(255, 66, 66);
   --button-red-active: rgb(255, 66, 66);
 
   --button-blue: rgb(0, 106, 255);
-  --button-blue-hover: rgb(0, 89, 214);
-  --button-blue-active: rgb(35, 127, 255);
+  --button-blue-hover: rgb(66, 145, 255);
+  --button-blue-active: rgb(66, 145, 255);
 
-  --help-popup-dismiss-filter: brightness(40%);
+  --help-popup-dismiss-filter: ;
 
   background-color: var(--bg);
 }
@@ -270,13 +309,9 @@ body {
 
 .path-input-container {
   position: relative;
-  background-color: var(--surface-1);
   height: 40px;
   width: inherit;
   color: var(--text);
-  border: solid transparent 0;
-  border-width: 2px 0px 2px 2px;
-  border-radius: 10px 0 0 10px;
   transition-property: border-color;
   transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
   transition-duration: 100ms;
@@ -287,14 +322,10 @@ body {
   margin: 0;
   width: 40px;
   height: auto;
-  background-color: var(--surface-1);
   color: var(--text-locked);
   vertical-align: middle;
   line-height: 37px;
   padding: 0px 10px 0px 5px;
-  border: solid transparent 0;
-  border-radius: 0 10px 10px 0;
-  border-width: 2px 2px 2px 0;
 }
 
 .path-input-container-container {
@@ -303,10 +334,18 @@ body {
   overflow: hidden;
   font-size: 14px;
   cursor: text;
+  background-color: var(--surface-1);
+  border-radius: 10px;
+  border: solid 1px transparent;
 }
 
-.path-input-container:hover .path-input {
+.path-input-container-container:hover {
   border-color: var(--surface-2);
+}
+
+.path-input-container-container:has(.path-input:focus) {
+  background-color: var(--var-input-active);
+  border-color: var(--button-blue) !important;
 }
 
 .path-input-desc {
@@ -554,7 +593,7 @@ body {
   width: 100%;
   height: 100%;
   background-color: #000000a8;
-  z-index: 100;
+  z-index: 1000000;
   opacity: 0;
   transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
   transition-duration: 100ms;
