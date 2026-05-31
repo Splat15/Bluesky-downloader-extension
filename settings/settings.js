@@ -92,7 +92,7 @@ class Setting {
                   }
 
                   // Handle toggeling
-                  this.element.querySelector(".setting-body").addEventListener("click", () => {
+                  this.element.addEventListener("click", () => {
                         // Invert value and sync with settings
 
                         this.value = !this.value

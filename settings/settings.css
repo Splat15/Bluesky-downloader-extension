@@ -199,7 +199,6 @@ body {
   display: flex;
   margin: 0;
   justify-content: space-between;
-  gap: 8px;
   padding: 4px 0px;
   align-items: center;
 }
@@ -714,6 +713,7 @@ div:has(> .setting-help-button) {
 }
 
 .slider {
+  gap: 8px;
   display: flex;
   flex-direction: column;
   --slider-height: 5px;
