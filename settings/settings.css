@@ -107,7 +107,14 @@ p {
   margin: 0;
 }
 
+html {
+  /* prevent white flashing from the theme not being applied yet*/
+  background-color: rgb(21, 29, 40);
+}
+
 body {
+  transition: opacity ease 0.1s;
+  opacity:  0;
   width: calc(max(100vw, 300px));
   max-width: 500px;
   height: fit-content;
@@ -136,6 +143,21 @@ body {
   overflow-x: hidden;
 }
 
+.body-outline {
+  position: fixed;
+  width: calc(100% - 2px);
+  max-width: 498px;
+  height: calc(100% - 2px);
+  border: solid var(--separator-border) 0.55px;
+  border-radius: 8px;
+  pointer-events: none;
+  z-index: 10000000000;
+}
+
+* {
+  scrollbar-width: none;
+}
+
 .header {
   width: calc(max(100vw, 300px));
   max-width: 500px;
@@ -145,6 +167,7 @@ body {
   font-weight: bolder;
   padding-bottom: 0;
   z-index: 1000;
+  height: 56px;
 }
 
 .header-text {
@@ -157,10 +180,54 @@ body {
 
 .scroll-fade {
   pointer-events: none;
+  z-index: 10000;
   width: 100%;
-  height: 50px;
+  height: 70px;
   background: linear-gradient(var(--bg), transparent);
   transition: all ease 0.12s;
+}
+
+.scrollbar-hitbox {
+  top: calc(56px + (var(--scroll-pos) * (100vh - 56px - 60px)));
+  width: 19px;
+  height: 52px;
+  z-index: 100000;
+  position: fixed;
+  right: calc(50vw - (min(max(100vw, 300px), 500px) / 2));
+  transition: opacity ease 0.2s;
+}
+
+.scrollbar-hitbox-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.scrollbar {
+  position: relative;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: auto;
+  width: 7px;
+  height: 40px;
+  border-radius: 1000px;
+  background-color: var(--button-blue);
+  /*position the scrollbar next to the settings regardless of screen size*/
+}
+
+.scrollbar-hitbox:hover .scrollbar,
+.scrollbar-hover .scrollbar {
+  transform: scale(1.2, 1.05) translateY(-50%);
+}
+
+.scrollbar-input-block {
+  display: none;
+  width: 100vw;
+  height: 100vh;
+  background-color: transparent;
+  z-index: 90000;
+  position: absolute;
+  top: 0px;
+  bottom: 0px;
 }
 
 .category {
@@ -173,7 +240,7 @@ body {
 .category-separator {
   width: 100%;
   height: 0.6667px;
-  border-top: solid 1px var(--separator-border);
+  border-top: solid 0.55px var(--separator-border);
   margin-top: 8px;
   margin-bottom: 8px;
   transition: all ease 0.2s;
@@ -190,6 +257,7 @@ body {
 }
 
 .settings {
+  position: relative;
   padding: 0px;
   padding-top: 56px;
   padding-bottom: 8px;
@@ -216,7 +284,8 @@ div:has(> .setting-help-button) {
   height: 25px;
 }
 
-.setting:hover .setting-help-button, .setting-help-button-touch {
+.setting:hover .setting-help-button,
+.setting-help-button-touch {
   opacity: 1;
   transform: scale(1);
 }
@@ -445,7 +514,7 @@ div:has(> .setting-help-button) {
   display: block;
   width: 100%;
   height: 30px;
-  border-radius: 10px;
+  border-radius: 1000px;
   transition-property: background-color;
   transition-timing-function: cubic-bezier(0.17, 0.73, 0.14, 1);
   transition-duration: 100ms;
@@ -461,7 +530,7 @@ div:has(> .setting-help-button) {
   height: 30px;
   width: 100%;
   background-color: inherit;
-  border-radius: 10px;
+  border-radius: 1000px;
   transition: inherit;
 }
 
@@ -773,7 +842,7 @@ div:has(> .setting-help-button) {
 }
 
 .slider-knob {
-  z-index: 10000;
+  z-index: 1000;
   user-select: none;
   pointer-events: none;
   --knob-inner: 8px;

@@ -78,7 +78,7 @@ class Setting {
                               <circle cx="12.005" cy="17.5" r="1.5" />
                               <path d="M12.757,4.987a4.25,4.25,0,0,0-5,4.181,1.5,1.5,0,0,0,3,0,1.248,1.248,0,1,1,1.847,1.1,3.323,3.323,0,0,0-2.038,3.158,1.5,1.5,0,0,0,3,0,1.274,1.274,0,0,1,.016-.218,1.852,1.852,0,0,1,.471-.313,4.248,4.248,0,0,0-1.292-7.9Z" />
                         </svg>`
-                        
+
                         helpButton.addEventListener("click", (e) => {
                               e.stopPropagation()
                               new FullScreenPopup(
@@ -156,7 +156,7 @@ class Setting {
                   const sliderPerc = ApplySliderChoppiness(this.value)
 
                   this.element = domParser.parseFromString(`
-                  <div class="setting slider"  id="${this.settingId}" title="Adjust ${this.name}">
+                  <div class="setting slider" id="${this.settingId}" title="Adjust ${this.name}">
                         <div class="slider-header">
                               <span class="setting-name">${this.name}</span>
                               <span class="path-example slider-subtext" id="sliderSubtext">~${GetApproxFileSize(this.value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")}</span>
@@ -549,8 +549,18 @@ const settingsContainer = document.getElementById("settings")
 const scrollFadeTop = document.getElementById("scrollFadeTop")
 const scrollFadeBottom = document.getElementById("scrollFadeBottom")
 
+const scrollbar = document.getElementById("scrollbar")
+const scrollbarInputBlock = document.getElementById("scrollbarInputBlock")
+let scrollbarDown = false
+let scrollbarYOffset = 0
+let lastMousePos = 0
+let settingsBox
+let settingsStyle
+let scrollbarInvisible
+
 const onDocumentScroll = () => {
       let boundingRect = document.documentElement.getBoundingClientRect()
+      settingsBox = settingsContainer.getBoundingClientRect()
 
       const accuracy = 5
       const top = document.documentElement.scrollTop < accuracy
@@ -558,23 +568,88 @@ const onDocumentScroll = () => {
 
       scrollFadeTop.style.opacity = top ? 0 : 1;
       scrollFadeBottom.style.opacity = bottom ? 0 : 1;
+
+
+      let scrollRange = settingsBox.height - window.innerHeight
+      let scrollPos = window.scrollY
+      let percentage = scrollPos / scrollRange
+
+      scrollbar.style = "--scroll-pos: " + percentage
+
+      if (top && bottom) {
+            if (!scrollbarInvisible) {
+                  scrollbarInvisible = true
+                  scrollbar.classList.add("scrollbar-hitbox-hidden")
+            }
+      }
+      else if (scrollbarInvisible) {
+            scrollbarInvisible = false
+            scrollbar.classList.remove("scrollbar-hitbox-hidden")
+      }
 }
 
 document.addEventListener("scroll", onDocumentScroll)
 window.addEventListener("resize", onDocumentScroll)
-onDocumentScroll()
+
+document.addEventListener("mousemove", (e) => {
+      if (e.buttons == 0) {
+            scrollbarDown = false
+      }
+      // Scrollbar is active
+      if (scrollbarDown) {
+            // Left mouse button isn't being pressed
+            if (e.buttons == 0) {
+                  scrollbarDown = false
+                  scrollbarInputBlock.style.display = ""
+                  scrollbar.classList.remove("scrollbar-hover")
+                  return
+            }
+
+            // Set scrollbar position to mouse cursor
+            let settingsHeight = settingsBox.height;
+
+            let minPos = parseInt(settingsStyle.paddingTop)
+            let maxPos = window.innerHeight - 50
+            let sliderRange = maxPos - minPos
+            let scrollRange = settingsBox.height - window.innerHeight
+
+            let sliderPos = Math.min(Math.max(e.clientY + scrollbarYOffset, minPos), maxPos)
+            let percentage = (sliderPos - minPos) / sliderRange
+
+            window.scroll(0, percentage * scrollRange)
+            scrollbar.style = "--scroll-pos: " + percentage
+      }
+})
+
+scrollbar.addEventListener("mousedown", (e) => {
+      scrollbarDown = true;
+      scrollbarInputBlock.style.display = "unset"
+      scrollbar.classList.add("scrollbar-hover")
+      let hitbox = scrollbar.getBoundingClientRect();
+      scrollbarYOffset = hitbox.top - e.clientY
+      console.log(scrollbarYOffset)
+      console.log("mouse down")
+})
+
+document.addEventListener("mouseup", (e) => {
+      scrollbarDown = false;
+      scrollbarInputBlock.style.display = ""
+      scrollbar.classList.remove("scrollbar-hover")
+      console.log("mouse up")
+})
+
+
+const licenseCategory = document.getElementById("licenses-category")
 
 for (let i = 0; i < settings.length; i++) {
       const categoryElem = document.createElement("div")
       categoryElem.classList.add("category")
-      settingsContainer.appendChild(categoryElem)
+      settingsContainer.insertBefore(categoryElem, licenseCategory)
 
-      if (settings.length > i + 1) {
-            const separator = document.createElement("div")
-            separator.classList.add("category-separator")
-            settingsContainer.appendChild(separator)
-
-      }
+      const separator = document.createElement("div")
+      separator.classList.add("category-separator")
+      settingsContainer.insertBefore(separator, document.getElementById("licenses-category"))
+      settingsContainer.insertBefore(separator, licenseCategory)
 
       for (let j = 0; j < settings[i].length; j++) {
             const setting = settings[i][j]
@@ -594,3 +669,13 @@ browser.runtime.onMessage.addListener(message => {
 function ApplySliderChoppiness(val) {
       return Math.round(val / 5) * 5
 }
+
+settingsBox = settingsContainer.getBoundingClientRect()
+settingsStyle = getComputedStyle(settingsContainer)
+
+const bodyOutline = document.getElementById("bodyOutline")
+bodyOutline.style.height = settingsStyle.height - 1.1
+
+onDocumentScroll()
+
+setTimeout(() => document.body.style.opacity = 1, 200)

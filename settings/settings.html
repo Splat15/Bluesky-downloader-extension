@@ -2,6 +2,7 @@
 <html>
 
 <head>
+      <title>Bluesky Downloader - Settings</title>
       <meta charset="utf-8">
       <link rel="stylesheet" href="./settings.css">
       <link rel="stylesheet" href="../css/style.css">
@@ -9,13 +10,23 @@
 </head>
 
 <body>
+      <div class="body-outline" id="bodyOutline"></div>
       <div class="header">
             <p class="header-text">Bluesky downloader</p>
             <div class="category-separator" style="margin: 0; margin-top: -2px"></div>
             <div id="scrollFadeTop" class="scroll-fade"></div>
       </div>
       <div class="settings" id="settings">
+            <div class="category" id="licenses-category">
+                  <div class="path-input-help path-input-action-label">3rd party licenses</div>
+                  <div class="path-input-vars path-input-action-label">Export settings</div>
+                  <div class="path-input-reset path-input-action-label">Reset settings</div>
+            </div>
       </div>
+      <div class="scrollbar-hitbox" id="scrollbar">
+            <div class="scrollbar"></div>
+      </div>
+      <div class="scrollbar-input-block" id="scrollbarInputBlock"></div>
       <div id="scrollFadeBottom" class="scroll-fade" style="transform: rotate(180deg); position: fixed; bottom: 0px">
       </div>
       <script src="../js/classes.js"></script>
