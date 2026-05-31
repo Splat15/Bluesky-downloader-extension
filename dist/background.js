@@ -1695,6 +1695,8 @@ class FullScreenPopup {
 
 // Set light / dark / dim mode for extension UI
 function SetThemeClass(theme) {
+      theme = theme || "theme--dim"
+
       // This prevents bluesky from randomly deleting the class
       // theme--dark => theme-dark
       theme = theme.replace(/(?<=theme)--/i, "-")
@@ -2200,6 +2202,7 @@ const startTime = Date.now()
 
 let tabIDs = []
 let theme = localStorage.getItem("theme") || "theme--dim"
+localStorage.setItem("theme", theme)
 
 let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
 const downloader = new _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__.Downloader(unfinishedDownloads);
@@ -2244,16 +2247,16 @@ const standardSettings = [
             { value: true, id: "gifDownload", type: "toggle", name: "GIF downloads", tooltip: "Enable download buttons on GIFs." }
       ],
       [
-            { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif", tooltip: "Download GIFs as .gif files instead of as .mp4.</ br><b>May cause performance issues while downloading some GIFs.</b>" },
+            { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif", tooltip: "Download GIFs as .gif files instead of as .mp4.<br/><b>May cause performance issues.</b>" },
             { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp", tooltip: "Download images as .webp instead of .jpg for increased quality and smaller files." },
-            { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.</ br>Will produce better images.</ br>May cause performance issues." }
+            { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.<br/>Will produce better images.<br/><b>May cause performance issues.</b>" }
       ],
       [
-            { value: 20, id: "imgQuality", type: "slider", name: "Image quality", tooltip: "Adjustment of image quality.</ br>A higher number will produce a better image.</ br>100 will produce better images than standard downloads.</ br><b>May cause performance issues while downloading.</b>" }
+            { value: 20, id: "imgQuality", type: "slider", name: "Image quality", tooltip: "Adjustment of image quality.<br/>A higher number will produce a better image.<br/>100 will produce better images than standard downloads.<br/><b>May cause performance issues while downloading.</b>" }
       ],
       [
             { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications on bluesky.</br >This won't send you any push notifications or ads." },
-            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Keep track of unfinished downloads and offer to restart them if they are interrupted." }
+            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads." }
       ]
 ]
 

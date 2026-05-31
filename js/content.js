@@ -48,6 +48,35 @@ const mainThreadHelperLoaded = new Promise(resolve => {
 })
 
 
+// Handle theme changes
+new MutationObserver((mutationList) => {
+      for (const mutation of mutationList) {
+            if (mutation.type === "attributes") {
+                  if (mutation.attributeName == "class" &&
+                        document.documentElement.classList.length > 0) {
+                        HandleThemeChanges()
+                  }
+            }
+      }
+}).observe(document.documentElement, { attributes: true });
+
+HandleThemeChanges()
+
+function HandleThemeChanges() {
+      let newTheme = Array.from(document.documentElement.classList)
+            .find(cssClass => cssClass.startsWith("theme--"))
+
+      if (theme && theme != newTheme) {
+            console.info(log("Theme change detected, new theme is " + newTheme))
+
+            theme = newTheme
+            browser.runtime.sendMessage({ type: "set-theme", value: theme })
+
+            SetThemeClass(theme)
+      }
+}
+
+
 browser.runtime.onMessage.addListener((message) => {
 
       // Response to init request
@@ -127,36 +156,8 @@ browser.runtime.onMessage.addListener((message) => {
                   element()
             });
 
-
-            // Handle theme changes
-            new MutationObserver((mutationList) => {
-                  for (const mutation of mutationList) {
-                        if (mutation.type === "attributes") {
-                              if (mutation.attributeName == "class" &&
-                                    document.documentElement.classList.length > 0) {
-                                    HandleThemeChanges()
-                              }
-                        }
-                  }
-            }).observe(document.documentElement, { attributes: true });
-
-
             // Initialize theme
             SetThemeClass(theme)
-
-            function HandleThemeChanges() {
-                  let newTheme = Array.from(document.documentElement.classList)
-                        .find(cssClass => cssClass.startsWith("theme--"))
-
-                  if (theme != newTheme) {
-                        console.info(log("Theme change detected, new theme is " + newTheme))
-
-                        theme = newTheme
-                        browser.runtime.sendMessage({ type: "set-theme", value: theme })
-
-                        SetThemeClass(theme)
-                  }
-            }
 
             // Show version info in focussed tab for at least 3 seconds.  
             versionInfo = message.versionInfo
@@ -292,6 +293,7 @@ browser.runtime.onMessage.addListener((message) => {
       }
 })
 browser.runtime.sendMessage({ type: "init" })
+
 
 // Prevents false mouse inputs
 let lastTouch = 0
@@ -476,7 +478,7 @@ new NodeObserver(
                   try {
                         const mp4Src = Array.from(element.children)
                               .find(element => /gifs\.bsky\.app\/[^\/]+\/[^.]+\.mp4/gi.test(element.src))
-                        
+
                         // Create download button
                         const func = () => {
                               if (mediaElements.includes(element)) return
@@ -589,7 +591,7 @@ function InstallCleanup() {
                   try {
                         const mp4Src = Array.from(element.children)
                               .find(element => /gifs\.bsky\.app\/[^\/]+\/[^.]+\.mp4/gi.test(element.src))
-                        
+
                         const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, mp4Src.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
                         downloadButtons.gif.push(downloadButton)
                   }

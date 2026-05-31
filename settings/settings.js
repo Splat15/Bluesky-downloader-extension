@@ -4,7 +4,8 @@ let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6t
 let onExampleReady = []
 let pathVarHelpPopup
 
-let theme = localStorage.getItem("theme") || "theme--light"
+let theme = localStorage.getItem("theme") || "theme--dim"
+if (theme == "undefined") theme = "theme--dim"
 SetThemeClass(theme)
 
 console.log(log("Fetching example post info"))
@@ -35,7 +36,7 @@ class Setting {
       pathVarMenuExpanded
       originalValue
 
-      constructor(value, type, name, description, settingId, container, settings, isMobile) {
+      constructor(value, type, name, description, tooltip, settingId, container, settings, isMobile) {
             this.value = value
             this.type = type
             this.name = name
@@ -45,7 +46,8 @@ class Setting {
             this.settings = settings
             this.pathVarMenuExpanded = false
             this.originalValue = value
-            this.qualitySlider = undefined;
+            this.qualitySlider = undefined
+            this.tooltip = tooltip
             const domParser = new DOMParser()
 
             // Checkbox style setting
@@ -53,19 +55,44 @@ class Setting {
                   // Parse setting HTML
                   this.element = domParser.parseFromString(`
                   <div class="setting setting-${this.value ? "" : "in"}active" id="${this.settingId}" title="Toggle ${this.name}">
-                        <div type="checkbox" class="checkbox">
-                              <svg fill="none" width="14" viewBox="0 0 24 24" height="14" style="margin: 5px;">
-                                    <path fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="butt"
-                                          stroke-linejoin="miter" fill-rule="evenodd" clip-rule="evenodd"
-                                          d="M21.474 2.98a2.5 2.5 0 0 1 .545 3.494l-10.222 14a2.5 2.5 0 0 1-3.528.52L2.49 16.617a2.5 2.5 0 0 1 3.018-3.986l3.75 2.84L17.98 3.525a2.5 2.5 0 0 1 3.493-.545Z">
-                                    </path>
-                              </svg>
+                        <div class="setting-body">
+                              <div type="checkbox" class="checkbox">
+                                    <svg fill="none" width="14" viewBox="0 0 24 24" height="14" style="margin: 5px;">
+                                          <path fill="#FFFFFF" stroke="none" stroke-width="0" stroke-linecap="butt"
+                                                stroke-linejoin="miter" fill-rule="evenodd" clip-rule="evenodd"
+                                                d="M21.474 2.98a2.5 2.5 0 0 1 .545 3.494l-10.222 14a2.5 2.5 0 0 1-3.528.52L2.49 16.617a2.5 2.5 0 0 1 3.018-3.986l3.75 2.84L17.98 3.525a2.5 2.5 0 0 1 3.493-.545Z">
+                                          </path>
+                                    </svg>
+                              </div>
+                              <p class="setting-name">${this.name}</p>
                         </div>
-                        <p class="setting-name">${this.name}</p>
                   </div>`, "text/html").getElementsByClassName("setting")[0]
 
+                  if (this.tooltip) {
+                        let helpButton = document.createElement("div")
+                        helpButton.innerHTML = `
+                        <!-- Original file in ../icons/help.svg -->
+                        <!-- Icon by https://www.flaticon.com/uicons -->
+                        <svg xmlns="http://www.w3.org/2000/svg" id="Bold" viewBox="0 0 24 24" width="512" height="512" class="setting-help-button">
+                              <path d="M12,0A12,12,0,1,0,24,12,12.013,12.013,0,0,0,12,0Zm0,21a9,9,0,1,1,9-9A9.01,9.01,0,0,1,12,21Z" />
+                              <circle cx="12.005" cy="17.5" r="1.5" />
+                              <path d="M12.757,4.987a4.25,4.25,0,0,0-5,4.181,1.5,1.5,0,0,0,3,0,1.248,1.248,0,1,1,1.847,1.1,3.323,3.323,0,0,0-2.038,3.158,1.5,1.5,0,0,0,3,0,1.274,1.274,0,0,1,.016-.218,1.852,1.852,0,0,1,.471-.313,4.248,4.248,0,0,0-1.292-7.9Z" />
+                        </svg>`
+                        
+                        helpButton.addEventListener("click", (e) => {
+                              e.stopPropagation()
+                              new FullScreenPopup(
+                                    this.name,
+                                    this.tooltip,
+                                    [new FullScreenPopup.PopupOption("OK")]
+                              )
+                        })
+
+                        this.element.appendChild(helpButton)
+                  }
+
                   // Handle toggeling
-                  this.element.addEventListener("click", () => {
+                  this.element.querySelector(".setting-body").addEventListener("click", () => {
                         // Invert value and sync with settings
 
                         this.value = !this.value
@@ -128,7 +155,6 @@ class Setting {
                   // Transform value from 10-100 to 0-100 for slider width percentage 
                   const sliderPerc = ApplySliderChoppiness(this.value)
 
-                  //NOTE - TODO set default values from settings
                   this.element = domParser.parseFromString(`
                   <div class="setting slider"  id="${this.settingId}" title="Adjust ${this.name}">
                         <div class="slider-header">
@@ -552,7 +578,7 @@ for (let i = 0; i < settings.length; i++) {
 
       for (let j = 0; j < settings[i].length; j++) {
             const setting = settings[i][j]
-            new Setting(setting.value, setting.type, setting.name, setting.description, setting.id, categoryElem, settings, isMobile)
+            new Setting(setting.value, setting.type, setting.name, setting.description, setting.tooltip, setting.id, categoryElem, settings, isMobile)
       }
 }
 

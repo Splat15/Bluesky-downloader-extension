@@ -3,8 +3,8 @@
   --text-suggestion: rgb(102, 123, 153);
   --text-locked: rgb(64, 81, 104);
   --bg: rgb(255, 255, 255);
-  --surface-1: rgb(239, 242, 246);
-  --surface-2: rgb(220, 226, 234);
+  --surface-1: rgb(224, 229, 235);
+  --surface-2: var(--surface-1);
 
   --var-input-active: rgb(245, 249, 255);
 
@@ -15,7 +15,7 @@
 
   --separator-border: var(--checkbox-border);
 
-  --button-grey: rgb(229, 240, 255);
+  --button-grey: var(--surface-1);
   --button-grey-hover: rgb(204, 225, 255);
   --button-grey-active: rgb(204, 225, 255);
   --button-grey-text: rgb(0, 89, 214);
@@ -156,6 +156,7 @@ body {
 }
 
 .scroll-fade {
+  pointer-events: none;
   width: 100%;
   height: 50px;
   background: linear-gradient(var(--bg), transparent);
@@ -197,15 +198,50 @@ body {
 .setting {
   display: flex;
   margin: 0;
-  justify-content: left;
+  justify-content: space-between;
   gap: 8px;
   padding: 4px 0px;
   align-items: center;
 }
 
+.setting-body {
+  gap: 8px;
+  display: flex;
+  flex-direction: row;
+  justify-content: left;
+  flex-grow: 1;
+  cursor: pointer;
+}
+
+div:has(> .setting-help-button) {
+  height: 25px;
+}
+
+.setting:hover .setting-help-button, .setting-help-button-touch {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.setting-help-button {
+  transform: scale(0.9);
+  opacity: 0.8;
+  transition: all ease 0.1s;
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+  fill: var(--text);
+  cursor: pointer;
+  border-radius: 10000px;
+  padding: 4px;
+}
+
+.setting-help-button:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 .setting-name {
   font-size: 15px;
-  line-height: 17px;
+  line-height: 24px;
   margin: 0;
 }
 
@@ -400,12 +436,12 @@ body {
   margin-top: 2px;
   text-align: center;
   z-index: 10;
-  cursor: pointer;
   transition: background-color ease 50ms;
   color: white;
 }
 
 .path-input-action {
+  cursor: pointer;
   border-radius: 10px;
   display: block;
   width: 100%;
@@ -737,6 +773,7 @@ body {
 }
 
 .slider-knob {
+  z-index: 10000;
   user-select: none;
   pointer-events: none;
   --knob-inner: 8px;
@@ -749,7 +786,7 @@ body {
   );
   height: var(--knob-inner);
   width: var(--knob-inner);
-  background-color: var(--text);
+  background-color: white;
   border-radius: 10000px;
   border: solid var(--button-blue);
   border-width: calc((var(--knob-outer) - var(--knob-inner)) / 2);

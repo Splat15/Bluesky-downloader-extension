@@ -5,6 +5,7 @@ const startTime = Date.now()
 
 let tabIDs = []
 let theme = localStorage.getItem("theme") || "theme--dim"
+localStorage.setItem("theme", theme)
 
 let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
 const downloader = new Downloader(unfinishedDownloads);
@@ -44,20 +45,21 @@ const standardSettings = [
       ],
       [
             // Settings
-            { value: true, id: "vidDownload", type: "toggle", name: "Video downloads" },
-            { value: true, id: "imgDownload", type: "toggle", name: "Image downloads" },
-            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloads" }
+            { value: true, id: "vidDownload", type: "toggle", name: "Video downloads", tooltip: "Enable download buttons on videos." },
+            { value: true, id: "imgDownload", type: "toggle", name: "Image downloads", tooltip: "Enable download buttons on images." },
+            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloads", tooltip: "Enable download buttons on GIFs." }
       ],
       [
-            { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif" },
-            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp" },
-            { value: false, id: "imgQualityMode", type: "toggle", name: "Change image quality" }
+            { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif", tooltip: "Download GIFs as .gif files instead of as .mp4.<br/><b>May cause performance issues.</b>" },
+            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp", tooltip: "Download images as .webp instead of .jpg for increased quality and smaller files." },
+            { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.<br/>Will produce better images.<br/><b>May cause performance issues.</b>" }
       ],
       [
-            { value: 20, id: "imgQuality", type: "slider", name: "Image quality" }
+            { value: 20, id: "imgQuality", type: "slider", name: "Image quality", tooltip: "Adjustment of image quality.<br/>A higher number will produce a better image.<br/>100 will produce better images than standard downloads.<br/><b>May cause performance issues while downloading.</b>" }
       ],
       [
-            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups" }
+            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications on bluesky.</br >This won't send you any push notifications or ads." },
+            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads." }
       ]
 ]
 
@@ -222,7 +224,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
             downloader.unfinishedDownloads = []
             localStorage.setItem("unfinished-downloads", JSON.stringify(downloader.unfinishedDownloads))
-            
+
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
                   try {

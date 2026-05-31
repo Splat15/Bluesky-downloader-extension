@@ -1686,6 +1686,8 @@ class FullScreenPopup {
 
 // Set light / dark / dim mode for extension UI
 function SetThemeClass(theme) {
+      theme = theme || "theme--dim"
+
       // This prevents bluesky from randomly deleting the class
       // theme--dark => theme-dark
       theme = theme.replace(/(?<=theme)--/i, "-")
