@@ -1,0 +1,33 @@
+* {
+  margin: 0;
+}
+
+.sidebar {
+  position: fixed;
+  top: 0px;
+  left: 0px;
+  display: flex;
+  flex-direction: row;
+  transition: width ease 0.2s;
+  position: sticky;
+  max-width: 300px;
+  background-color: blue;
+  height: 100vh;
+}
+
+.sidebar-buttons {
+  padding: 3px;
+  background-color: grey;
+  width: 20px;
+}
+
+.burger-menu {
+  width: 100%;
+  object-fit: contain;
+}
+
+.sidebar-content {
+  padding: 5px;
+  color: green;
+  max-width: calc(300px - 16px);
+}
