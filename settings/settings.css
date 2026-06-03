@@ -132,7 +132,6 @@ body {
     "Apple Color Emoji",
     "Segoe UI Emoji";
   text-rendering: optimizeLegibility;
-  -webkit-text-size-adjust: 100%;
   font-synthesis-weight: none;
   font-variant: no-contextual;
   letter-spacing: 0px;

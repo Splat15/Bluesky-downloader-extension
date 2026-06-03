@@ -1,33 +1,170 @@
+.bsky-downloader-theme-light {
+  --text: rgb(0, 0, 0);
+  --text-suggestion: rgb(102, 123, 153);
+  --text-locked: rgb(64, 81, 104);
+  --bg: rgb(255, 255, 255);
+  --surface-1: rgb(224, 229, 235);
+  --surface-2: var(--surface-1);
+
+  --var-input-active: rgb(245, 249, 255);
+
+  --checkbox-bg: rgb(249, 250, 251);
+  --checkbox-border: rgb(220, 226, 234);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(192, 202, 216);
+
+  --separator-border: var(--checkbox-border);
+
+  --button-grey: var(--surface-1);
+  --button-grey-hover: rgb(204, 225, 255);
+  --button-grey-active: rgb(204, 225, 255);
+  --button-grey-text: rgb(0, 89, 214);
+
+  --button-red: rgb(255, 15, 15);
+  --button-red-hover: rgb(214, 0, 0);
+  --button-red-active: rgb(214, 0, 0);
+
+  --button-blue: rgb(15, 115, 255);
+  --button-blue-hover: rgb(0, 89, 214);
+  --button-blue-active: rgb(0, 89, 214);
+
+  --help-popup-dismiss-filter: brightness(40%);
+
+  background-color: var(--bg);
+}
+
+.bsky-downloader-theme-dim {
+  --text: rgb(255, 255, 255);
+  --text-suggestion: rgba(255, 255, 255, 0.497);
+  --text-locked: rgb(189, 189, 189);
+  --bg: rgb(21, 29, 40);
+  --surface-1: rgb(34, 46, 63);
+  --surface-2: rgb(44, 58, 78);
+
+  --var-input-active: rgb(18, 33, 54);
+
+  --checkbox-bg: rgb(28, 39, 54);
+  --checkbox-border: rgb(44, 58, 78);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(57, 73, 96);
+
+  --separator-border: var(--checkbox-border);
+
+  --button-grey: rgb(18, 41, 73);
+  --button-grey-hover: rgb(18, 52, 100);
+  --button-grey-active: rgb(18, 52, 100);
+  --button-grey-text: rgb(77, 151, 255);
+
+  --button-red: rgb(255, 15, 15);
+  --button-red-hover: rgb(255, 77, 77);
+  --button-red-active: rgb(255, 77, 77);
+
+  --button-blue: rgb(15, 115, 255);
+  --button-blue-hover: rgb(77, 151, 255);
+  --button-blue-active: rgb(77, 151, 255);
+
+  --help-popup-dismiss-filter: ;
+
+  background-color: var(--bg);
+}
+
+.bsky-downloader-theme-dark {
+  --text: rgb(255, 255, 255);
+  --text-suggestion: rgba(255, 255, 255, 0.497);
+  --text-locked: rgb(189, 189, 189);
+  --bg: black;
+  --surface-1: rgb(25, 34, 46);
+  --surface-2: rgb(35, 46, 62);
+
+  --var-input-active: rgb(0, 21, 51);
+
+  --checkbox-bg: rgb(28, 39, 54);
+  --checkbox-border: rgb(44, 58, 78);
+  --checkbox-hover-bg: var(--surface-1);
+  --checkbox-hover-border: rgb(57, 73, 96);
+
+  --separator-border: var(--checkbox-border);
+
+  --button-grey: rgb(0, 30, 71);
+  --button-grey-hover: rgb(0, 40, 97);
+  --button-grey-active: rgb(0, 40, 97);
+  --button-grey-text: rgb(66, 145, 255);
+
+  --button-red: rgb(255, 0, 0);
+  --button-red-hover: rgb(255, 66, 66);
+  --button-red-active: rgb(255, 66, 66);
+
+  --button-blue: rgb(0, 106, 255);
+  --button-blue-hover: rgb(66, 145, 255);
+  --button-blue-active: rgb(66, 145, 255);
+
+  --help-popup-dismiss-filter: ;
+
+  background-color: var(--bg);
+}
+
 * {
   margin: 0;
 }
 
-.sidebar {
-  position: fixed;
-  top: 0px;
-  left: 0px;
-  display: flex;
-  flex-direction: row;
-  transition: width ease 0.2s;
-  position: sticky;
-  max-width: 300px;
-  background-color: blue;
-  height: 100vh;
+body {
+  font-family:
+    InterVariable,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji";
+  text-rendering: optimizeLegibility;
+  font-synthesis-weight: none;
+  font-variant: no-contextual;
+  letter-spacing: 0px;
+  user-select: none;
+  color: var(--text);
+  text-align: left;
+  font-weight: 400;
+  overflow-x: hidden;
 }
 
-.sidebar-buttons {
-  padding: 3px;
-  background-color: grey;
-  width: 20px;
+.sidebar {
+  overflow: hidden;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  top: 0px;
+  left: 0px;
+  transition: width ease 0.2s;
+  max-width: 300px;
+  background-color: var(--bg);
+  border: solid var(--separator-border) 0.55px;
+  height: 100vh;
+  z-index: 100;
+}
+
+.sidebar-header {
+  padding: 12px 20px;
+  font-size: 23px;
+  border-bottom: solid var(--separator-border) 0.55px;
+  width: 100%;
+}
+
+.license-entries {
+  padding: 12px 20px;
+  width: 100%;
+}
+
+.license-entries:hover {
+  background-color: var(--checkbox-bg);
 }
 
 .burger-menu {
-  width: 100%;
+  filter: invert(1);
+  width: 10px;
   object-fit: contain;
-}
-
-.sidebar-content {
-  padding: 5px;
-  color: green;
-  max-width: calc(300px - 16px);
 }
