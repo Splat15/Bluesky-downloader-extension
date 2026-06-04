@@ -57,8 +57,8 @@ div + button[data-testid="altTextButton"] {
 }
 
 button[data-testid="altTextButton"] {
-  left: 6px !important;
   right: unset !important;
+  left: 6px !important;
 }
 
 .download-button-div-image {
@@ -67,14 +67,14 @@ button[data-testid="altTextButton"] {
 }
 
 .download-button-div {
-  bottom: 20px;
   right: 20px;
-  border-radius: 1000px;
+  bottom: 20px;
+  z-index: 1000;
+  transition: opacity 0.2s;
   border: none;
+  border-radius: 1000px;
   width: 28px;
   height: 28px;
-  transition: opacity 0.2s;
-  z-index: 1000;
 }
 
 .dropshadow {
@@ -99,72 +99,72 @@ button[data-testid="altTextButton"] {
 
 .download-button {
   all: unset;
+  display: block;
+  position: relative;
 
   transition: background-color 0.2s;
-  display: block;
   border: none;
-  position: relative;
+  border-radius: 1000px;
   width: 100%;
   height: 100%;
-  border-radius: 1000px;
 }
 
 .download-icon {
-  opacity: 0;
-  width: 15px;
-  height: 15px;
-  margin: calc(50% - 7.5px);
   position: absolute;
   top: 0px;
   left: 0px;
+  opacity: 0;
   transition: opacity 0.2s;
+  margin: calc(50% - 7.5px);
+  width: 15px;
+  height: 15px;
 }
 
 .download-progress {
+  margin: calc(50% - 10px) !important;
   width: 20px !important;
   height: 20px !important;
-  margin: calc(50% - 10px) !important;
 }
 
 .onboarding-image {
-  border: solid rgb(15, 115, 255) 0px;
   position: absolute;
-  overflow: visible;
-  z-index: 1000;
-  border-radius: 12px;
-  pointer-events: none;
   top: 0;
+  z-index: 1000;
+  border: solid rgb(15, 115, 255) 0px;
+  border-radius: 12px;
+  overflow: visible;
+  pointer-events: none;
 }
 
 .alt-button-left {
-  left: 16px !important;
   right: unset !important;
+  left: 16px !important;
 }
 
 .toast-container {
-  pointer-events: none;
   position: fixed;
   right: 0px;
   bottom: 0px;
-  height: fit-content;
   z-index: 100;
   padding: 25px;
+  height: fit-content;
+  pointer-events: none;
 }
 
 .toast {
-  background-color: var(--toast-surface);
-  pointer-events: all;
-  right: 25px;
-  width: 300px;
   display: flex;
+  position: fixed;
+  right: 25px;
   flex-direction: column;
   justify-content: space-between;
-  border-radius: 10px;
-  border-width: 0px;
-  overflow: hidden;
-  position: fixed;
   opacity: 0;
   z-index: 20;
+  border-width: 0px;
+  border-radius: 10px;
+  background-color: var(--toast-surface);
+  width: 300px;
+  overflow: hidden;
+  pointer-events: all;
 }
 
 .toast-mobile {
@@ -172,19 +172,19 @@ button[data-testid="altTextButton"] {
 }
 
 .toast-border {
-  top: 0px;
-  left: 0px;
-  bottom: 0px;
-  right: 0px;
   position: absolute;
-  border-radius: 8px;
+  top: 0px;
+  right: 0px;
+  bottom: 0px;
+  left: 0px;
   margin: 0;
+  border-radius: 8px;
   pointer-events: none;
 }
 
 .toast:hover .toast-border {
-  border-radius: 10px;
   box-shadow: inset 0px 0px 0px 2px var(--toast-border-hover);
+  border-radius: 10px;
 }
 
 .toast-body {
@@ -202,13 +202,13 @@ button[data-testid="altTextButton"] {
 }
 
 .toast-text {
-  user-select: none;
-  line-height: 18px;
+  position: relative;
   margin: auto;
   margin-left: 0;
   color: var(--text-color);
+  line-height: 18px;
+  user-select: none;
   white-space: nowrap;
-  position: relative;
 }
 
 .toast-text-loading {
@@ -220,29 +220,29 @@ button[data-testid="altTextButton"] {
 }
 
 .toast-text-overflow {
-  position: relative;
   display: flex;
+  position: relative;
   flex-direction: row;
-  overflow: hidden;
+  margin-right: auto;
   width: fit-content;
   max-width: 90%;
-  margin-right: auto;
+  overflow: hidden;
 }
 
 .toast-text-overflow-gradient {
-  height: 100%;
-  width: 20px;
   position: absolute;
   z-index: 10;
-  background-image: linear-gradient(to left, var(--toast-surface), transparent);
   transition: opacity linear 0.1s;
+  background-image: linear-gradient(to left, var(--toast-surface), transparent);
+  width: 20px;
+  height: 100%;
 }
 
 .toast-action {
   all: unset;
+  cursor: pointer;
   margin-top: auto;
   margin-bottom: auto;
-  cursor: pointer;
 }
 
 .toast-action-icon {
@@ -258,13 +258,13 @@ button[data-testid="altTextButton"] {
 }
 
 .loading-bar {
+  position: relative;
+  left: 0px;
+  transition: filter;
+  margin-top: -5px;
+  background-color: rgb(16, 185, 16);
   width: 100%;
   height: 2px;
-  margin-top: -5px;
-  left: 0px;
-  position: relative;
-  transition: filter;
-  background-color: rgb(16, 185, 16);
 }
 
 .loading-bar-done {
@@ -277,56 +277,53 @@ div.loading-bar > svg {
 }
 
 .bsky-downloader-popup-container {
-  z-index: 1000000;
-  inset: 0;
+  display: flex;
   position: fixed;
   top: 0px;
   left: 0px;
-  background-color: rgba(0, 0, 0, 0.8);
-  display: flex;
   justify-content: center;
-  padding: 10vh 20px;
   opacity: 0;
+  z-index: 1000000;
   transition: opacity cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 10vh 20px;
 }
 
 .bsky-downloader-popup {
-  border: solid rgb(57, 73, 96) 0.55px;
+  transform: scale(0.95);
+  transition: transform cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
   box-shadow: rgba(0, 0, 0, 0.4) 0px 0px 30px;
+  border: solid rgb(57, 73, 96) 0.55px;
+  border-radius: 12px;
+  background-color: var(--popup-bg);
   width: 100%;
   max-width: 400px;
   height: fit-content;
-  background-color: var(--popup-bg);
-  border-radius: 12px;
-  transform: scale(0.95);
-  transition: transform cubic-bezier(0.16, 1, 0.3, 1) 0.3s;
 }
 
 .bsky-downloader-popup-button-div {
-  width: 100%;
-  height: fit-content;
-  margin: 0px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin: 0px;
   margin-top: 20px;
+  width: 100%;
+  height: fit-content;
 }
 
 .bsky-downloader-popup-button {
   all: unset;
-
-  user-select: none;
-  cursor: pointer;
-  height: 20px;
-  border-radius: 1000px;
-  padding: 12px 24px;
-  background-color: var(--button-blue);
-  align-items: center;
   justify-content: center;
-  font-size: 15px;
-  text-align: center;
-  line-height: 20px;
+  align-items: center;
+  cursor: pointer;
+  border-radius: 1000px;
+  background-color: var(--button-blue);
+  padding: 12px 24px;
+  height: 20px;
   font-weight: 500;
+  font-size: 15px;
+  line-height: 20px;
   font-family:
     InterVariable,
     system-ui,
@@ -339,6 +336,9 @@ div.loading-bar > svg {
     sans-serif,
     "Apple Color Emoji",
     "Segoe UI Emoji";
+
+  user-select: none;
+  text-align: center;
 }
 
 .bsky-downloader-popup-button:hover {
@@ -357,9 +357,8 @@ div.loading-bar > svg {
 
 .bsky-downloader-popup-header {
   margin: 0;
-  font-size: 20.6px;
-  letter-spacing: 0px;
   font-weight: 700;
+  font-size: 20.6px;
   line-height: 20.6px;
   font-family:
     InterVariable,
@@ -373,12 +372,12 @@ div.loading-bar > svg {
     sans-serif,
     "Apple Color Emoji",
     "Segoe UI Emoji";
+  letter-spacing: 0px;
 }
 
 .bsky-downloader-popup-text {
   margin: 0;
   font-size: 15px;
-  letter-spacing: 0px;
   line-height: 20px;
   font-family:
     InterVariable,
@@ -392,11 +391,12 @@ div.loading-bar > svg {
     sans-serif,
     "Apple Color Emoji",
     "Segoe UI Emoji";
+  letter-spacing: 0px;
 }
 
 .bsky-downloader-popup-text-container {
-  color: var(--text-color);
-  gap: 8px;
   display: flex;
   flex-direction: column;
+  gap: 8px;
+  color: var(--text-color);
 }
