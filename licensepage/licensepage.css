@@ -129,22 +129,30 @@ body {
   text-align: left;
   font-weight: 400;
   overflow-x: hidden;
+  user-select: text;
 }
 
 .sidebar {
+  border-radius: 8px;
   overflow: hidden;
-  position: fixed;
+  position: sticky;
   display: flex;
   flex-direction: column;
   align-items: start;
   top: 0px;
   left: 0px;
   transition: width ease 0.2s;
-  max-width: 300px;
+  width: 150px;
+  height: fit-content;
   background-color: var(--bg);
   border: solid var(--separator-border) 0.55px;
-  height: 100vh;
   z-index: 100;
+  margin-top: 20px;
+}
+
+.main-page-narrow .sidebar {
+  position: fixed;
+  display: none;
 }
 
 .sidebar-header {
@@ -163,8 +171,54 @@ body {
   background-color: var(--checkbox-bg);
 }
 
+.main-page {
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 20px;
+  display: flex;
+  flex-direction: row;
+  justify-content: start;
+  gap: 20px;
+}
+
+.main-page-narrow {
+  max-width: unset !important;
+}
+
 .burger-menu {
-  filter: invert(1);
-  width: 10px;
   object-fit: contain;
+  filter: invert(1);
+  width: 20px;
+  height: 20px;
+}
+
+.burger-menu-div {
+  display: none;
+  padding: 8px;
+  margin-bottom: auto;
+  border-radius: 8px;
+  width: 20px;
+  height: 20px;
+}
+
+.main-page-narrow .burger-menu-div {
+  display: block;
+}
+
+.burger-menu-div:hover {
+  background-color: var(--checkbox-bg);
+}
+
+.license-header {
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  font-size: 23px;
+  border-bottom: solid var(--separator-border) 0.55px;
+  width: 100%;
+}
+
+.content {
+  margin-top: 20px;
+  flex-shrink: 1000;
 }
