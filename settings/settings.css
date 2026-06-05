@@ -210,12 +210,12 @@ body {
   background-color: var(--button-blue);
   width: 7px;
   height: 40px;
-  /*position the scrollbar next to the settings regardless of screen size*/
 }
 
 .scrollbar-hitbox:hover .scrollbar,
 .scrollbar-hover .scrollbar {
   transform: scale(1.2, 1.05) translateY(-50%);
+  background-color: var(--button-blue-hover);
 }
 
 .scrollbar-input-block {
@@ -259,7 +259,7 @@ body {
   position: relative;
   padding: 0px;
   padding-top: 56px;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
 }
 
 .setting {
