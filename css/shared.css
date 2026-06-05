@@ -2,7 +2,7 @@
   position: fixed;
   right: 0px;
   bottom: 0px;
-  z-index: 1000;
+  z-index: 10000000000;
   padding: 25px;
   height: fit-content;
   pointer-events: none;
@@ -266,7 +266,7 @@ div.loading-bar > svg {
   border: solid transparent 1px;
   border-radius: 8px;
   resize: none;
-  height: 300px;
+  height: 250px;
   overflow: scroll;
   background-color: var(--surface-1);
   outline: none;

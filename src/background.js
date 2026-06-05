@@ -76,7 +76,7 @@ console.info(log("Fetching saved settings"))
 let settings = localStorage.getItem("settings")
 if (!settings) {
       // Standard configuration
-      settings = standardSettings
+      settings = structuredClone(standardSettings)
       console.info(log("New user, standard settings applied"))
 }
 else {
@@ -201,6 +201,35 @@ browser.runtime.onMessage.addListener((message, sender) => {
             SetSetting(message.settingId, message.value, settings)
       }
 
+      // Setting set requests
+      else if (message.type == "reset-settings") {
+            console.log(log("Resetting to standard settings"))
+
+            downloadedURLs = { migrated: true, urls: [] }
+            localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
+
+            tabIDs.forEach(tabID => {
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "downloaded-urls-update", value: downloadedURLs })
+                  }
+                  catch { }
+            })
+
+            settings = structuredClone(standardSettings)
+            localStorage.setItem("settings", JSON.stringify(settings))
+
+            console.info(log("Settings changed, relaying"))
+            for (let i = 0; i < tabIDs.length; i++) {
+                  const tabID = tabIDs[i]
+                  try {
+                        // Extension popup window can only be addressed with runtime.sendMessage but background script can't access this
+                        // Content script is tasked with repeating the message for the popup window
+                        browser.tabs.sendMessage(tabID, { type: "settings-update", settings: settings, repeat: i == 0 })
+                  }
+                  catch { }
+            }
+      }
+
       // Theme set requests
       else if (message.type == "set-theme") {
             theme = message.value
@@ -276,8 +305,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Set downloaded URLs specifically for migrating from website localstorage
       else if (message.type == "set-downloaded-urls") {
-            if (downloadedURLs.migrated) return
-
             downloadedURLs.urls = message.value
             downloadedURLs.migrated = true
 
@@ -289,8 +316,6 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   }
                   catch { }
             })
-
-            console.log(log("Successfully migrated old downloaded URLs"))
       }
 
       // Set downloaded URLs specifically for migrating from website localstorage

@@ -4,12 +4,9 @@ let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6t
 let onExampleReady = []
 let pathVarHelpPopup
 
-let downloadedURLs;
-browser.runtime.onMessage.addListener(message => {
-      if (message.type == "downloaded-urls-update")
-            downloadedURLs = message.value
-})
-browser.runtime.sendMessage({ type: "get-downloaded-urls"})
+let downloadedURLs = localStorage.getItem("downloadedURLs") || "{ migrated: false, urls: [] }"
+downloadedURLs = JSON.parse(downloadedURLs)
+
 
 let theme = localStorage.getItem("theme") || "theme--dim"
 if (theme == "undefined") theme = "theme--dim"
@@ -719,29 +716,37 @@ importButton.addEventListener("click", () => {
 
       const copySettings = () => { ///TODO - show toast
             console.info(log("Copying settings to clipboard"))
-            navigator.clipboard.writeText(settingsStr)
+            navigator.clipboard.writeText(popup.textVal)
+
+            const toast = toastManager.DisplayToast("Copied to clipboard")
+            setTimeout(() => {
+                  toastManager.DismissToast(toast)
+            }, 2000);
       }
 
       const saveSettings = () => {
             console.info(log("Saving modified settings"))
-            try { ///TODO - fix
-                  const newSettings = JSON.parse()
+            try {
+                  const newSettings = JSON.parse(popup.textVal)
                   console.info(newSettings)
 
-                  for (let i = 0; i < newSettings.length; i++) {
-                        for (let j = 0; j < newSettings[i].length; j++) {
-                              const setting = newSettings[i][j]
-
-                              SetSetting(setting.id, setting.value, setting)
-                        }
+                  for (let i = 0; i < newSettings.settings.length; i++) {
+                        const setting = newSettings.settings[i]
+                        SetSetting(setting.id, setting.value, settings)
                   }
 
+                  downloadedURLs.urls = newSettings.downloadedPosts
+
+                  browser.runtime.sendMessage({ type: "set-downloaded-urls", value: downloadedURLs.urls })
+
                   console.log(log("Settings saved successfully"))
+
+                  location.href = location.href
             }
             catch (e) {
                   console.error(log("Saving modified settings failed"))
                   console.error(e)
-                  ///TODO - send toast
+                  toastManager.DisplayToast("Error while saving settings")
             }
       }
 
@@ -753,10 +758,26 @@ importButton.addEventListener("click", () => {
 
 
       popup = new FullScreenPopup(
-            "Import / export settings",
+            "Import settings",
             "",
             [copyOption, saveOption, cancelOption],
             null,
             settingsStr
       )
+})
+
+const resetButton = document.getElementById("settingsResetButton")
+resetButton.addEventListener("click", () => {
+      const resetSettings = () => {
+            browser.runtime.sendMessage({ type: "reset-settings" })
+
+            location.href = location.href
+      }
+
+      const optionYes = new FullScreenPopup.PopupOption("Yes", () => resetSettings())
+      const optionNo = new FullScreenPopup.PopupOption("No", null, false)
+
+      const popup = new FullScreenPopup("Reset",
+            "Do you really want to reset Bluesky downloader?",
+            [optionYes, optionNo],)
 })

@@ -759,7 +759,7 @@ div:has(> .setting-help-button) {
   height: var(--knob-inner);
 }
 
-.slider-knob:has(+.slider-input:hover) {
+.slider-knob:has(+ .slider-input:hover) {
   --knob-inner: 12px;
   --knob-outer: 20px;
 }
@@ -848,4 +848,8 @@ div:has(> .setting-help-button) {
   fill-rule: evenodd;
   stroke: var(--button-blue);
   stroke-width: var(--border-size-slider-popup);
+}
+
+.bsky-downloader-popup-button {
+  padding: 5px 24px !important;
 }

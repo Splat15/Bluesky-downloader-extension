@@ -1602,6 +1602,7 @@ class FullScreenPopup {
             this.options = options
             this.onDismiss = onDismiss
             this.textInput = textInput
+            this.textVal = textInput
 
             const domParser = new DOMParser()
             this.containerElem = domParser.parseFromString(`
