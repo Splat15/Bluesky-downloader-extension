@@ -7,50 +7,34 @@
       <meta name="description" content="">
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <link rel="stylesheet" href="">
+      <link rel="stylesheet" href="../css/themes.css">
       <link rel="stylesheet" href="./licensepage.css">
 </head>
 
-<body class="bsky-downloader-theme-dim">
+<body>
       <div class="main-page">
-            <div class="sidebar">
+            <div class="input-block" id="inputBlock"></div>
+            <div class="sidebar" id="sidebar">
                   <div class="sidebar-header">Licenses</div>
-                  <div class="license-entries">
-                        <div class="license-entry">Name</div>
+            </div>
+            <div class="content" id="content">
+                  <div class="license-header">
+                        <div class="burger-menu-div" id="sidebarAcivateButton">
+                              <img class="burger-menu" src="../icons/menu-burger.svg" />
+                        </div>
+                        <p id="contentLicenseName"></p>
                   </div>
-            </div>
-            <div class="burger-menu-div">
-                  <img class="burger-menu" src="../icons/menu-burger.svg" />
-            </div>
-            <div class="content">
-                  <p class="license-header">Name</p>
-                  <p class="license-text">
-                        Copyright © 2024 Joselito<br />
-                        <br />
-                        Permission is hereby granted, free of charge, to any person obtaining a copy of this software
-                        and associated
-                        documentation files (the “Software”), to deal in the Software without restriction, including
-                        without limitation the
-                        rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the
-                        Software, and to permit
-                        persons to whom the Software is furnished to do so, subject to the following conditions:<br />
-                        <br />
-                        The above copyright notice and this permission notice shall be included in all copies or
-                        substantial portions of the
-                        Software.<br />
-                        <br />
-                        THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
-                        BUT NOT LIMITED TO THE
-                        WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT
-                        SHALL THE AUTHORS OR
-                        COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
-                        CONTRACT, TORT OR
-                        OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-                        IN THE SOFTWARE.
+                  <div class="project-links">
+                        <a class="project-link" id="homepageLink" href>Homepage</a>
+                        <a class="project-link" id="repoLink" href>Source</a>
+                        <a class="project-link" id="rawLink" href>View raw</a>
+                  </div>
+                  <p class="license-text" id="contentLicenseText">
                   </p>
             </div>
       </div>
-      <script src="./licensepage.js">
-      </script>
+      <script src="../js/classes.js"></script>
+      <script src="./licensepage.js"></script>
 </body>
 
 </html>

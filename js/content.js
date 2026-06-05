@@ -505,13 +505,16 @@ onInit.push(() => {
       Array.from(document.querySelectorAll("#bskyDownloadStylesheet"))
             .forEach(stylesheet => stylesheet.remove())
 
-      // Add stylesheet
-      const stylesheet = document.createElement("link")
-      // Incorporate version number to avoid caching issue
-      stylesheet.href = browser.runtime.getURL("../css/style.css") + "?version=" + version
-      stylesheet.id = "bskyDownloadStylesheet"
-      stylesheet.rel = "stylesheet"
-      document.head.appendChild(stylesheet)
+      let stylesheetPaths = ["../css/style.css", "../css/themes.css", "../css/shared.css"]
+      for (let i = 0; i < stylesheetPaths.length; i++) {
+            // Add stylesheet
+            const stylesheet = document.createElement("link")
+            // Incorporate version number to avoid caching issue
+            stylesheet.href = browser.runtime.getURL(stylesheetPaths[i]) + "?version=" + version
+            stylesheet.id = "bskyDownloadStylesheet"
+            stylesheet.rel = "stylesheet"
+            document.head.appendChild(stylesheet)
+      }
 })
 
 

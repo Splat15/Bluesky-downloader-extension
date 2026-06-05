@@ -679,3 +679,8 @@ bodyOutline.style.height = settingsStyle.height - 1.1
 onDocumentScroll()
 
 setTimeout(() => document.body.style.opacity = 1, 200)
+
+
+const licensesButton = document.getElementById("licensesButton")
+licensesButton.addEventListener("click",
+      () => window.open(browser.runtime.getURL("../licensepage/licensepage.html")))
