@@ -14,6 +14,7 @@ const toastManager = new ToastManager()
 let mediaElements = [] // Prevents duplicate application of download buttons and onboarding elements
 let versionInfoToast
 let versionInfo
+let downloadedURLs
 
 
 const mobileDevice = DetectMobileDevice() // Detect browser based on user agent for compatibility and layout
@@ -91,11 +92,19 @@ browser.runtime.onMessage.addListener((message) => {
             theme = message.theme
             inputMethod = message.inputMethod
             version = message.version
+            downloadedURLs = message.downloadedURLs
+
+            if (!downloadedURLs.migrated) {
+                  let oldDownloadedURLs = localStorage.getItem("downloadedURLs")
+                  oldDownloadedURLs = JSON.parse(oldDownloadedURLs)
+
+                  browser.runtime.sendMessage({ type: "set-downloaded-urls", value: oldDownloadedURLs })
+            }
 
             // If there are unfinished downloads from the last session, ask to restart them
-            if (message.unfinishedDownloads
+            if (true/*message.unfinishedDownloads
                   && message.unfinishedDownloads.length > 0 &&
-                  GetSetting("restartDowwnloads", settings).value) {
+                  GetSetting("restartDowwnloads", settings).value*/) {
                   setTimeout(() => {
                         let popup
 
@@ -296,6 +305,11 @@ browser.runtime.onMessage.addListener((message) => {
                   onboardingElements.video.forEach(borderElement => borderElement.Destroy())
             }
       }
+
+      // Updates for downloaded URLs from background-script
+      else if (message.type == "downloaded-urls-update") {
+            downloadedURLs = message.value
+      }
 })
 browser.runtime.sendMessage({ type: "init" })
 
@@ -478,6 +492,7 @@ new NodeObserver(
 
             // Tenor GIF posts
             else if (element.tagName == "VIDEO" &&
+                  element.firstElementChild &&
                   element.firstElementChild.src.includes("gifs.bsky.app") &&
                   element.downloadButton !== true) {
                   try {

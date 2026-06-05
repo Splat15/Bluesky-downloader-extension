@@ -4,6 +4,13 @@ let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6t
 let onExampleReady = []
 let pathVarHelpPopup
 
+let downloadedURLs;
+browser.runtime.onMessage.addListener(message => {
+      if (message.type == "downloaded-urls-update")
+            downloadedURLs = message.value
+})
+browser.runtime.sendMessage({ type: "get-downloaded-urls"})
+
 let theme = localStorage.getItem("theme") || "theme--dim"
 if (theme == "undefined") theme = "theme--dim"
 SetThemeClass(theme)
@@ -684,3 +691,72 @@ setTimeout(() => document.body.style.opacity = 1, 200)
 const licensesButton = document.getElementById("licensesButton")
 licensesButton.addEventListener("click",
       () => window.open(browser.runtime.getURL("../licensepage/licensepage.html")))
+
+const importButton = document.getElementById("settingsImportButton")
+importButton.addEventListener("click", () => {
+      // Initialize a simplified settings object
+      let tempSettings = {
+            settings: [],
+            downloadedPosts: downloadedURLs.urls
+      }
+
+      for (let i = 0; i < settings.length; i++) {
+            for (let j = 0; j < settings[i].length; j++) {
+                  const setting = settings[i][j]
+
+                  tempSettings.settings.push({
+                        id: setting.id,
+                        value: setting.value
+                  })
+            }
+      }
+
+
+      let settingsStr = JSON.stringify(tempSettings, null, 2)
+
+
+      let popup
+
+      const copySettings = () => { ///TODO - show toast
+            console.info(log("Copying settings to clipboard"))
+            navigator.clipboard.writeText(settingsStr)
+      }
+
+      const saveSettings = () => {
+            console.info(log("Saving modified settings"))
+            try { ///TODO - fix
+                  const newSettings = JSON.parse()
+                  console.info(newSettings)
+
+                  for (let i = 0; i < newSettings.length; i++) {
+                        for (let j = 0; j < newSettings[i].length; j++) {
+                              const setting = newSettings[i][j]
+
+                              SetSetting(setting.id, setting.value, setting)
+                        }
+                  }
+
+                  console.log(log("Settings saved successfully"))
+            }
+            catch (e) {
+                  console.error(log("Saving modified settings failed"))
+                  console.error(e)
+                  ///TODO - send toast
+            }
+      }
+
+
+      const copyOption = new FullScreenPopup.PopupOption("Copy", () => copySettings())
+      const saveOption = new FullScreenPopup.PopupOption("Save", () => saveSettings())
+      const cancelOption = new FullScreenPopup.PopupOption("Cancel", null, false)
+
+
+
+      popup = new FullScreenPopup(
+            "Import / export settings",
+            "",
+            [copyOption, saveOption, cancelOption],
+            null,
+            settingsStr
+      )
+})

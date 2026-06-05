@@ -257,3 +257,26 @@ div.loading-bar > svg {
   gap: 8px;
   color: var(--text);
 }
+
+.bsky-downloader-popup-text-input {
+  color: var(--text);
+  text-wrap: nowrap;
+  padding: 4px;
+  font-size: 12px;
+  border: solid transparent 1px;
+  border-radius: 8px;
+  resize: none;
+  height: 300px;
+  overflow: scroll;
+  background-color: var(--surface-1);
+  outline: none;
+}
+
+.bsky-downloader-popup-text-input:hover {
+  background-color: var(--surface-2);
+}
+
+.bsky-downloader-popup-text-input:focus {
+  border-color: var(--button-blue) !important;
+  background-color: var(--var-input-active);
+}

@@ -7,6 +7,15 @@ let tabIDs = []
 let theme = localStorage.getItem("theme") || "theme--dim"
 localStorage.setItem("theme", theme)
 
+let downloadedURLs = localStorage.getItem("downloadedURLs")
+if (!downloadedURLs) {
+      downloadedURLs = { migrated: false, urls: [] }
+      localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
+}
+else
+      downloadedURLs = JSON.parse(downloadedURLs)
+
+
 let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
 const downloader = new Downloader(unfinishedDownloads);
 
@@ -251,6 +260,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       else if (message.type == "init") {
             console.log(log("Init request received"))
             const uptime = Date.now() - startTime
+
             browser.tabs.sendMessage(sender.tab.id, {
                   type: "init",
                   uptime: uptime,
@@ -258,8 +268,47 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   settings: settings,
                   theme: theme,
                   inputMethod: inputMethod,
+                  downloadedURLs: downloadedURLs,
                   versionInfo: showVersionInfo ? majorVersionInfo : null,
                   unfinishedDownloads: downloader.unfinishedDownloads
+            })
+      }
+
+      // Set downloaded URLs specifically for migrating from website localstorage
+      else if (message.type == "set-downloaded-urls") {
+            if (downloadedURLs.migrated) return
+
+            downloadedURLs.urls = message.value
+            downloadedURLs.migrated = true
+
+            localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
+
+            tabIDs.forEach(tabID => {
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "downloaded-urls-update", value: downloadedURLs })
+                  }
+                  catch { }
+            })
+
+            console.log(log("Successfully migrated old downloaded URLs"))
+      }
+
+      // Set downloaded URLs specifically for migrating from website localstorage
+      else if (message.type == "get-downloaded-urls") {
+            browser.tabs.sendMessage(sender.tab.id, { type: "downloaded-urls-update", value: downloadedURLs })
+      }
+
+      // Add an URL to the list of downloaded URLs
+      else if (message.type == "add-downloaded-url") {
+            downloadedURLs.urls.push(message.value)
+
+            localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
+
+            tabIDs.forEach(tabID => {
+                  try {
+                        browser.tabs.sendMessage(tabID, { type: "downloaded-urls-update", value: downloadedURLs })
+                  }
+                  catch { }
             })
       }
 

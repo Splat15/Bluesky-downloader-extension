@@ -192,7 +192,7 @@ class Downloadbutton {
                   <div class="download-button-div${this.type != Downloadbutton.Video ? ' download-button-div-image' : ''}" id="download-button-div" style="display: ${hidden ? "none" : "block"};">
                         ${this.type != Downloadbutton.Video ? '<div class="dropshadow" id="dropshadow"></div>' : ''}
                         <button class="download-button" id="download-button">
-                        <img id="download-button-static" class="download-icon" draggable="false" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
+                        <img id="download-button-static" class="download-icon" draggable="false" style="opacity: 1;" src="${GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
                         </button>
                   </div>
                   `.replace(/\s{2,}/g, " "), "text/html")
@@ -343,7 +343,7 @@ class Downloadbutton {
                                     if (message.progress >= 100) {
                                           console.log(log("Download successful"))
 
-                                          Downloadbutton.AddURLToHistory(originalURL)
+                                          AddURLToHistory(originalURL)
 
                                           if (message.fileBlob) {
                                                 let fileURL = URL.createObjectURL(message.fileBlob)
@@ -482,43 +482,6 @@ class Downloadbutton {
             }
       }
 
-      /** Adds downloaded URL to local storage */
-      static AddURLToHistory(url) {
-            try {
-                  let _storage = JSON.parse(localStorage.getItem("downloadedURLs")) || [];
-
-                  const hash = GenerateHash(url)
-                  if (_storage.indexOf(hash) == -1) {
-                        _storage.push(hash)
-
-                        localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
-                  }
-            }
-            catch (error) {
-                  console.error(log("Error while adding URL to history: " + error))
-            }
-      }
-
-      /** Checks if URL is present in local storage */
-      #GetURLFromHistory(url) {
-            try {
-                  const hash = GenerateHash(url)
-                  let _storage = []
-                  try {
-                        _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-                  }
-                  catch {
-                        localStorage.setItem("downloadedURLs", JSON.stringify([]))
-                  }
-
-                  return _storage && _storage.length > 0 && _storage.indexOf(hash) !== -1
-            }
-            catch (error) {
-                  console.error(log("Error while fetching URL from history: " + error))
-                  return false
-            }
-      }
-
       /** Add script to document to get uri from main thread.
        * This looks for react properties which are only accessible in the main document thread.  */
       #RunPostInfoScan() {
@@ -604,7 +567,7 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
                   if (message.progress >= 100) {
                         console.log(log("Download successful"))
 
-                        Downloadbutton.AddURLToHistory(downloadInfo.originalURL)
+                        AddURLToHistory(downloadInfo.originalURL)
 
                         if (message.fileBlob) {
                               let fileURL = URL.createObjectURL(message.fileBlob)
@@ -659,6 +622,34 @@ function GenerateHash(string) {
       }
       return Math.abs(hash);
 };
+
+
+
+/** Adds downloaded URL to local storage */
+function AddURLToHistory(url) {
+      try {
+            const hash = GenerateHash(url)
+            if (downloadedURLs.urls.indexOf(hash) == -1) {
+                  browser.runtime.sendMessage({ type: "add-downloaded-url", value: hash })
+            }
+      }
+      catch (error) {
+            console.error(log("Error while adding URL to storage: " + error))
+      }
+}
+
+/** Checks if URL is present in local storage */
+function GetURLFromHistory(url) {
+      try {
+            const hash = GenerateHash(url)
+
+            return downloadedURLs.urls.indexOf(hash) !== -1
+      }
+      catch (error) {
+            console.error(log("Error while fetching URL from storage: " + error))
+            return false
+      }
+}
 
 const pathVars = {
       username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
@@ -1592,14 +1583,17 @@ class FullScreenPopup {
       headerText
       text
       options
+      textInput
       dismissed = false
       onDismiss
+      textVal
 
       containerElem
       popupElem
       buttonDiv
+      textInputElem
 
-      constructor(headerText, text = "", options = [], onDismiss = () => { }) {
+      constructor(headerText, text = "", options = [], onDismiss = () => { }, textInput = false) {
             Array.from(document.querySelectorAll("#downloaderPopupContainer"))
                   .forEach(element => element.remove())
 
@@ -1607,6 +1601,7 @@ class FullScreenPopup {
             this.text = text
             this.options = options
             this.onDismiss = onDismiss
+            this.textInput = textInput
 
             const domParser = new DOMParser()
             this.containerElem = domParser.parseFromString(`
@@ -1616,6 +1611,8 @@ class FullScreenPopup {
                               <div class="bsky-downloader-popup-text-container">
                                     <p class="bsky-downloader-popup-header" id="downloaderPopupHeader">${this.headerText}</p>
                                     <p class="bsky-downloader-popup-text" id="downloaderPopupText">${this.text}</p>
+                                    <textarea type="text" class="bsky-downloader-popup-text-input" id="textInput" spellcheck="false"
+                                    style="display: ${this.textInput ? "block" : "none"}">${typeof this.textInput == "string" ? this.textInput : ""}</textarea>
                               </div>
                               <div class="bsky-downloader-popup-button-div" id="downloaderPopupButtonDiv">
                               </div>
@@ -1626,6 +1623,7 @@ class FullScreenPopup {
 
             this.popupElem = this.containerElem.querySelector("#downloaderPopup");
             this.buttonDiv = this.containerElem.querySelector("#downloaderPopupButtonDiv");
+            this.textInputElem = this.containerElem.querySelector("#textInput")
 
             for (let i = 0; i < options.length; i++) {
                   const option = options[i]
@@ -1639,6 +1637,10 @@ class FullScreenPopup {
             this.popupElem.addEventListener("click", e => e.stopPropagation())
 
             this.containerElem.addEventListener("click", () => this.Dismiss())
+
+            this.textInputElem.addEventListener("input", () => {
+                  this.textVal = this.textInputElem.value
+            })
 
             document.body.appendChild(this.containerElem)
 
@@ -1658,7 +1660,7 @@ class FullScreenPopup {
                   this.containerElem.remove()
             }, 300)
 
-            this.onDismiss()
+            if (this.onDismiss) this.onDismiss()
 
             this.onDismiss = null
       }
