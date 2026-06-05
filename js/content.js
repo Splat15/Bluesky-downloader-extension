@@ -93,10 +93,11 @@ browser.runtime.onMessage.addListener((message) => {
             version = message.version
 
             // If there are unfinished downloads from the last session, ask to restart them
-            if (message.unfinishedDownloads && message.unfinishedDownloads.length > 0) {
+            if (message.unfinishedDownloads
+                  && message.unfinishedDownloads.length > 0 &&
+                  GetSetting("restartDowwnloads", settings).value) {
                   setTimeout(() => {
                         let popup
-                        let userHasAccepted = false
 
                         const downloadsAmount = message.unfinishedDownloads.length || 0
                         const numbers = ["Zero", "One", "Two", "Three"] // Friendly names for 0-3
@@ -107,17 +108,14 @@ browser.runtime.onMessage.addListener((message) => {
 
 
                         const onPopupDismiss = () => {
-                              // If the user didn't restart the downloads
-                              if (!userHasAccepted)
-                                    // Clear the unfinished downloads
-                                    browser.runtime.sendMessage({ type: "clear-unfinished-downloads" })
+                              // Clear the unfinished downloads
+                              browser.runtime.sendMessage({ type: "clear-unfinished-downloads" })
                         }
 
                         // Popup option for restarting the downloads
                         const optionYes = new FullScreenPopup.PopupOption(
                               `Restart download${multipleDownloads ? "s" : ""}`,
                               () => {
-                                    userHasAccepted = true
                                     popup.Dismiss()
 
                                     message.unfinishedDownloads.forEach(downloadJob =>
@@ -140,6 +138,13 @@ browser.runtime.onMessage.addListener((message) => {
                               [optionYes, optionNo],
                               onPopupDismiss
                         )
+
+                        browser.runtime.onMessage.addListener((message) => {
+                              if (message.type == "clear-unfinished-downloads-popups" && !popup.dismissed) {
+                                    popup.Dismiss()
+                              }
+                        })
+
                   }, 1000)
             }
 

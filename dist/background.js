@@ -1601,6 +1601,7 @@ class FullScreenPopup {
       headerText
       text
       options
+      dismissed = false
       onDismiss
 
       containerElem
@@ -1657,6 +1658,8 @@ class FullScreenPopup {
       }
 
       Dismiss() {
+            this.dismissed = true;
+
             this.containerElem.style.opacity = "0"
             this.popupElem.style.transform = "scale(0.95)"
             this.containerElem.style.pointerEvents = "none"
@@ -1665,6 +1668,8 @@ class FullScreenPopup {
             }, 300)
 
             this.onDismiss()
+
+            this.onDismiss = null
       }
 
       static PopupOption = class PopupOption {
@@ -2425,7 +2430,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
                   try {
-                        browser.tabs.sendMessage(tabID, { type: "clear-unfinished-downloads-popup" }) /// TODO
+                        browser.tabs.sendMessage(tabID, { type: "clear-unfinished-downloads-popups" })
                   }
                   catch { }
             }

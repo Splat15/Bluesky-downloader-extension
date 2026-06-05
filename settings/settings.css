@@ -705,6 +705,7 @@ div:has(> .setting-help-button) {
 }
 
 .slider-input {
+  cursor: pointer;
   position: absolute;
   left: -10px;
   opacity: 0;
@@ -758,7 +759,7 @@ div:has(> .setting-help-button) {
   height: var(--knob-inner);
 }
 
-.slider-body:hover .slider-knob {
+.slider-knob:has(+.slider-input:hover) {
   --knob-inner: 12px;
   --knob-outer: 20px;
 }
@@ -769,14 +770,24 @@ div:has(> .setting-help-button) {
 }
 
 .slider-input-text {
+  outline: none;
+  border: solid 1px transparent;
   position: relative;
-  border: none;
   border-radius: 10px;
   background-color: var(--surface-1);
   width: 40px;
   overflow: scroll;
   color: var(--text);
   text-align: center;
+}
+
+.slider-input-text:hover {
+  border-color: var(--surface-2);
+}
+
+.slider-input-text:focus {
+  border-color: var(--button-blue) !important;
+  background-color: var(--var-input-active);
 }
 
 .popup-val-container {

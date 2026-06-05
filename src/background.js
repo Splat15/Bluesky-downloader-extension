@@ -228,7 +228,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
                   try {
-                        browser.tabs.sendMessage(tabID, { type: "clear-unfinished-downloads-popup" }) /// TODO
+                        browser.tabs.sendMessage(tabID, { type: "clear-unfinished-downloads-popups" })
                   }
                   catch { }
             }
