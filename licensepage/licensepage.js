@@ -57,7 +57,7 @@ let licenseElems = []
 const mainPage = document.getElementsByClassName("main-page")[0]
 
 const onResize = () => {
-      if (window.innerHeight >= window.innerWidth || window.innerWidth < 700) {
+      if (window.innerWidth < 850) {
             mainPage.classList.add("main-page-narrow")
       }
       else {

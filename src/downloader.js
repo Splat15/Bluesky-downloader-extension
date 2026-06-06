@@ -10,7 +10,7 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util';
 // Extracted the video conversion logic into separate function
 // Made to work with video URLs directly
 // Made compatible as a web extension based on browser-extension-ffmpeg
-// https://github.com/Aniny21/browser-extension-ffmpeg/ ///TODO - Remove
+// https://github.com/Aniny21/browser-extension-ffmpeg/
 // Added simple progress estimation
 
 // Side note: Firefox extensions can't run multi-core wasm
@@ -37,7 +37,7 @@ export class Downloader {
             this.#onProgress = () => { }
 
             this.#ffmpeg.on('log', ({ message, type }) => {
-                  console.info(log(message));
+                  console.info(log("Ffmpeg Log " + message));
             });
       }
 
@@ -154,6 +154,7 @@ export class Downloader {
 
             // Start next download
             this.#downloadReady = true;
+
             if (this.#queue.length > 0) this.#download()
             else {
                   if (this.#ffmpeg.loaded) {
@@ -215,6 +216,7 @@ export class Downloader {
                                           }, 5000)
                                     })
                               }
+
                         })
                   }
 
@@ -260,8 +262,8 @@ export class Downloader {
                         console.info(log("Converting to " + mimeType + " at quality: " + imageQuality))
 
                         const startTime = Date.now()
-                        const onFFmpegProgress = ({ progress, time }) => {
-                              _onProgress(40 + Math.round(50 * progress))
+                        const onFFmpegProgress = async ({ progress, time }) => {
+                              await _onProgress(40 + Math.round(50 * progress))
 
                               let elapsedMS = Date.now() - startTime
                               let remainingMS = (elapsedMS / progress) - elapsedMS
@@ -337,23 +339,23 @@ export class Downloader {
 
             if (this.#mobileDevice) {
                   // Return file to content script to download
-                  this.#setProgress(100, null, fileBlob)
+                  this.#setProgress(100, null, blob)
             }
             else {
                   // Download using downloads API
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  browser.downloads.download({
+                  await browser.downloads.download({
                         url: fileURL, filename: filePath
-                  }).then(() => {
-                        this.#setProgress(100)
-
-                        // Free up RAM, will interrupt download if done too soon for some reason
-                        setTimeout(() => {
-                              URL.revokeObjectURL(fileURL)
-                        }, 5000)
                   })
+
+                  this.#setProgress(100)
+
+                  // Free up RAM, will interrupt download if done too soon for some reason
+                  setTimeout(() => {
+                        URL.revokeObjectURL(fileURL)
+                  }, 5000)
             }
       }
 
@@ -378,16 +380,16 @@ export class Downloader {
                         let fileURL = URL.createObjectURL(fileBlob)
 
                         // Initiate download
-                        browser.downloads.download({
+                        await browser.downloads.download({
                               url: fileURL, filename: filePath
-                        }).then(() => {
-                              this.#setProgress(100)
-
-                              // Free up RAM, will interrupt download if done too soon for some reason
-                              setTimeout(() => {
-                                    URL.revokeObjectURL(fileURL)
-                              }, 5000)
                         })
+
+                        this.#setProgress(100)
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
                   }
 
                   return
@@ -418,16 +420,16 @@ export class Downloader {
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  browser.downloads.download({
+                  await browser.downloads.download({
                         url: fileURL, filename: filePath
-                  }).then(() => {
-                        this.#setProgress(100)
-
-                        // Free up RAM, will interrupt download if done too soon for some reason
-                        setTimeout(() => {
-                              URL.revokeObjectURL(fileURL)
-                        }, 5000)
                   })
+
+                  this.#setProgress(100)
+
+                  // Free up RAM, will interrupt download if done too soon for some reason
+                  setTimeout(() => {
+                        URL.revokeObjectURL(fileURL)
+                  }, 5000)
             }
       }
 

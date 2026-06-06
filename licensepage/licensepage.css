@@ -95,7 +95,8 @@ body {
   gap: 20px;
   margin-right: auto;
   margin-left: auto;
-  padding: 0 20px;
+  padding: 20px;
+  padding-top: 0px;
   max-width: 1000px;
 }
 
@@ -146,7 +147,10 @@ body {
   border-bottom: solid var(--separator-border) 0.55px;
   margin-bottom: 12px;
   padding-bottom: 14px;
-  width: 100%;
+}
+
+.main-page-narrow .project-links {
+  padding-left: 44px;
 }
 
 .project-link {
@@ -162,6 +166,10 @@ body {
   flex-shrink: 1000;
   transition: opacity ease 0.08s;
   margin-top: 20px;
+}
+
+.main-page-narrow .content {
+  width: 100%;
 }
 
 .input-block {

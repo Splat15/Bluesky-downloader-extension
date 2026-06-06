@@ -12,6 +12,28 @@ let theme = localStorage.getItem("theme") || "theme--dim"
 if (theme == "undefined") theme = "theme--dim"
 SetThemeClass(theme)
 
+
+// Testing purposes
+const testingURLS = [
+      browser.runtime.getURL("../settings/settings.html"),
+      browser.runtime.getURL("../licensepage/licensepage.html"),
+      "https://bsky.app/",
+      "https://bsky.app/profile/splat15.bsky.social",
+      "https://bsky.app/profile/splat15.bsky.social/post/3mfan3yqqv22f",
+      "https://bsky.app/profile/caffeinerabbit.bsky.social/post/3mdllnk5cbc2l",
+      "https://bsky.app/profile/russec.info/post/3mdlowhj6j227",
+      "https://bsky.app/profile/marcknelsen.art/post/3li63ufngnk22",
+      "https://bsky.app/profile/nbcnews.com/post/3mnndllwu3j2d"
+]
+
+chrome.tabs.query({ windowType: 'normal' }, function (tabs) {
+      if (tabs.length < 2) {
+            testingURLS.forEach(url => {
+                  window.open(url)
+            })
+      }
+});
+
 console.log(log("Fetching example post info"))
 let postInfo
 fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exampleAtURI)
@@ -83,7 +105,7 @@ class Setting {
                               <path d="M12.757,4.987a4.25,4.25,0,0,0-5,4.181,1.5,1.5,0,0,0,3,0,1.248,1.248,0,1,1,1.847,1.1,3.323,3.323,0,0,0-2.038,3.158,1.5,1.5,0,0,0,3,0,1.274,1.274,0,0,1,.016-.218,1.852,1.852,0,0,1,.471-.313,4.248,4.248,0,0,0-1.292-7.9Z" />
                         </svg>`
 
-                        helpButton.addEventListener("click", (e) => {
+                        helpButton.addEventListener("click", e => {
                               e.stopPropagation()
                               new FullScreenPopup(
                                     this.name,
@@ -110,10 +132,7 @@ class Setting {
 
                         if (this.qualitySlider) setQualSliderVis(this.value, this.qualitySlider)
 
-                        document.querySelector("#sliderSubtext").textContent = "~" + GetApproxFileSize(
-                              GetSetting("imgQuality", settings).value,
-                              GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg"
-                        )
+                        document.querySelector("#sliderSubtext").textContent = "~" + GetApproxFileSize(GetSetting("imgQuality", settings).value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")
                   })
 
                   if (this.settingId == "imgQualityMode") {
@@ -122,8 +141,8 @@ class Setting {
                               setQualSliderVis(this.value, this.qualitySlider)
                         }
                         else {
-                              new NodeObserver((e) => e.id == "imgQuality",
-                                    (e) => {
+                              new NodeObserver(e => e.id == "imgQuality",
+                                    e => {
                                           this.qualitySlider = e
                                           setQualSliderVis(this.value, this.qualitySlider)
                                     }, true
@@ -159,11 +178,13 @@ class Setting {
                   // Transform value from 10-100 to 0-100 for slider width percentage 
                   const sliderPerc = ApplySliderChoppiness(this.value)
 
+                  let approximateFileSize = GetApproxFileSize(this.value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")
+
                   this.element = domParser.parseFromString(`
                   <div class="setting slider" id="${this.settingId}" title="Adjust ${this.name}">
                         <div class="slider-header">
                               <span class="setting-name">${this.name}</span>
-                              <span class="path-example slider-subtext" id="sliderSubtext">~${GetApproxFileSize(this.value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")}</span>
+                              <span class="path-example slider-subtext" id="sliderSubtext">~${approximateFileSize}</span>
                         </div>
                         <div class="slider-body">
                               <input type="text" class="slider-input-text" id="textInput" value="${this.value}">
@@ -228,6 +249,7 @@ class Setting {
                         this.value = choppyValue
 
                         sliderPopupText.textContent = this.value
+
                         sliderSubtext.textContent = "~" + GetApproxFileSize(this.value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")
 
                         if (!text) textInput.value = this.value
@@ -444,12 +466,14 @@ class Setting {
                   pathInput.addEventListener("input", () => {
                         if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
                               // Only display warning if no warning is present
-                              if (!mobilePathWarning || mobilePathWarning.dismissed)
+                              if (!mobilePathWarning || mobilePathWarning.dismissed) {
                                     mobilePathWarning = toastManager.DisplayToast(
                                           "Your browser doesn't support setting a download folder",
                                           false,
                                           "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android"
                                     )
+                                    mobilePathWarning.DismissOnUninterested()
+                              }
 
                               pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
                         }
@@ -500,12 +524,14 @@ class Setting {
       async ChangePathVal(value) {
             if (isMobile && /[\/\\]/gi.test(pathInput.value)) {
                   // Only display warning if no warning is present
-                  if (!mobilePathWarning || mobilePathWarning.dismissed)
+                  if (!mobilePathWarning || mobilePathWarning.dismissed) {
                         mobilePathWarning = toastManager.DisplayToast(
                               "Your browser doesn't support setting a download folder",
                               false,
                               "https://github.com/Splat15/Bluesky-downloader-extension/tree/main?tab=readme-ov-file#firefox-for-android"
                         )
+                        mobilePathWarning.DismissOnUninterested()
+                  }
 
                   pathInput.value = pathInput.value.replaceAll(/[\/\\]+/gi, "")
             }
@@ -563,6 +589,8 @@ let settingsStyle
 let scrollbarInvisible
 
 const onDocumentScroll = () => {
+      if (scrollbarDown) return
+
       let boundingRect = document.documentElement.getBoundingClientRect()
       settingsBox = settingsContainer.getBoundingClientRect()
 
@@ -595,7 +623,7 @@ const onDocumentScroll = () => {
 document.addEventListener("scroll", onDocumentScroll)
 window.addEventListener("resize", onDocumentScroll)
 
-document.addEventListener("mousemove", (e) => {
+const mouseMove = e => {
       if (e.buttons == 0) {
             scrollbarDown = false
       }
@@ -617,30 +645,44 @@ document.addEventListener("mousemove", (e) => {
             let sliderRange = maxPos - minPos
             let scrollRange = settingsBox.height - window.innerHeight
 
-            let sliderPos = Math.min(Math.max(e.clientY + scrollbarYOffset, minPos), maxPos)
+            const mousePos = e.clientY || e.touches[0].clientY
+            console.warn(mousePos)
+
+            let sliderPos = Math.min(Math.max(mousePos + scrollbarYOffset, minPos), maxPos)
             let percentage = (sliderPos - minPos) / sliderRange
 
             window.scroll(0, percentage * scrollRange)
             scrollbar.style = "--scroll-pos: " + percentage
       }
-})
+}
 
-scrollbar.addEventListener("mousedown", (e) => {
+const mouseDown = e => {
+      e.preventDefault()
+
       scrollbarDown = true;
       scrollbarInputBlock.style.display = "unset"
       scrollbar.classList.add("scrollbar-hover")
       let hitbox = scrollbar.getBoundingClientRect();
-      scrollbarYOffset = hitbox.top - e.clientY
+      scrollbarYOffset = hitbox.top - (e.clientY || e.touches[0].clientY)
       console.log(scrollbarYOffset)
       console.log("mouse down")
-})
+}
 
-document.addEventListener("mouseup", (e) => {
+const mouseUp = e => {
       scrollbarDown = false;
       scrollbarInputBlock.style.display = ""
       scrollbar.classList.remove("scrollbar-hover")
       console.log("mouse up")
-})
+}
+
+document.addEventListener("mousemove", e => mouseMove(e))
+document.addEventListener("touchmove", e => mouseMove(e))
+
+scrollbar.addEventListener("mousedown", e => mouseDown(e))
+scrollbar.addEventListener("touchstart", e => mouseDown(e))
+
+document.addEventListener("mouseup", e => mouseUp(e))
+document.addEventListener("touchend", e => mouseUp(e))
 
 
 const licenseCategory = document.getElementById("licenses-category")
@@ -714,14 +756,12 @@ importButton.addEventListener("click", () => {
 
       let popup
 
-      const copySettings = () => { ///TODO - show toast
+      const copySettings = () => {
             console.info(log("Copying settings to clipboard"))
             navigator.clipboard.writeText(popup.textVal)
 
             const toast = toastManager.DisplayToast("Copied to clipboard")
-            setTimeout(() => {
-                  toastManager.DismissToast(toast)
-            }, 2000);
+            toast.DismissOnUninterested(0, 3000)
       }
 
       const saveSettings = () => {
@@ -746,7 +786,8 @@ importButton.addEventListener("click", () => {
             catch (e) {
                   console.error(log("Saving modified settings failed"))
                   console.error(e)
-                  toastManager.DisplayToast("Error while saving settings")
+                  const toast = toastManager.DisplayToast("Error while saving settings")
+                  toast.DismissOnUninterested()
             }
       }
 

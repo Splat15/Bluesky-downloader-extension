@@ -10,10 +10,13 @@ localStorage.setItem("theme", theme)
 let downloadedURLs = localStorage.getItem("downloadedURLs")
 if (!downloadedURLs) {
       downloadedURLs = { migrated: false, urls: [] }
-      localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
 }
 else
       downloadedURLs = JSON.parse(downloadedURLs)
+
+if (!downloadedURLs.urls) downloadedURLs.urls = []
+
+localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
 
 
 let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
@@ -60,15 +63,15 @@ const standardSettings = [
       ],
       [
             { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif", tooltip: "Download GIFs as .gif files instead of as .mp4.<br/><b>May cause performance issues.</b>" },
-            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp", tooltip: "Download images as .webp instead of .jpg for increased quality and smaller files." },
+            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp", tooltip: "Download images as .webp instead of .jpg for potentially increased quality and smaller files." },
             { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.<br/>Can produce better images.<br/><b>May cause performance issues.</b>" }
       ],
       [
             { value: 20, id: "imgQuality", type: "slider", name: "Image quality" }
       ],
       [
-            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications on bluesky.</br >This won't send you any push notifications or ads." },
-            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads." }
+            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications for downloads on the bluesky website.</br >This won't send you any push notifications or ads." },
+            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads when you close your browser during a download." }
       ]
 ]
 
@@ -172,6 +175,10 @@ browser.runtime.onMessage.addListener((message, sender) => {
             // Start download
             downloader.download(message.downloadInfo,
                   (progress, error, fileBlob = null) => {
+                        // Counteracts a bug in ffmpeg.wasm reporting a progress of 304067243420184.2%
+                        if (progress > 101)
+                              return
+
                         console.info(log(`Download progress for ${message.downloadInfo.id} at ${progress}%`))
 
                         // Send progress messages to sender
@@ -298,6 +305,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   theme: theme,
                   inputMethod: inputMethod,
                   downloadedURLs: downloadedURLs,
+                  version: currentVersion,
                   versionInfo: showVersionInfo ? majorVersionInfo : null,
                   unfinishedDownloads: downloader.unfinishedDownloads
             })
@@ -305,6 +313,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Set downloaded URLs specifically for migrating from website localstorage
       else if (message.type == "set-downloaded-urls") {
+            if (!message.value == null) return
             downloadedURLs.urls = message.value
             downloadedURLs.migrated = true
 
@@ -325,6 +334,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Add an URL to the list of downloaded URLs
       else if (message.type == "add-downloaded-url") {
+            if (downloadedURLs.urls == null)
+                  downloadedURLs.urls = []
+
             downloadedURLs.urls.push(message.value)
 
             localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))

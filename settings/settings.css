@@ -82,6 +82,7 @@ body {
 }
 
 .scrollbar-hitbox {
+  pointer-events: all;
   position: fixed;
   top: calc(56px + (var(--scroll-pos) * (100vh - 56px - 60px)));
   right: calc(50vw - (min(max(100vw, 300px), 500px) / 2));

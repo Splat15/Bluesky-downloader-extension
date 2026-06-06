@@ -225,6 +225,10 @@ class Downloadbutton {
       // Set styling for touch devices
       SetInputSupport(inputMethod) {
             this.#inputMethod = inputMethod
+
+            if (inputMethod == "touch") this.downloadButton.classList.add("download-button-touch")
+            else this.downloadButton.classList.remove("download-button-touch")
+
             this.#downloadButtonDiv.style.opacity = this.#inputMethod == "touch" ? "1" : ""
       }
 
@@ -345,25 +349,35 @@ class Downloadbutton {
                                     }
 
                                     const progress = message.progress / 100
-                                    this.#progressCircle.animate(progress, { duration: 300 })
+                                    if (this.#progressCircle)
+                                          this.#progressCircle.animate(progress, { duration: 300 })
                                     if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
 
                                     // Download is finished
                                     if (message.progress >= 100) {
+                                          this.#toast.DismissOnUninterested()
+
                                           console.log(log("Download successful"))
 
                                           AddURLToHistory(originalURL)
 
                                           if (message.fileBlob) {
-                                                let fileURL = URL.createObjectURL(message.fileBlob)
-                                                const a = document.createElement('a');
-                                                a.download = this.#fileName + this.#fileExtension;
-                                                a.href = fileURL;
+                                                const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                                                console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
 
-                                                a.click();
+                                                lastMobileDownload = Date.now() + timeout
 
-                                                window.URL.revokeObjectURL(fileURL)
-                                                a.remove()
+                                                setTimeout(() => {
+                                                      let fileURL = URL.createObjectURL(message.fileBlob)
+                                                      const a = document.createElement('a');
+                                                      a.download = this.#fileName + this.#fileExtension;
+                                                      a.href = fileURL;
+
+                                                      a.click();
+
+                                                      window.URL.revokeObjectURL(fileURL)
+                                                      a.remove()
+                                                }, timeout)
                                           }
 
                                           this.#downloadIcon.src = Downloadbutton.Icons.Done
@@ -419,6 +433,7 @@ class Downloadbutton {
                   }
             }
             catch (error) {
+                  console.error(error)
                   this.#downloading = false
                   this.#downloadIcon.src = Downloadbutton.Icons.Error
 
@@ -435,8 +450,6 @@ class Downloadbutton {
                               catch { }
                         }, 100);
                   }, 800)
-
-                  throw new Error(error)
             }
       }
 
@@ -457,37 +470,15 @@ class Downloadbutton {
 
       /** Free up memory by destroying progress circle */
       #DestroyProgressCircle() {
-            tryRun(this.#progressCircle.destroy)
+            if (this.#progressCircle)
+                  tryRun(this.#progressCircle.destroy)
             this.#progressCircle = null;
 
             this.#progressCircleElem.remove()
 
             // Dismiss toast some time after mouse left
             if (this.#toast) {
-                  const toast = this.#toast
-                  let timeout = null
-
-                  // Mouse was NOT on element before
-                  if (!toast.mouseOn)
-                        timeout = setTimeout(() => {
-                              this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                        }, 3500);
-
-                  // Mouse enters element
-                  toast.onMouseEnter = () => {
-                        if (timeout) {
-                              clearTimeout(timeout)
-                              timeout = null
-                        }
-                  }
-
-                  // Mouse leaves element
-                  toast.onMouseLeave = () => {
-                        if (!timeout)
-                              timeout = setTimeout(() => {
-                                    this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                              }, 2500);
-                  }
+                  this.#toast.DismissOnUninterested()
             }
       }
 
@@ -574,20 +565,29 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
 
                   // Download is finished
                   if (message.progress >= 100) {
+                        toast.DismissOnUninterested()
+
                         console.log(log("Download successful"))
 
                         AddURLToHistory(downloadInfo.originalURL)
 
                         if (message.fileBlob) {
-                              let fileURL = URL.createObjectURL(message.fileBlob)
-                              const a = document.createElement('a');
-                              a.download = downloadInfo.fileName + downloadInfo.fileExt;
-                              a.href = fileURL;
+                              const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                              console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
 
-                              a.click();
+                              lastMobileDownload = Date.now() + timeout
 
-                              window.URL.revokeObjectURL(fileURL)
-                              a.remove()
+                              setTimeout(() => {
+                                    let fileURL = URL.createObjectURL(message.fileBlob)
+                                    const a = document.createElement('a');
+                                    a.download = downloadInfo.fileName + downloadInfo.fileExt;
+                                    a.href = fileURL;
+
+                                    a.click();
+
+                                    window.URL.revokeObjectURL(fileURL)
+                                    a.remove()
+                              }, timeout)
                         }
                   }
             }
@@ -638,6 +638,10 @@ function GenerateHash(string) {
 function AddURLToHistory(url) {
       try {
             const hash = GenerateHash(url)
+
+            if (downloadedURLs.urls == null)
+                  downloadedURLs.urls = []
+
             if (downloadedURLs.urls.indexOf(hash) == -1) {
                   browser.runtime.sendMessage({ type: "add-downloaded-url", value: hash })
             }
@@ -652,7 +656,9 @@ function GetURLFromHistory(url) {
       try {
             const hash = GenerateHash(url)
 
-            return downloadedURLs.urls.indexOf(hash) !== -1
+            return downloadedURLs.urls &&
+                  downloadedURLs.urls.length > 0 &&
+                  downloadedURLs.urls.indexOf(hash) !== -1
       }
       catch (error) {
             console.error(log("Error while fetching URL from storage: " + error))
@@ -1070,9 +1076,28 @@ class ToastManager {
             containers.forEach(container => container.remove())
       }
 
+      /**
+       * 
+       * @param {string} text Text to display
+       * @param {bool} progressBar Whether to include a progress bar
+       * @param {string} helpLink Link to show with the label "see more" or falsly for no link
+       * @param {function} onDismiss Function to execute on dismissal
+       * @returns {ToastManager.ToastNotification}
+       */
       DisplayToast(text, progressBar = true, helpLink = null, onDismiss = null) {
             console.log(log("Displaying toast"))
-            let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout, helpLink, onDismiss)
+
+            let toast = new this.ToastNotification(
+                  text,
+                  this.toastContainer,
+                  progressBar,
+                  this.toastList.length == 1,
+                  this.mobileLayout,
+                  helpLink,
+                  onDismiss,
+                  this
+            )
+
             toast.onAction = () => { this.DismissToast(toast, this.toastList) }
             this.toastList.unshift(toast)
 
@@ -1082,7 +1107,8 @@ class ToastManager {
       }
 
       SetProgress(toast, progress) {
-            toast.progressBar.animate(progress, { duration: 400 })
+            if (toast.progressBar)
+                  toast.progressBar.animate(progress, { duration: 400 })
 
             // Make progress bar transparent, revealing green background
             if (progress == 1)
@@ -1153,14 +1179,16 @@ class ToastManager {
             #toastAction
             dismissed = false
             #onDismiss
+            toastManager
 
-            constructor(text, container, progressBar, firstToast, mobileLayout, helpLink, onDismiss) {
+            constructor(text, container, progressBar, firstToast, mobileLayout, helpLink, onDismiss, toastManager) {
                   this.container = container
                   this.text = text
                   this.progressBar = progressBar
                   this.mobileLayout = mobileLayout
                   this.helpLink = helpLink
                   this.#onDismiss = onDismiss
+                  this.toastManager = toastManager
                   this.Display(firstToast)
 
                   if (this.text) this.SetText(this.text)
@@ -1257,6 +1285,60 @@ class ToastManager {
                   }, 200);
 
                   if (this.#onDismiss) this.#onDismiss()
+            }
+
+            /** 
+             * Dismiss toast if the user hasn't shown interest after some time
+             * @param {Number} minFocusTime Controls how long the tab has to be in focus for the toast to qualify for dismissal
+             * @param {Number} dismissTime Controls how long the toast will be visible without a mouse over. Only starts being relevant if the minimum focus time is reached
+             */
+            DismissOnUninterested(minFocusTime = 3000, dismissTime = 5000) {
+                  // Sets the time when the tab has last lost focus or the display time of the toast
+                  let lastFocusLossTime = Date.now()
+
+                  const interval = setInterval(() => {
+                        // The tab has lost focus
+                        if (document.visibilityState != "visible")
+                              // Reset last focus loss time to now
+                              lastFocusLossTime = Date.now()
+
+                        // If the tab has been in focus for long enough
+                        else if ((Date.now() - lastFocusLossTime) > minFocusTime) {
+                              clearInterval(interval)
+
+                              // Avoid errors from user manually dismissing
+                              if (!this.dismissed) {
+                                    // Helps track timeouts for dismissal
+                                    // Gets cleared when the mouse enters the toast
+                                    let timeout = null
+
+                                    // Delay dismissal until mouse has hasn't been over the toast for specified time
+                                    // Mouse was NOT on element before
+                                    if (!this.mouseOn)
+                                          timeout = setTimeout(() => {
+                                                this.toastManager.DismissToast(this, this.toastManager.toastList)
+                                          }, dismissTime);
+
+                                    // Mouse enters element
+                                    // Clear timeout for dismissal indefinitely while the mouse is on the toast
+                                    this.onMouseEnter = () => {
+                                          if (timeout) {
+                                                clearTimeout(timeout)
+                                                timeout = null
+                                          }
+                                    }
+
+                                    // Mouse leaves element
+                                    // Resume timeout for dismissal
+                                    this.onMouseLeave = () => {
+                                          if (!timeout)
+                                                timeout = setTimeout(() => {
+                                                      this.toastManager.DismissToast(this, this.toastManager.toastList)
+                                                }, dismissTime);
+                                    }
+                              }
+                        }
+                  }, 200)
             }
 
             Display(firstToast) {
@@ -1559,10 +1641,18 @@ function GetApproxFileSize(quality, format) {
             apprFileSize = 70 * q + 20 + Math.pow(q + 0.3, 20)
       }
       else {
-            apprFileSize = 60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30
+            apprFileSize = (60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30) * 2 // Quick fix
       }
       apprFileSize = Math.round(apprFileSize)
-      return apprFileSize + "kb"
+
+
+      if (apprFileSize >= 950) {
+            apprFileSize = Math.round(apprFileSize / 100) / 10
+            apprFileSize = apprFileSize + "MB"
+      }
+      else apprFileSize = apprFileSize + "KB"
+
+      return apprFileSize
 }
 
 function isVersionNewer(oldVer, newVer) {
@@ -2215,10 +2305,13 @@ localStorage.setItem("theme", theme)
 let downloadedURLs = localStorage.getItem("downloadedURLs")
 if (!downloadedURLs) {
       downloadedURLs = { migrated: false, urls: [] }
-      localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
 }
 else
       downloadedURLs = JSON.parse(downloadedURLs)
+
+if (!downloadedURLs.urls) downloadedURLs.urls = []
+
+localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
 
 
 let unfinishedDownloads = JSON.parse(localStorage.getItem("unfinished-downloads") || "[]")
@@ -2265,15 +2358,15 @@ const standardSettings = [
       ],
       [
             { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif", tooltip: "Download GIFs as .gif files instead of as .mp4.<br/><b>May cause performance issues.</b>" },
-            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp", tooltip: "Download images as .webp instead of .jpg for increased quality and smaller files." },
+            { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp", tooltip: "Download images as .webp instead of .jpg for potentially increased quality and smaller files." },
             { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.<br/>Can produce better images.<br/><b>May cause performance issues.</b>" }
       ],
       [
             { value: 20, id: "imgQuality", type: "slider", name: "Image quality" }
       ],
       [
-            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications on bluesky.</br >This won't send you any push notifications or ads." },
-            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads." }
+            { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications for downloads on the bluesky website.</br >This won't send you any push notifications or ads." },
+            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads when you close your browser during a download." }
       ]
 ]
 
@@ -2377,6 +2470,10 @@ browser.runtime.onMessage.addListener((message, sender) => {
             // Start download
             downloader.download(message.downloadInfo,
                   (progress, error, fileBlob = null) => {
+                        // Counteracts a bug in ffmpeg.wasm reporting a progress of 304067243420184.2%
+                        if (progress > 101)
+                              return
+
                         console.info(log(`Download progress for ${message.downloadInfo.id} at ${progress}%`))
 
                         // Send progress messages to sender
@@ -2503,6 +2600,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   theme: theme,
                   inputMethod: inputMethod,
                   downloadedURLs: downloadedURLs,
+                  version: currentVersion,
                   versionInfo: showVersionInfo ? majorVersionInfo : null,
                   unfinishedDownloads: downloader.unfinishedDownloads
             })
@@ -2510,6 +2608,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Set downloaded URLs specifically for migrating from website localstorage
       else if (message.type == "set-downloaded-urls") {
+            if (!message.value == null) return
             downloadedURLs.urls = message.value
             downloadedURLs.migrated = true
 
@@ -2530,6 +2629,9 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Add an URL to the list of downloaded URLs
       else if (message.type == "add-downloaded-url") {
+            if (downloadedURLs.urls == null)
+                  downloadedURLs.urls = []
+
             downloadedURLs.urls.push(message.value)
 
             localStorage.setItem("downloadedURLs", JSON.stringify(downloadedURLs))
@@ -2621,7 +2723,7 @@ __webpack_require__.r(__webpack_exports__);
 // Extracted the video conversion logic into separate function
 // Made to work with video URLs directly
 // Made compatible as a web extension based on browser-extension-ffmpeg
-// https://github.com/Aniny21/browser-extension-ffmpeg/ ///TODO - Remove
+// https://github.com/Aniny21/browser-extension-ffmpeg/
 // Added simple progress estimation
 
 // Side note: Firefox extensions can't run multi-core wasm
@@ -2648,7 +2750,7 @@ class Downloader {
             this.#onProgress = () => { }
 
             this.#ffmpeg.on('log', ({ message, type }) => {
-                  console.info(log(message));
+                  console.info(log("Ffmpeg Log " + message));
             });
       }
 
@@ -2765,6 +2867,7 @@ class Downloader {
 
             // Start next download
             this.#downloadReady = true;
+
             if (this.#queue.length > 0) this.#download()
             else {
                   if (this.#ffmpeg.loaded) {
@@ -2826,6 +2929,7 @@ class Downloader {
                                           }, 5000)
                                     })
                               }
+
                         })
                   }
 
@@ -2871,8 +2975,8 @@ class Downloader {
                         console.info(log("Converting to " + mimeType + " at quality: " + imageQuality))
 
                         const startTime = Date.now()
-                        const onFFmpegProgress = ({ progress, time }) => {
-                              _onProgress(40 + Math.round(50 * progress))
+                        const onFFmpegProgress = async ({ progress, time }) => {
+                              await _onProgress(40 + Math.round(50 * progress))
 
                               let elapsedMS = Date.now() - startTime
                               let remainingMS = (elapsedMS / progress) - elapsedMS
@@ -2948,23 +3052,23 @@ class Downloader {
 
             if (this.#mobileDevice) {
                   // Return file to content script to download
-                  this.#setProgress(100, null, fileBlob)
+                  this.#setProgress(100, null, blob)
             }
             else {
                   // Download using downloads API
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  browser.downloads.download({
+                  await browser.downloads.download({
                         url: fileURL, filename: filePath
-                  }).then(() => {
-                        this.#setProgress(100)
-
-                        // Free up RAM, will interrupt download if done too soon for some reason
-                        setTimeout(() => {
-                              URL.revokeObjectURL(fileURL)
-                        }, 5000)
                   })
+
+                  this.#setProgress(100)
+
+                  // Free up RAM, will interrupt download if done too soon for some reason
+                  setTimeout(() => {
+                        URL.revokeObjectURL(fileURL)
+                  }, 5000)
             }
       }
 
@@ -2989,16 +3093,16 @@ class Downloader {
                         let fileURL = URL.createObjectURL(fileBlob)
 
                         // Initiate download
-                        browser.downloads.download({
+                        await browser.downloads.download({
                               url: fileURL, filename: filePath
-                        }).then(() => {
-                              this.#setProgress(100)
-
-                              // Free up RAM, will interrupt download if done too soon for some reason
-                              setTimeout(() => {
-                                    URL.revokeObjectURL(fileURL)
-                              }, 5000)
                         })
+
+                        this.#setProgress(100)
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
                   }
 
                   return
@@ -3029,16 +3133,16 @@ class Downloader {
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  browser.downloads.download({
+                  await browser.downloads.download({
                         url: fileURL, filename: filePath
-                  }).then(() => {
-                        this.#setProgress(100)
-
-                        // Free up RAM, will interrupt download if done too soon for some reason
-                        setTimeout(() => {
-                              URL.revokeObjectURL(fileURL)
-                        }, 5000)
                   })
+
+                  this.#setProgress(100)
+
+                  // Free up RAM, will interrupt download if done too soon for some reason
+                  setTimeout(() => {
+                        URL.revokeObjectURL(fileURL)
+                  }, 5000)
             }
       }
 

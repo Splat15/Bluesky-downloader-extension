@@ -16,6 +16,12 @@ let versionInfoToast
 let versionInfo
 let downloadedURLs
 
+// Mobile downloads don't have any way of detecting if the download popup was accepted or displayed at all
+// Prevent downloads from being presented faster than the user can accept them
+const mobileDownloadInterval = 2500 
+// Timestamp for the last mobile download
+let lastMobileDownload = 0
+
 
 const mobileDevice = DetectMobileDevice() // Detect browser based on user agent for compatibility and layout
 let inputMethod
@@ -102,9 +108,10 @@ browser.runtime.onMessage.addListener((message) => {
             }
 
             // If there are unfinished downloads from the last session, ask to restart them
-            if (true/*message.unfinishedDownloads
+            if (message.unfinishedDownloads
                   && message.unfinishedDownloads.length > 0 &&
-                  GetSetting("restartDowwnloads", settings).value*/) {
+                  GetSetting("restartDowwnloads", settings).value &&
+                  message.uptime < 3000) {
                   setTimeout(() => {
                         let popup
 
@@ -173,7 +180,6 @@ browser.runtime.onMessage.addListener((message) => {
             // Initialize theme
             SetThemeClass(theme)
 
-            // Show version info in focussed tab for at least 3 seconds.  
             versionInfo = message.versionInfo
             setTimeout(() => {
                   if (versionInfo) {
@@ -186,82 +192,15 @@ browser.runtime.onMessage.addListener((message) => {
                                     browser.runtime.sendMessage({ type: "version-info-displayed" })
                               }
                         )
-                        let lastFocusLossTime = Date.now()
-                        const minFocusTime = 3000
-                        const DismissTime = 5000
-
-
-                        const interval = setInterval(() => {
-                              if (document.visibilityState != "visible")
-                                    lastFocusLossTime = Date.now()
-
-                              else if ((Date.now() - lastFocusLossTime) > minFocusTime) {
-                                    clearInterval(interval)
-                                    browser.runtime.sendMessage({ type: "version-info-displayed" })
-
-                                    // Delay dismissal until mouse has hasn't been over the toast for specified time
-                                    if (versionInfoToast) {
-                                          let timeout = null
-
-                                          // Mouse was NOT on element before
-                                          if (!versionInfoToast.mouseOn)
-                                                timeout = setTimeout(() => {
-                                                      toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                                                }, DismissTime);
-
-                                          // Mouse enters element
-                                          versionInfoToast.onMouseEnter = () => {
-                                                if (timeout) {
-                                                      clearTimeout(timeout)
-                                                      timeout = null
-                                                }
-                                          }
-
-                                          // Mouse leaves element
-                                          versionInfoToast.onMouseLeave = () => {
-                                                if (!timeout)
-                                                      timeout = setTimeout(() => {
-                                                            toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                                                      }, DismissTime);
-                                          }
-                                    }
-                              }
-                        }, 200)
+                        // Dismiss if the user doesn't show interest
+                        versionInfoToast.DismissOnUninterested()
                   }
             }, 2000)
       }
 
       else if (message.type == "version-info-displayed") {
-            versionInfo = null
-
-            const minFocusTime = 3000
-            const DismissTime = 5000
-
-            // Delay dismissal until mouse has hasn't been over the toast for specified time
             if (versionInfoToast) {
-                  let timeout = null
-
-                  // Mouse was NOT on element before
-                  if (!versionInfoToast.mouseOn)
-                        timeout = setTimeout(() => {
-                              toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                        }, DismissTime);
-
-                  // Mouse enters element
-                  versionInfoToast.onMouseEnter = () => {
-                        if (timeout) {
-                              clearTimeout(timeout)
-                              timeout = null
-                        }
-                  }
-
-                  // Mouse leaves element
-                  versionInfoToast.onMouseLeave = () => {
-                        if (!timeout)
-                              timeout = setTimeout(() => {
-                                    toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                              }, DismissTime);
-                  }
+                  toastManager.DismissToast(versionInfoToast)
             }
       }
 
@@ -574,7 +513,9 @@ function InstallCleanup() {
       Array.from(document.querySelectorAll("figure:has(+div)>video[poster][playsinline][preload='none']"))
             .forEach(videoElement => {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.UploadedGIF, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
+                        const downloadElement = videoElement.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
+
+                        const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
                         downloadButtons.video.push(downloadButton)
 
                         // Onboarding procedure
