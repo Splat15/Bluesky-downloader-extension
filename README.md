@@ -16,8 +16,7 @@ It's built to support Firefox for desktop and android devices.
 > This can be ignored if you are using an official Firefox version
 
 Librewolf and other modified Firefox versions may not support promptless downloads. </br>
-This is not something that an extension can influence.  </br>
-If this bothers you, please use an official Firefox version. 
+This cannot be influenced by an extension.  </br>
 </br>
 
 ### Firefox for android
