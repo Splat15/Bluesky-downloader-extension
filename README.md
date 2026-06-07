@@ -21,7 +21,8 @@ npm install
 ### Build
 
 ```
-npm run watch
+npm run build
+web-ext build
 ```
 
 ## Compatibility
