@@ -11,24 +11,18 @@
   },
   "permissions": ["*://*.bsky.app/*", "storage", "downloads"],
   "background": {
-    "scripts": [
-      "lib/ffmpeg.min.js",
-      "lib/ffmpeg-core.js",
-      "js/classes.js",
-      "js/video-downloader.js",
-      "js/background.js"
-    ]
+    "scripts": ["js/classes.js", "dist/background.js"]
   },
   "content_scripts": [
     {
       "matches": ["*://*.bsky.app/*"],
-      "js": ["lib/progressbar.min.js", "js/classes.js", "js/content.js"]
+      "js": ["lib/progressbar.js", "js/classes.js", "js/content.js"]
     }
   ],
   "browser_action": {
     "default_popup": "settings/settings.html"
   },
-  "web_accessible_resources": ["data/*", "lib/*", "icons/*"],
+  "web_accessible_resources": ["lib/*", "icons/*"],
   "content_security_policy": "script-src 'self';",
   "browser_specific_settings": {
     "gecko": {

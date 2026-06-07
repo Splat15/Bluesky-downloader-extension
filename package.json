@@ -1,0 +1,25 @@
+{
+  "name": "webpack-demo",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "scripts": {
+    "watch": "npx watch \"npm run build\"",
+    "build": "webpack --config webpack-config.js"
+  },
+  "keywords": [],
+  "author": "Splat (https://github.com/Splat15)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Splat15/Bluesky-downloader-extension"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@ffmpeg/core": "^0.12.10",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
+    "web-ext": "^10.1.0",
+    "webpack": "^5.106.2",
+    "webpack-cli": "^7.0.2"
+  }
+}

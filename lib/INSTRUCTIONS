@@ -1,0 +1,1 @@
+For ffmpeg.wasm version upgrade, copy ffmpeg-core.js and ffmpeg-core.wasm from node_modules\@ffmpeg\core\dist\umd

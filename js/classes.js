@@ -1,3 +1,6 @@
+const documentStartTime = Date.now()
+let numLogs = 0
+
 /**
  * Observes an element for added subnodes and executes the **`Callback`** if the **`Test`** returns `true`.
  * 
@@ -38,7 +41,7 @@ class NodeObserver {
                   }
             }
             if (this.#TestNodeDeep && !this.#stopped && node.childNodes.length > 0) {
-                  const childNodeArr = Array.from(node.childNodes) // Prevents recursive behaviour
+                  const childNodeArr = Array.from(node.childNodes) // Prevents recursive behavior
                   for (let i = 0; i < childNodeArr.length; i++) {
                         const child = childNodeArr[i]
                         if (child.nodeType === Node.ELEMENT_NODE) {
@@ -57,7 +60,6 @@ class NodeObserver {
       }
 }
 
-
 // Download button
 /** Creates a download button structure at the specified **`element`**. */
 class Downloadbutton {
@@ -68,8 +70,16 @@ class Downloadbutton {
       }
       static Image = { name: "Image", ext: ".webp", id: "image" }
       static Video = { name: "Video", ext: ".mp4", id: "video" }
-      static GIF = { name: "GIF", ext: ".webm", id: "gif" }
+      static GIF = { name: "GIF", ext: ".mp4", id: "gif" }
       static UploadedGIF = { name: "GIF", ext: ".mp4", id: "uploadedgif" }
+
+      static MimeTypes = {
+            ".jpg": "image/jpeg",
+            ".webp": "image/webp",
+            ".gif": "image/gif",
+            ".webm": "video/webm",
+            ".mp4": "video/mp4",
+      }
 
       #mobileDevice = DetectMobileDevice()
       #inputMethod
@@ -82,6 +92,7 @@ class Downloadbutton {
       #toastManager
       #toast
       #downloading = false
+      #settings
 
       #atURI
       url
@@ -99,11 +110,13 @@ class Downloadbutton {
       postInfo = {
             postID: undefined,
             hash: undefined,
+            did: undefined,
             username: undefined,
             displayName: undefined,
             timestamp: undefined,
             language: undefined,
             label: undefined,
+            cid: undefined,
             bookmarkCount: undefined,
             replyCount: undefined,
             repostCount: undefined,
@@ -111,13 +124,15 @@ class Downloadbutton {
       }
 
 
-      constructor(type, element, url, toastManager, hidden, inputMethod) {
+      constructor(type, element, url, settings, toastManager, hidden, inputMethod) {
             this.url = url
             this.type = type
+            this.settings = settings
             this.#toastManager = toastManager
             this.mediaElement = element
             this.#inputMethod = inputMethod
 
+            console.info(log("Creating download button of type " + type.name + " for URL: " + url))
 
             if (this.mediaElement.textContent == "GIF") {
                   this.type = Downloadbutton.UploadedGIF
@@ -131,9 +146,6 @@ class Downloadbutton {
                   this.#GetDownloadButton(this.url, hidden)
                   this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
-                  altTextButtons.forEach(altTextButton => altTextButton.style.left = "16px !important")
-
                   this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
                   this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
@@ -143,7 +155,7 @@ class Downloadbutton {
 
                   this.mediaElement.downloadButton = true
                   this.#GetDownloadButton(this.url, hidden)
-                  this.mediaElement.parentElement.insertBefore(this.#downloadButtonDiv, this.mediaElement)
+                  this.mediaElement.after(this.#downloadButtonDiv)
             }
 
             else if (this.type == Downloadbutton.GIF || this.type == Downloadbutton.UploadedGIF) {
@@ -151,11 +163,8 @@ class Downloadbutton {
                   this.#GetDownloadButton(this.url, hidden)
                   this.mediaElement.parentElement.appendChild(this.#downloadButtonDiv)
 
-                  let altTextButtons = Array.from(this.mediaElement.parentElement.querySelectorAll('button[data-testid="altTextButton"]'))
-                  altTextButtons.forEach(altTextButton => altTextButton.classList.add("alt-button-left"))
-
-                  this.mediaElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
-                  this.mediaElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
+                  this.mediaElement.parentElement.parentElement.addEventListener("mouseover", () => this.#downloadButtonDiv.classList.add("download-button-div-hover"))
+                  this.mediaElement.parentElement.parentElement.addEventListener("mouseout", () => this.#downloadButtonDiv.classList.remove("download-button-div-hover"))
             }
 
             else {
@@ -183,7 +192,7 @@ class Downloadbutton {
                   <div class="download-button-div${this.type != Downloadbutton.Video ? ' download-button-div-image' : ''}" id="download-button-div" style="display: ${hidden ? "none" : "block"};">
                         ${this.type != Downloadbutton.Video ? '<div class="dropshadow" id="dropshadow"></div>' : ''}
                         <button class="download-button" id="download-button">
-                        <img id="download-button-static" class="download-icon" draggable="false" style="opacity: 1;" src="${this.#GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
+                        <img id="download-button-static" class="download-icon" draggable="false" style="opacity: 1;" src="${GetURLFromHistory(url) ? Downloadbutton.Icons.Done : Downloadbutton.Icons.Download}">
                         </button>
                   </div>
                   `.replace(/\s{2,}/g, " "), "text/html")
@@ -198,7 +207,7 @@ class Downloadbutton {
                   "click",
                   (event) => {
                         event.stopPropagation()
-                        this.#Download(url);
+                        this.Download(url);
                   })
 
             return downloadButton
@@ -207,13 +216,23 @@ class Downloadbutton {
       // Set styling for touch devices
       SetInputSupport(inputMethod) {
             this.#inputMethod = inputMethod
+
+            if (inputMethod == "touch") this.downloadButton.classList.add("download-button-touch")
+            else this.downloadButton.classList.remove("download-button-touch")
+
             this.#downloadButtonDiv.style.opacity = this.#inputMethod == "touch" ? "1" : ""
       }
 
       /** Downloads the url based on type of button */
-      async #Download(url) {
+      async Download(url) {
             try {
-                  console.log("Downloading " + url)
+                  const originalURL = url
+
+                  let imagesAsWEBP = undefined;
+                  let imgQualityMode = undefined;
+                  let imgQuality = undefined;
+
+                  console.log(log("Downloading " + url))
 
                   if (this.#downloading) return
                   this.#downloading = true
@@ -222,17 +241,20 @@ class Downloadbutton {
                   this.#CreateProgressCircle()
                   this.#progressCircle.set(0.01)
 
+                  // Delay toast for up to 300ms to allow the post info to be fetched
                   let toastDisplayed = false
                   setTimeout(() => {
-                        if (!toastDisplayed && GetSetting("downloadToast").value) {
+                        if (!toastDisplayed && GetSetting("downloadToast", this.settings).value) {
                               toastDisplayed = true
                               this.#toast = this.#toastManager.DisplayToast()
                         }
                   }, 300)
 
-                  await this.#RunPostInfoScan()
-
                   if (!this.postInfoDone) {
+                        // Fetch raw post data from main thread
+                        await this.#RunPostInfoScan()
+
+                        // Analyze raw post data
                         await this.#GetInfoFromThread()
                         this.postInfoDone = true
                   }
@@ -241,30 +263,49 @@ class Downloadbutton {
                   this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
 
                   this.#fileExtension = this.type.ext
-                  if (this.type == Downloadbutton.GIF)
-                        // Tenor and the bluesky mirrors use the last two letters of the ID to indicate format
-                        if (!GetSetting("gifsAsWEBM").value) {
+
+                  // If the post is a user uploaded or tenor GIF
+                  if (this.type == Downloadbutton.GIF || this.type == Downloadbutton.UploadedGIF) {
+                        if (GetSetting("gifsAsGIF", this.settings).value)
                               this.#fileExtension = ".gif"
-                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "AC")
+
+                        if (this.type == Downloadbutton.UploadedGIF)
+                              url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
+                  }
+
+                  // If requested, change file extension to .jpg
+                  else if (this.type == Downloadbutton.Image) {
+                        // Get relevant settings
+                        imagesAsWEBP = GetSetting("imagesAsWEBP", this.settings).value
+                        imgQualityMode = GetSetting("imgQualityMode", this.settings).value
+                        imgQuality = GetSetting("imgQuality", this.settings).value
+
+                        // Override file extension
+                        if (!imagesAsWEBP)
+                              this.#fileExtension = ".jpg"
+
+                        if (imgQualityMode) {
+                              // Change URL to API to get better quality
+                              url = `https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${this.postInfo.did}&cid=${this.postInfo.cid}`
                         }
-                        else
-                              url = url.replace(/(?<=https?:\/\/(?:\w+\.)+\w+\/[^\/]+)[^\/]{2}(?=\/)/, "P3")
-
-                  // If reqested, change file extension to .jpg
-                  else if (this.type == Downloadbutton.Image && !GetSetting("imagesAsWEBP").value)
-                        this.#fileExtension = ".jpg"
-
-                  // Fake GIFs uploaded by users need to be converted to the right format
-                  if (this.type == Downloadbutton.UploadedGIF) {
-                        url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
+                        else {
+                              if (imagesAsWEBP)
+                                    // Remove "@jpeg" modifier if present
+                                    url = url.replaceAll(/@jpeg$/gi, "")
+                              else
+                                    // Add "@jpeg" modifier if not present
+                                    url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
+                        }
                   }
 
                   this.#filePath += this.#fileExtension
 
-                  if (!toastDisplayed && GetSetting("downloadToast").value) {
+                  // Display toast if not yet displayed
+                  if (!toastDisplayed && GetSetting("downloadToast", this.settings).value) {
                         toastDisplayed = true
                         this.#toast = this.#toastManager.DisplayToast()
                   }
+                  // Set toast text to file name
                   if (this.#toast) this.#toastManager.SetText(this.#toast, this.#fileName + this.#fileExtension)
 
                   // Purely cosmetic, delays download for 200ms to let the transition progress
@@ -276,205 +317,114 @@ class Downloadbutton {
                   })
 
                   try {
-                        // Image download
-                        if (this.type != Downloadbutton.Video && this.type != Downloadbutton.UploadedGIF) {
+                        console.info(log("Sending download to background script"))
 
-                              // Old method without support for file paths
-                              // Used on mobile devices without browser.downloads API
-                              if (this.#mobileDevice) {
-                                    let originalURL = url
+                        // Generate process ID
+                        const downloadProcessId = Date.now()
 
-                                    // Decide if image should be jpeg or webp
-                                    if (this.type == Downloadbutton.Image) {
-                                          if (GetSetting("imagesAsWEBP").value)
-                                                // Remove "@jpeg" modifier if present
-                                                url = url.replaceAll(/@jpeg$/gi, "")
-                                          else
-                                                // Add "@jpeg" modifier if not present
-                                                url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
-                                    }
+                        // Add listener for progress updates
+                        browser.runtime.onMessage.addListener(message => {
+                              if (message.type == "bsky-download-progress" &&
+                                    message.id == downloadProcessId &&
+                                    message.url == url) {
 
-                                    // Get local URL
-                                    const file = await fetch(url)
-
-                                    this.#progressCircle.animate(0.5, { duration: 300 })
-                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, 0.5)
-                                    const fileBlob = await file.blob()
-                                    this.#progressCircle.animate(1, { duration: 300 })
-                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, 1)
-                                    const fileURL = URL.createObjectURL(fileBlob)
-
-                                    // Download file
-                                    const a = document.createElement('a')
-                                    a.download = this.#filePath
-                                    a.href = fileURL
-                                    a.click()
-
-                                    this.#downloadIcon.src = Downloadbutton.Icons.Done
-
-                                    setTimeout(() => {
+                                    if (message.hasOwnProperty("error")) {
+                                          this.#downloadIcon.src = Downloadbutton.Icons.Error
                                           this.#progressCircleElem.style.opacity = 0
                                           setTimeout(() => {
                                                 this.#downloadIcon.style.opacity = 1
                                                 this.#downloading = false
                                                 this.#DestroyProgressCircle()
-                                          }, 100);
-                                    }, 800)
-
-                                    window.URL.revokeObjectURL(fileURL);
-                                    this.#AddURLToHistory(originalURL)
-                              }
-
-                              // New method
-                              else {
-                                    // Generate random process ID
-                                    const id = Math.round(Math.random() * 1000000000)
-                                    let originalURL = url
-
-                                    // Decide if image should be jpeg or webp
-                                    if (this.type == Downloadbutton.Image) {
-                                          if (GetSetting("imagesAsWEBP").value)
-                                                // Remove "@jpeg" modifier if present
-                                                url = url.replaceAll(/@jpeg$/gi, "")
-                                          else
-                                                // Add "@jpeg" modifier if not present
-                                                url = url.replaceAll(/(?<!@jpeg)$/gi, "@jpeg")
+                                          }, 300);
+                                          throw new Error(message.error)
                                     }
 
-                                    // Add listener for progress updates
-                                    browser.runtime.onMessage.addListener(message => {
-                                          if (message.type == "bsky-download-progress" &&
-                                                message.id == id &&
-                                                message.url == url) {
-
-                                                if (message.hasOwnProperty("error")) {
-                                                      this.#downloadIcon.src = Downloadbutton.Icons.Error
-                                                      this.#progressCircleElem.style.opacity = 0
-                                                      setTimeout(() => {
-                                                            this.#downloadIcon.style.opacity = 1
-                                                            this.#downloading = false
-                                                            this.#DestroyProgressCircle()
-                                                      }, 300);
-                                                      throw new Error(message.error)
-                                                }
-
-                                                const progress = message.progress / 100
-                                                this.#progressCircle.animate(progress, { duration: 300 })
-                                                if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
-
-                                                // Download is finished
-                                                if (message.progress >= 100) {
-                                                      this.#AddURLToHistory(originalURL)
-
-                                                      this.#downloadIcon.src = Downloadbutton.Icons.Done
-
-                                                      setTimeout(() => {
-                                                            this.#progressCircleElem.style.opacity = 0
-                                                            setTimeout(() => {
-                                                                  this.#downloadIcon.style.opacity = 1
-                                                                  this.#downloading = false
-                                                                  this.#DestroyProgressCircle()
-                                                            }, 100);
-                                                      }, 800)
-                                                }
-                                          }
-
-                                    })
-
-                                    // Send download request
-                                    browser.runtime.sendMessage({
-                                          type: "bsky-download",
-                                          id: id,
-                                          url: url,
-                                          fileType: this.type,
-                                          fileExt: this.#fileExtension,
-                                          filePath: this.#filePath
-                                    })
-                              }
-                        }
-
-                        // Video download
-                        else {
-                              // Generate unique ID for process
-                              const id = Math.round(Math.random() * 1000000000)
-
-                              // Add listener for progress updates from background script
-                              browser.runtime.onMessage.addListener((message) => {
-                                    if (message.type == "bsky-download-progress" &&
-                                          message.id == id &&
-                                          message.url == url) {
-
-                                          // Error occurred during download, skipped file 
-                                          if (message.hasOwnProperty("error")) {
-                                                this.#downloadIcon.src = Downloadbutton.Icons.Error
-                                                this.#progressCircleElem.style.opacity = 0
-                                                setTimeout(() => {
-                                                      this.#downloadIcon.style.opacity = 1
-                                                      this.#downloading = false
-                                                      this.#DestroyProgressCircle()
-                                                }, 300);
-                                                throw new Error(message.error)
-                                          }
-
-                                          // Progress update
-                                          const progress = message.progress / 100
+                                    const progress = message.progress / 100
+                                    if (this.#progressCircle)
                                           this.#progressCircle.animate(progress, { duration: 300 })
-                                          if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
+                                    if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
 
-                                          // Download done
-                                          if (message.progress == 100) {
-                                                // Save URL to history
-                                                this.#AddURLToHistory(url)
+                                    // Download is finished
+                                    if (message.progress >= 100) {
+                                          this.#toast.DismissOnUninterested()
 
-                                                if (message.fileBlob) {
+                                          console.log(log("Download successful"))
+
+                                          AddURLToHistory(originalURL)
+
+                                          if (message.fileBlob) {
+                                                const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                                                console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
+
+                                                lastMobileDownload = Date.now() + timeout
+
+                                                setTimeout(() => {
                                                       let fileURL = URL.createObjectURL(message.fileBlob)
                                                       const a = document.createElement('a');
-                                                      a.download = this.#fileName + ".mp4";
+                                                      a.download = this.#fileName + this.#fileExtension;
                                                       a.href = fileURL;
 
                                                       a.click();
 
                                                       window.URL.revokeObjectURL(fileURL)
-                                                }
-
-                                                // transition back to static icon
-                                                this.#downloadIcon.src = Downloadbutton.Icons.Done
-                                                setTimeout(() => {
-                                                      this.#progressCircleElem.style.opacity = 0
-                                                      setTimeout(() => {
-                                                            this.#downloadIcon.style.opacity = 1
-                                                            this.#downloading = false
-                                                            this.#DestroyProgressCircle()
-                                                      }, 200);
-                                                }, 800)
+                                                      a.remove()
+                                                }, timeout)
                                           }
-                                    }
-                              })
 
-                              // Send download request to background script
-                              browser.runtime.sendMessage({
-                                    type: "bsky-download",
-                                    id: id,
+                                          this.#downloadIcon.src = Downloadbutton.Icons.Done
+                                          setTimeout(() => {
+                                                this.#progressCircleElem.style.opacity = 0
+                                                setTimeout(() => {
+                                                      this.#downloadIcon.style.opacity = 1
+                                                      this.#downloading = false
+                                                      this.#DestroyProgressCircle()
+                                                }, 200);
+                                          }, 800)
+                                    }
+                              }
+
+                        })
+
+                        // Send download request
+                        browser.runtime.sendMessage({
+                              type: "bsky-download",
+                              downloadInfo: {
+                                    id: downloadProcessId,
                                     url: url,
+                                    originalURL: originalURL,
                                     fileType: this.type,
+                                    fileName: this.#fileName,
                                     fileExt: this.#fileExtension,
-                                    filePath: this.#filePath
-                              })
-                        }
+                                    filePath: this.#filePath,
+                                    mimeType: Downloadbutton.MimeTypes[this.#fileExtension],
+                                    imgCompression: imgQualityMode,
+                                    imgQuality: imgQuality
+                              }
+                        })
                   }
                   catch (error) {
-                        console.error(error)
-
+                        this.#downloading = false
                         this.#downloadIcon.src = Downloadbutton.Icons.Error
-                        this.#progressCircleElem.style.opacity = 0
+
+                        this.#toastManager.SetText(this.#toast, error)
+
                         setTimeout(() => {
-                              this.#downloadIcon.style.opacity = 1
-                              this.#downloading = false
-                              this.#DestroyProgressCircle()
-                        }, 300);
+                              this.#progressCircleElem.style.opacity = 0
+                              setTimeout(() => {
+                                    try {
+                                          this.#downloadIcon.style.opacity = 1
+                                          this.#downloading = false
+                                          this.#DestroyProgressCircle()
+                                    }
+                                    catch { }
+                              }, 100);
+                        }, 800)
+
+                        throw new Error(error)
                   }
             }
             catch (error) {
+                  console.error(error)
                   this.#downloading = false
                   this.#downloadIcon.src = Downloadbutton.Icons.Error
 
@@ -491,8 +441,6 @@ class Downloadbutton {
                               catch { }
                         }, 100);
                   }, 800)
-
-                  throw new Error(error)
             }
       }
 
@@ -513,76 +461,19 @@ class Downloadbutton {
 
       /** Free up memory by destroying progress circle */
       #DestroyProgressCircle() {
-            tryRun(this.#progressCircle.destroy)
+            if (this.#progressCircle)
+                  tryRun(this.#progressCircle.destroy)
             this.#progressCircle = null;
 
             this.#progressCircleElem.remove()
 
             // Dismiss toast some time after mouse left
             if (this.#toast) {
-                  const toast = this.#toast
-                  let timeout = null
-
-                  // Mouse was NOT on element before
-                  if (!toast.mouseOn)
-                        timeout = setTimeout(() => {
-                              this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                        }, 3500);
-
-                  // Mouse enters element
-                  toast.onMouseEnter = () => {
-                        if (timeout) {
-                              clearTimeout(timeout)
-                              timeout = null
-                        }
-                  }
-
-                  // Mouse leaves element
-                  toast.onMouseLeave = () => {
-                        if (!timeout)
-                              timeout = setTimeout(() => {
-                                    this.#toastManager.DismissToast(toast, this.#toastManager.toastList)
-                              }, 2500);
-                  }
+                  this.#toast.DismissOnUninterested()
             }
       }
 
-      /** Adds downloaded URL to local storage */
-      #AddURLToHistory(url) {
-            try {
-                  const hash = GenerateHash(url)
-
-                  let _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-                  if (_storage == null) _storage = []
-                  if (_storage.indexOf(hash) == -1) _storage.push(hash)
-                  localStorage.setItem("downloadedURLs", JSON.stringify(_storage))
-            }
-            catch (error) {
-                  console.error(error)
-            }
-      }
-
-      /** Checks if URL is present in local storage */
-      #GetURLFromHistory(url) {
-            try {
-                  const hash = GenerateHash(url)
-                  let _storage = []
-                  try {
-                        _storage = JSON.parse(localStorage.getItem("downloadedURLs"));
-                  }
-                  catch {
-                        localStorage.setItem("downloadedURLs", JSON.stringify([]))
-                  }
-
-                  return _storage && _storage.length > 0 && _storage.indexOf(hash) !== -1
-            }
-            catch (error) {
-                  console.error(error)
-                  return false
-            }
-      }
-
-      /** Add script to doc to get uri from main thread.
+      /** Add script to document to get uri from main thread.
        * This looks for react properties which are only accessible in the main document thread.  */
       #RunPostInfoScan() {
             return new Promise(resolve => {
@@ -612,9 +503,9 @@ class Downloadbutton {
                         // Await the injection of document.js by content.js
                         mainThreadHelperLoaded.then(() => {
                               script.textContent = `
-                        (function () {
+                        (async function () {
                               const element = document.currentScript;
-                              const postData = GetURI(element)
+                              const postData = await GetURI(element)
                               element.setAttribute("post-data", JSON.stringify(postData))
                         })()`
                         })
@@ -636,13 +527,70 @@ class Downloadbutton {
                   this.postInfo.type = this.type.name
 
                   return
-            } catch (e) { console.error(e) }
+            } catch (e) {
+                  console.error(log("Error while fetching thread information: " + e))
+            }
       }
 
       #GetFilePath() {
-            return GetFilePath(this.postInfo)
+            return GetFilePath(this.postInfo, this.settings)
       }
 }
+
+// Resume a download without a download button
+function ResumeUnfinishedDownload(downloadInfo, toastManager) {
+      // Display toast
+      const toast = toastManager.DisplayToast(downloadInfo.fileName)
+
+      browser.runtime.onMessage.addListener(message => {
+            if (message.type == "bsky-download-progress" &&
+                  message.id == downloadInfo.id &&
+                  message.url == downloadInfo.url) {
+
+                  if (message.hasOwnProperty("error")) {
+                        throw new Error(message.error)
+                  }
+
+                  const progress = message.progress / 100
+                  if (toast) toastManager.SetProgress(toast, progress)
+
+                  // Download is finished
+                  if (message.progress >= 100) {
+                        toast.DismissOnUninterested()
+
+                        console.log(log("Download successful"))
+
+                        AddURLToHistory(downloadInfo.originalURL)
+
+                        if (message.fileBlob) {
+                              const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                              console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
+
+                              lastMobileDownload = Date.now() + timeout
+
+                              setTimeout(() => {
+                                    let fileURL = URL.createObjectURL(message.fileBlob)
+                                    const a = document.createElement('a');
+                                    a.download = downloadInfo.fileName + downloadInfo.fileExt;
+                                    a.href = fileURL;
+
+                                    a.click();
+
+                                    window.URL.revokeObjectURL(fileURL)
+                                    a.remove()
+                              }, timeout)
+                        }
+                  }
+            }
+      })
+
+      // Send job to background script
+      browser.runtime.sendMessage({
+            type: "bsky-download",
+            downloadInfo: downloadInfo
+      })
+}
+
 
 /** Detect if a mobile device is used in the least intrusive way.
  * 
@@ -675,6 +623,40 @@ function GenerateHash(string) {
       return Math.abs(hash);
 };
 
+
+
+/** Adds downloaded URL to local storage */
+function AddURLToHistory(url) {
+      try {
+            const hash = GenerateHash(url)
+
+            if (downloadedURLs.urls == null)
+                  downloadedURLs.urls = []
+
+            if (downloadedURLs.urls.indexOf(hash) == -1) {
+                  browser.runtime.sendMessage({ type: "add-downloaded-url", value: hash })
+            }
+      }
+      catch (error) {
+            console.error(log("Error while adding URL to storage: " + error))
+      }
+}
+
+/** Checks if URL is present in local storage */
+function GetURLFromHistory(url) {
+      try {
+            const hash = GenerateHash(url)
+
+            return downloadedURLs.urls &&
+                  downloadedURLs.urls.length > 0 &&
+                  downloadedURLs.urls.indexOf(hash) !== -1
+      }
+      catch (error) {
+            console.error(log("Error while fetching URL from storage: " + error))
+            return false
+      }
+}
+
 const pathVars = {
       username: { name: "Username", desc: "Username of the poster.", default: "error", tags: ["username", "user", "tag", "handle"] },
       displayName: { name: "Display name", desc: "Display name of the poster.", default: "error", tags: ["displayname", "poster", "name"] },
@@ -702,7 +684,7 @@ const pathVars = {
       second: { name: "Second", desc: "Second of the post date.", default: "0", tags: ["second", "s"] }
 }
 
-function GetFilePath(properties, pathTemplate = null) {
+function GetFilePath(properties, settings, pathTemplate = null) {
       try {
             let tempProperties = structuredClone(properties)
             // Sanitizing inputs by replacing slashes with invalid characters which will be removed later
@@ -713,13 +695,12 @@ function GetFilePath(properties, pathTemplate = null) {
                   tempProperties.timestamp = GetApproximateAge(tempProperties.timestamp)
             } catch { }
 
-            if (pathTemplate === null) pathTemplate = GetSetting("downloadPath").value
+            if (pathTemplate === null) pathTemplate = GetSetting("downloadPath", settings).value
 
             if (DetectMobileDevice()) pathTemplate = pathTemplate.replaceAll(/[\/\\]+/gi, "")
 
 
             Object.keys(pathVars).forEach(key => {
-                  console.log(key + ":", tempProperties[key])
                   pathTemplate = pathTemplate.replaceAll(
                         new RegExp(`%(${pathVars[key].tags.join("|")})%`, "gi"),
                         tempProperties[key] || pathVars[key].default
@@ -738,8 +719,7 @@ function GetFilePath(properties, pathTemplate = null) {
             return pathTemplate
       }
       catch (e) {
-            console.error(e)
-            console.error("Invalid file path")
+            console.error(log("Invalid file path template: " + e))
             return "error"
       }
 }
@@ -754,7 +734,12 @@ function GetNthParent(element, n) {
       return element
 }
 
-function GetSetting(settingId) {
+function GetSetting(settingId, settings) {
+      console.info(log("Fetching setting: " + settingId))
+      if (!settings) {
+            console.error(log("No settings provided"))
+            return
+      }
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
@@ -766,29 +751,34 @@ function GetSetting(settingId) {
 }
 
 function SetSetting(settingId, value, settings) {
+      console.info(log("Overwriting setting: " + settingId + " => " + value))
       browser.runtime.sendMessage({ type: "set-setting", settingId: settingId, value: value })
       for (let i = 0; i < settings.length; i++) {
             for (let j = 0; j < settings[i].length; j++) {
                   const setting = settings[i][j]
                   if (setting.id == settingId) {
                         setting.value = value;
-                        return
+                        return true
                   }
             }
       }
+
+      return false
 }
 
 
 async function GetInfoFromThread(postInfo, atURI, url) {
       try {
+            console.info(log("Getting post info from thread"))
             let info = {}
             let record = postInfo.record
             let media = ProcessMedia(record.embed)
 
             // URI doesn't match, try quoted post
-            let mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+            let cid = media.find(cid => url.includes(cid))
+            let mediaIndex = media.indexOf(cid)
             if (mediaIndex == -1) {
-                  postInfo = postInfo.embed.record.record || postInfo.embed.record
+                  postInfo = postInfo.embed.record.record || postInfo.embed.record || postInfo.record
                   record = postInfo.value
 
                   atURI = postInfo.uri
@@ -805,11 +795,13 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             tryRun((() => info.hash = GenerateHash(url)))
 
             tryRun((() => info.username = postInfo.author.handle))
+            tryRun((() => info.did = postInfo.author.did))
             tryRun((() => info.displayName = postInfo.author.displayName))
             tryRun((() => info.fileName = info.username + "-" + info.postID + (mediaIndex != 0 ? "-" + mediaIndex : "")))
             tryRun((() => info.timestamp = date))
             tryRun((() => info.language = record.langs[0]))
             tryRun((() => info.label = ProcessLabels(postInfo.labels)))
+            tryRun((() => info.cid = cid))
 
             tryRun((() => info.bookmarkCount = postInfo.bookmarkCount))
             tryRun((() => info.replyCount = postInfo.replyCount))
@@ -829,7 +821,7 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             return info
       }
       catch (e) {
-            console.error("Error while parsing post information: " + e)
+            console.error(log("Error while parsing post information: " + e))
             return false
       }
 
@@ -1033,6 +1025,10 @@ class ToastManager {
             this.toastContainer = document.createElement("div")
             this.toastContainer.classList.add("toast-container")
             this.toastContainer.id = "bskyDownloaderToastContainer"
+            if (this.mobileLayout)
+                  this.toastContainer.style.top = "0px"
+            else
+                  this.toastContainer.style.top = ""
             document.body.appendChild(this.toastContainer)
 
             window.addEventListener("resize", () => {
@@ -1040,6 +1036,11 @@ class ToastManager {
 
                   if (this.mobileLayout != mobileLayout) {
                         this.mobileLayout = mobileLayout
+
+                        if (this.mobileLayout)
+                              this.toastContainer.style.top = "0px"
+                        else
+                              this.toastContainer.style.top = ""
 
                         this.toastList.forEach(toast => {
                               toast.mobileLayout = this.mobileLayout
@@ -1066,8 +1067,28 @@ class ToastManager {
             containers.forEach(container => container.remove())
       }
 
+      /**
+       * 
+       * @param {string} text Text to display
+       * @param {bool} progressBar Whether to include a progress bar
+       * @param {string} helpLink Link to show with the label "see more" or falsly for no link
+       * @param {function} onDismiss Function to execute on dismissal
+       * @returns {ToastManager.ToastNotification}
+       */
       DisplayToast(text, progressBar = true, helpLink = null, onDismiss = null) {
-            let toast = new this.ToastNotification(text, this.toastContainer, progressBar, this.toastList.length == 1, this.mobileLayout, helpLink, onDismiss)
+            console.log(log("Displaying toast"))
+
+            let toast = new this.ToastNotification(
+                  text,
+                  this.toastContainer,
+                  progressBar,
+                  this.toastList.length == 1,
+                  this.mobileLayout,
+                  helpLink,
+                  onDismiss,
+                  this
+            )
+
             toast.onAction = () => { this.DismissToast(toast, this.toastList) }
             this.toastList.unshift(toast)
 
@@ -1077,7 +1098,8 @@ class ToastManager {
       }
 
       SetProgress(toast, progress) {
-            toast.progressBar.animate(progress, { duration: 400 })
+            if (toast.progressBar)
+                  toast.progressBar.animate(progress, { duration: 400 })
 
             // Make progress bar transparent, revealing green background
             if (progress == 1)
@@ -1148,14 +1170,16 @@ class ToastManager {
             #toastAction
             dismissed = false
             #onDismiss
+            toastManager
 
-            constructor(text, container, progressBar, firstToast, mobileLayout, helpLink, onDismiss) {
+            constructor(text, container, progressBar, firstToast, mobileLayout, helpLink, onDismiss, toastManager) {
                   this.container = container
                   this.text = text
                   this.progressBar = progressBar
                   this.mobileLayout = mobileLayout
                   this.helpLink = helpLink
                   this.#onDismiss = onDismiss
+                  this.toastManager = toastManager
                   this.Display(firstToast)
 
                   if (this.text) this.SetText(this.text)
@@ -1252,6 +1276,60 @@ class ToastManager {
                   }, 200);
 
                   if (this.#onDismiss) this.#onDismiss()
+            }
+
+            /** 
+             * Dismiss toast if the user hasn't shown interest after some time
+             * @param {Number} minFocusTime Controls how long the tab has to be in focus for the toast to qualify for dismissal
+             * @param {Number} dismissTime Controls how long the toast will be visible without a mouse over. Only starts being relevant if the minimum focus time is reached
+             */
+            DismissOnUninterested(minFocusTime = 3000, dismissTime = 5000) {
+                  // Sets the time when the tab has last lost focus or the display time of the toast
+                  let lastFocusLossTime = Date.now()
+
+                  const interval = setInterval(() => {
+                        // The tab has lost focus
+                        if (document.visibilityState != "visible")
+                              // Reset last focus loss time to now
+                              lastFocusLossTime = Date.now()
+
+                        // If the tab has been in focus for long enough
+                        else if ((Date.now() - lastFocusLossTime) > minFocusTime) {
+                              clearInterval(interval)
+
+                              // Avoid errors from user manually dismissing
+                              if (!this.dismissed) {
+                                    // Helps track timeouts for dismissal
+                                    // Gets cleared when the mouse enters the toast
+                                    let timeout = null
+
+                                    // Delay dismissal until mouse has hasn't been over the toast for specified time
+                                    // Mouse was NOT on element before
+                                    if (!this.mouseOn)
+                                          timeout = setTimeout(() => {
+                                                this.toastManager.DismissToast(this, this.toastManager.toastList)
+                                          }, dismissTime);
+
+                                    // Mouse enters element
+                                    // Clear timeout for dismissal indefinitely while the mouse is on the toast
+                                    this.onMouseEnter = () => {
+                                          if (timeout) {
+                                                clearTimeout(timeout)
+                                                timeout = null
+                                          }
+                                    }
+
+                                    // Mouse leaves element
+                                    // Resume timeout for dismissal
+                                    this.onMouseLeave = () => {
+                                          if (!timeout)
+                                                timeout = setTimeout(() => {
+                                                      this.toastManager.DismissToast(this, this.toastManager.toastList)
+                                                }, dismissTime);
+                                    }
+                              }
+                        }
+                  }, 200)
             }
 
             Display(firstToast) {
@@ -1375,7 +1453,7 @@ class FlashingBorders {
                               // Destroy old borders
                               if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
 
-                              // If onboaring has occurred for this type
+                              // If onboarding has occurred for this type
                               // or this eventlistener has run
                               // or flashing borders have been stopped
                               if (
@@ -1441,7 +1519,7 @@ class FlashingBorders {
                         // Destroy old borders
                         if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
 
-                        // If onboaring has occurred for this type
+                        // If onboarding has occurred for this type
                         // or this eventlistener has run
                         // or flashing borders have been stopped
                         if (
@@ -1497,7 +1575,7 @@ class FlashingBorders {
 function tryRun(func, log = false) {
       try { func() }
       catch (e) {
-            if (log) console.log(e)
+            if (log) console.error(log(e))
       }
 }
 
@@ -1522,4 +1600,203 @@ function convert24rTo12hr(hour) {
                   return "12PM"
             return (hour % 12) + "PM"
       }
+}
+
+// Add formatting, timestamps and numbering to logs
+function log(text) {
+      try {
+            numLogs++;
+            // Count up number of logs, display document time and input text
+            return `${textPadFactor(numLogs.toString(), 3)} ${textPadFactor((Date.now() - documentStartTime).toString(), 6)}   ${text}`
+      } catch (e) {
+            console.error("Error during logging")
+            console.error(e)
+      }
+}
+
+// Pads text input length to a multiple of the factor
+function textPadFactor(text, factor, paddingChar = " ", minLen) {
+      while (text.length % factor != 0)
+            text = paddingChar + text
+      return text
+}
+
+function GetApproxFileSize(quality, format) {
+      const q = Math.max(quality / 100, 0.01)
+      let approxFileSize
+
+      if (!quality && quality !== 0) console.error(log("No quality provided"))
+      else if (!format) console.error(log("No format provided"))
+
+      else if (format == "image/webp") {
+            approxFileSize = 70 * q + 20 + Math.pow(q + 0.3, 20)
+      }
+      else {
+            approxFileSize = (60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30) * 2 // Quick fix
+      }
+      approxFileSize = Math.round(approxFileSize)
+
+
+      if (approxFileSize >= 950) {
+            approxFileSize = Math.round(approxFileSize / 100) / 10
+            approxFileSize = approxFileSize + "MB"
+      }
+      else approxFileSize = approxFileSize + "KB"
+
+      return approxFileSize
+}
+
+function isVersionNewer(oldVer, newVer) {
+      try {
+            if (!oldVer) return true
+            if (!newVer) return undefined
+            oldVer = oldVer.split(".")
+            newVer = newVer.split(".")
+
+            for (let i = 0; i < newVer.length; i++) {
+                  const newVerComp = Number(newVer[i])
+                  const oldVerComp = Number(oldVer[i])
+
+                  if (newVerComp > oldVerComp)
+                        return true
+                  else if (newVerComp < oldVerComp)
+                        return false
+            }
+            return false
+      } catch (e) {
+            console.error(e)
+            return undefined
+      }
+}
+
+class FullScreenPopup {
+      headerText
+      text
+      options
+      textInput
+      dismissed = false
+      onDismiss
+      textVal
+
+      containerElem
+      popupElem
+      buttonDiv
+      textInputElem
+
+      constructor(headerText, text = "", options = [], onDismiss = () => { }, textInput = false) {
+            Array.from(document.querySelectorAll("#downloaderPopupContainer"))
+                  .forEach(element => element.remove())
+
+            this.headerText = headerText
+            this.text = text
+            this.options = options
+            this.onDismiss = onDismiss
+            this.textInput = textInput
+            this.textVal = textInput
+
+            const domParser = new DOMParser()
+            this.containerElem = domParser.parseFromString(`
+            <div class="bsky-downloader-popup-container" id="downloaderPopupContainer">
+                  <div class="bsky-downloader-popup" id="downloaderPopup">
+                        <div style="padding: 24px;">
+                              <div class="bsky-downloader-popup-text-container">
+                                    <p class="bsky-downloader-popup-header" id="downloaderPopupHeader">${this.headerText}</p>
+                                    <p class="bsky-downloader-popup-text" id="downloaderPopupText">${this.text}</p>
+                                    <textarea type="text" class="bsky-downloader-popup-text-input" id="textInput" spellcheck="false"
+                                    style="display: ${this.textInput ? "block" : "none"}">${typeof this.textInput == "string" ? this.textInput : ""}</textarea>
+                              </div>
+                              <div class="bsky-downloader-popup-button-div" id="downloaderPopupButtonDiv">
+                              </div>
+                        </div>
+                  </div>
+            </div>
+            `, "text/html").body.firstElementChild
+
+            this.popupElem = this.containerElem.querySelector("#downloaderPopup");
+            this.buttonDiv = this.containerElem.querySelector("#downloaderPopupButtonDiv");
+            this.textInputElem = this.containerElem.querySelector("#textInput")
+
+            for (let i = 0; i < options.length; i++) {
+                  const option = options[i]
+                  const button = option.GetElement()
+
+                  button.addEventListener("click", option.onClick || (() => this.Dismiss()))
+
+                  this.buttonDiv.appendChild(button)
+            }
+
+            this.popupElem.addEventListener("click", e => e.stopPropagation())
+
+            this.containerElem.addEventListener("click", () => this.Dismiss())
+
+            this.textInputElem.addEventListener("input", () => {
+                  this.textVal = this.textInputElem.value
+            })
+
+            document.body.appendChild(this.containerElem)
+
+            setTimeout(() => {
+                  this.containerElem.style.opacity = "1"
+                  this.popupElem.style.transform = "scale(1)"
+            }, 50)
+      }
+
+      Dismiss() {
+            this.dismissed = true;
+
+            this.containerElem.style.opacity = "0"
+            this.popupElem.style.transform = "scale(0.95)"
+            this.containerElem.style.pointerEvents = "none"
+            setTimeout(() => {
+                  this.containerElem.remove()
+            }, 300)
+
+            if (this.onDismiss) this.onDismiss()
+
+            this.onDismiss = null
+      }
+
+      static PopupOption = class PopupOption {
+            text;
+            onClick;
+            primaryButton;
+
+            constructor(text = "Empty", onClick = null, primaryButton = true) {
+                  this.text = text
+                  this.onClick = onClick
+                  this.primaryButton = primaryButton
+            }
+
+            GetElement() {
+                  const button = document.createElement("input")
+                  button.type = "button"
+                  button.value = this.text
+
+                  button.classList.add("bsky-downloader-popup-button")
+                  if (!this.primaryButton)
+                        button.classList.add("bsky-downloader-popup-button-secondary")
+
+                  return button
+            }
+      }
+}
+
+
+// Set light / dark / dim mode for extension UI
+function SetThemeClass(theme) {
+      theme = theme || "theme--dim"
+
+      // This prevents bluesky from randomly deleting the class
+      // theme--dark => theme-dark
+      theme = theme.replace(/(?<=theme)--/i, "-")
+
+      // Remove old classes
+      document.documentElement.classList.remove(
+            "bsky-downloader-theme-light",
+            "bsky-downloader-theme-dim",
+            "bsky-downloader-theme-dark"
+      )
+
+      // Add new theme class
+      document.documentElement.classList.add("bsky-downloader-" + theme)
 }

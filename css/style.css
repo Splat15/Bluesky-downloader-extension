@@ -1,19 +1,10 @@
-.dark-mode {
-  --text-loading: rgb(103, 103, 103);
-  --text-color: rgb(255, 255, 255);
-  --toast-surface: rgb(34, 46, 63);
-  --toast-border-hover: rgb(34, 58, 78);
-  --toast-action: rgb(111, 131, 159);
-  --toast-action-hover: rgb(195, 205, 218);
+div + button[data-testid="altTextButton"] {
+  left: 36px !important;
 }
 
-.light-mode {
-  --text-loading: rgb(103, 103, 103);
-  --text-color: rgb(0, 0, 0);
-  --toast-surface: rgb(239, 242, 246);
-  --toast-border-hover: rgb(220, 226, 234);
-  --toast-action: rgb(102, 123, 153);
-  --toast-action-hover: rgb(49, 63, 84);
+button[data-testid="altTextButton"] {
+  right: unset !important;
+  left: 6px !important;
 }
 
 .download-button-div-image {
@@ -22,14 +13,14 @@
 }
 
 .download-button-div {
-  bottom: 16px;
-  right: 16px;
-  border-radius: 1000px;
+  right: 20px;
+  bottom: 20px;
+  z-index: 1000;
+  transition: opacity 0.2s;
   border: none;
+  border-radius: 1000px;
   width: 28px;
   height: 28px;
-  transition: opacity 0.2s;
-  z-index: 1000;
 }
 
 .dropshadow {
@@ -40,12 +31,9 @@
   background: rgba(0, 0, 0, 0.308);
 }
 
-.download-button-div-image:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-.download-button:hover {
-  background-color: rgba(255, 255, 255, 0.2);
+.download-button:hover,
+.download-button-touch {
+  background-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 .download-button-div-hover {
@@ -54,177 +42,44 @@
 
 .download-button {
   all: unset;
+  display: block;
+  position: relative;
 
   transition: background-color 0.2s;
-  display: block;
   border: none;
-  position: relative;
+  border-radius: 1000px;
   width: 100%;
   height: 100%;
-  border-radius: 1000px;
 }
 
 .download-icon {
-  opacity: 0;
-  width: 15px;
-  height: 15px;
-  margin: calc(50% - 7.5px);
   position: absolute;
   top: 0px;
   left: 0px;
+  opacity: 0;
   transition: opacity 0.2s;
+  margin: calc(50% - 7.5px);
+  width: 15px;
+  height: 15px;
 }
 
 .download-progress {
+  margin: calc(50% - 10px) !important;
   width: 20px !important;
   height: 20px !important;
-  margin: calc(50% - 10px) !important;
 }
 
 .onboarding-image {
-  border: solid rgb(15, 115, 255) 0px;
   position: absolute;
-  overflow: visible;
-  z-index: 1000;
-  border-radius: 12px;
-  pointer-events: none;
   top: 0;
+  z-index: 1000;
+  border: solid rgb(15, 115, 255) 0px;
+  border-radius: 12px;
+  overflow: visible;
+  pointer-events: none;
 }
 
 .alt-button-left {
-  left: 16px !important;
   right: unset !important;
-}
-
-.toast-container {
-  position: fixed;
-  right: 0px;
-  bottom: 0px;
-  height: fit-content;
-  z-index: 100;
-  padding: 25px;
-}
-
-.toast {
-  background-color: var(--toast-surface);
-  right: 25px;
-  width: 300px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  border-radius: 10px;
-  border-width: 0px;
-  overflow: hidden;
-  position: fixed;
-  opacity: 0;
-  z-index: 20;
-}
-
-.toast-mobile {
-  right: calc(50% - 150px);
-}
-
-.toast-border {
-  top: 0px;
-  left: 0px;
-  bottom: 0px;
-  right: 0px;
-  position: absolute;
-  border-radius: 8px;
-  margin: 0;
-  pointer-events: none;
-}
-
-.toast:hover .toast-border {
-  border-radius: 10px;
-  box-shadow: inset 0px 0px 0px 2px var(--toast-border-hover);
-}
-
-.toast-body {
-  display: flex;
-  flex-direction: row;
-  padding: 12px;
-  height: 20px;
-}
-
-.toast-text-div {
-  display: flex;
-  flex-direction: row;
-  justify-content: left;
-  gap: 5px;
-}
-
-.toast-text {
-  user-select: none;
-  line-height: 18px;
-  margin: auto;
-  margin-left: 0;
-  color: var(--text-color);
-  white-space: nowrap;
-  position: relative;
-}
-
-.toast-text-loading {
-  color: var(--text-loading) !important;
-}
-
-.toast-help-link{
-  color: rgb(0, 106, 255)
-}
-
-.toast-text-overflow {
-  position: relative;
-  display: flex;
-  flex-direction: row;
-  overflow: hidden;
-  width: fit-content;
-  max-width: 90%;
-  margin-right: auto;
-}
-
-.toast-text-overflow-gradient {
-  height: 100%;
-  width: 20px;
-  position: absolute;
-  z-index: 10;
-  background-image: linear-gradient(to left, var(--toast-surface), transparent);
-  transition: opacity linear 0.1s;
-}
-
-.toast-action {
-  all: unset;
-  margin-top: auto;
-  margin-bottom: auto;
-  cursor: pointer;
-}
-
-.toast-action-icon {
-  fill: var(--toast-action);
-}
-
-.toast-action-icon-touch {
-  fill: var(--toast-action-hover);
-}
-
-.toast:hover .toast-action-icon {
-  fill: var(--toast-action-hover);
-}
-
-.loading-bar {
-  width: 100%;
-  height: 2px;
-  margin-top: -5px;
-  left: 0px;
-  position: relative;
-  transition: filter;
-  background-color: rgb(16, 185, 16);
-}
-
-.loading-bar-done {
-  filter: hue-rotate(250deg) brightness(1.5) saturate(0.8);
-}
-
-div.loading-bar > svg {
-  transition: opacity ease 0.5s;
-  background-color: var(--toast-surface);
+  left: 16px !important;
 }

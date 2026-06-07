@@ -8,11 +8,19 @@ let settings
 let version
 let onInit = []
 let init = false
-let lightMode = false
+let theme = "theme--dim"
+console.info(log("Initializing toast manager"))
 const toastManager = new ToastManager()
 let mediaElements = [] // Prevents duplicate application of download buttons and onboarding elements
 let versionInfoToast
 let versionInfo
+let downloadedURLs
+
+// Mobile downloads don't have any way of detecting if the download popup was accepted or displayed at all
+// Prevent downloads from being presented faster than the user can accept them
+const mobileDownloadInterval = 2500
+// Timestamp for the last mobile download
+let lastMobileDownload = 0
 
 
 const mobileDevice = DetectMobileDevice() // Detect browser based on user agent for compatibility and layout
@@ -22,6 +30,7 @@ const minUptime = 1000 // Max. ms amount of time since install of extension for 
 
 
 const mainThreadHelperLoaded = new Promise(resolve => {
+      console.info(log("Adding main thread code to document"))
       // Cleanup
       Array.from(document.querySelectorAll("#mainThreadHelper"))
             .forEach(script => script.remove())
@@ -31,16 +40,48 @@ const mainThreadHelperLoaded = new Promise(resolve => {
       // Incorporate version number to avoid caching issue
       script.src = browser.runtime.getURL("/js/document.js")
       script.id = "mainThreadHelper"
-      document.head.appendChild(script)
 
       new MutationObserver((mutationList, observer) => {
             let hasRun = script.getAttribute("has-run")
             if (hasRun) {
                   observer.disconnect()
+                  console.info(log("Main thread code has run"))
                   resolve()
             }
       }).observe(script, { attributes: true })
+
+      document.head.appendChild(script)
+      console.info(log("Main thread code added"))
 })
+
+
+// Handle theme changes
+new MutationObserver((mutationList) => {
+      for (const mutation of mutationList) {
+            if (mutation.type === "attributes") {
+                  if (mutation.attributeName == "class" &&
+                        document.documentElement.classList.length > 0) {
+                        HandleThemeChanges()
+                  }
+            }
+      }
+}).observe(document.documentElement, { attributes: true });
+
+HandleThemeChanges()
+
+function HandleThemeChanges() {
+      let newTheme = Array.from(document.documentElement.classList)
+            .find(cssClass => cssClass.startsWith("theme--"))
+
+      if (theme && theme != newTheme) {
+            console.info(log("Theme change detected, new theme is " + newTheme))
+
+            theme = newTheme
+            browser.runtime.sendMessage({ type: "set-theme", value: theme })
+
+            SetThemeClass(theme)
+      }
+}
 
 
 browser.runtime.onMessage.addListener((message) => {
@@ -50,74 +91,96 @@ browser.runtime.onMessage.addListener((message) => {
             if (init) return
 
             init = true
+            console.info(log("Init response received"))
 
             onboardingStatus = message.onboardingStatus
             settings = message.settings
-            lightMode = message.lightMode
+            theme = message.theme
             inputMethod = message.inputMethod
             version = message.version
+            downloadedURLs = message.downloadedURLs
+
+            if (!downloadedURLs.migrated) {
+                  let oldDownloadedURLs = localStorage.getItem("downloadedURLs")
+                  oldDownloadedURLs = JSON.parse(oldDownloadedURLs)
+
+                  browser.runtime.sendMessage({ type: "set-downloaded-urls", value: oldDownloadedURLs })
+            }
+
+            // If there are unfinished downloads from the last session, ask to restart them
+            if (message.unfinishedDownloads
+                  && message.unfinishedDownloads.length > 0 &&
+                  GetSetting("restartDownloads", settings).value &&
+                  message.uptime < 3000) {
+                  setTimeout(() => {
+                        let popup
+
+                        const downloadsAmount = message.unfinishedDownloads.length || 0
+                        const numbers = ["Zero", "One", "Two", "Three"] // Friendly names for 0-3
+                        const amountText = downloadsAmount < 3 ? numbers[downloadsAmount] : downloadsAmount
+                        const multipleDownloads = downloadsAmount != 1 // For grammar
+
+                        const popupText = `${amountText} download${multipleDownloads ? "s" : ""} didn't finish. Do you want to restart ${multipleDownloads ? "them" : "it"}?`
+
+
+                        const onPopupDismiss = () => {
+                              // Clear the unfinished downloads
+                              browser.runtime.sendMessage({ type: "clear-unfinished-downloads" })
+                        }
+
+                        // Popup option for restarting the downloads
+                        const optionYes = new FullScreenPopup.PopupOption(
+                              `Restart download${multipleDownloads ? "s" : ""}`,
+                              () => {
+                                    popup.Dismiss()
+
+                                    message.unfinishedDownloads.forEach(downloadJob =>
+                                          ResumeUnfinishedDownload(downloadJob, toastManager)
+                                    )
+                              }
+                        )
+
+                        // Popup option for dismissing the popup
+                        const optionNo = new FullScreenPopup.PopupOption(
+                              "Cancel",
+                              null,
+                              false
+                        )
+
+                        // Display the popup
+                        popup = new FullScreenPopup(
+                              `Unfinished download${multipleDownloads ? "s" : ""}`,
+                              popupText,
+                              [optionYes, optionNo],
+                              onPopupDismiss
+                        )
+
+                        browser.runtime.onMessage.addListener((message) => {
+                              if (message.type == "clear-unfinished-downloads-popups" && !popup.dismissed) {
+                                    popup.Dismiss()
+                              }
+                        })
+
+                  }, 1000)
+            }
 
             if (!inputMethod) {
                   inputMethod = navigator.maxTouchPoints > 0 ? "touch" : "mouse"
                   browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
             }
 
+            console.info(log("Running cleanup for previous versions"))
             if (message.uptime < minUptime) InstallCleanup()
 
-
+            console.info(log("Running onInit"))
             onInit.forEach(element => {
                   element()
             });
 
-
-            // Handle theme changes
-            new MutationObserver((mutationList) => {
-                  for (const mutation of mutationList) {
-                        if (mutation.type === "attributes") {
-                              if (mutation.attributeName == "class" &&
-                                    document.documentElement.classList.length > 0) {
-                                    HandleThemeChanges()
-                              }
-                        }
-                  }
-            }).observe(document.documentElement, { attributes: true });
-
-
             // Initialize theme
-            if (lightMode)
-                  document.documentElement.classList.add("light-mode")
-            else
-                  document.documentElement.classList.add("dark-mode")
+            SetThemeClass(theme)
 
-            function HandleThemeChanges() {
-                  // Get bsky theme from html element class
-                  let lightModeNew = document.documentElement.classList.contains("theme--light")
-                  // If different to saved value, update
-                  if (lightMode != lightModeNew) {
-                        lightMode = lightModeNew;
-                        browser.runtime.sendMessage({ type: "set-light-mode", value: lightMode })
-
-                        if (lightMode) {
-                              document.documentElement.classList.remove("dark-mode")
-                              document.documentElement.classList.add("light-mode")
-                        }
-                        else {
-                              document.documentElement.classList.remove("light-mode")
-                              document.documentElement.classList.add("dark-mode")
-                        }
-                  }
-
-                  if (!document.documentElement.classList.contains("dark-mode") &&
-                        !document.documentElement.classList.contains("light-mode")) {
-                        if (lighMode)
-                              document.documentElement.classList.add("light-mode")
-                        else
-                              document.documentElement.classList.add("dark-mode")
-                  }
-            }
-
-// Show version info in focussed tab for at least 3 seconds.  
-                        versionInfo = message.versionInfo
+            versionInfo = message.versionInfo
             setTimeout(() => {
                   if (versionInfo) {
                         versionInfoToast = toastManager.DisplayToast(
@@ -129,108 +192,50 @@ browser.runtime.onMessage.addListener((message) => {
                                     browser.runtime.sendMessage({ type: "version-info-displayed" })
                               }
                         )
-                        let lastFocusLossTime = Date.now()
-                        const minFocusTime = 3000
-                        const DismissTime = 5000
-
-
-                        const interval = setInterval(() => {
-                              if (document.visibilityState != "visible")
-                                    lastFocusLossTime = Date.now()
-                                    
-                              else if((Date.now() - lastFocusLossTime) > minFocusTime) {
-                                    clearInterval(interval)
-                                    browser.runtime.sendMessage({ type: "version-info-displayed" })
-
-                                    // Delay dismissal until mouse has hasn't been over the toast for specified time
-                                    if (versionInfoToast) {
-                                          let timeout = null
-
-                                          // Mouse was NOT on element before
-                                          if (!versionInfoToast.mouseOn)
-                                                timeout = setTimeout(() => {
-                                                      toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                                                }, DismissTime);
-
-                                          // Mouse enters element
-                                          versionInfoToast.onMouseEnter = () => {
-                                                if (timeout) {
-                                                      clearTimeout(timeout)
-                                                      timeout = null
-                                                }
-                                          }
-
-                                          // Mouse leaves element
-                                          versionInfoToast.onMouseLeave = () => {
-                                                if (!timeout)
-                                                      timeout = setTimeout(() => {
-                                                            toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                                                      }, DismissTime);
-                                          }
-                                    }
-                              }
-                        }, 200)
+                        // Dismiss if the user doesn't show interest
+                        versionInfoToast.DismissOnUninterested()
                   }
             }, 2000)
       }
 
       else if (message.type == "version-info-displayed") {
-            versionInfo = null
-
-            const minFocusTime = 3000
-            const DismissTime = 5000
-
-            // Delay dismissal until mouse has hasn't been over the toast for specified time
             if (versionInfoToast) {
-                  let timeout = null
-
-                  // Mouse was NOT on element before
-                  if (!versionInfoToast.mouseOn)
-                        timeout = setTimeout(() => {
-                              toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                        }, DismissTime);
-
-                  // Mouse enters element
-                  versionInfoToast.onMouseEnter = () => {
-                        if (timeout) {
-                              clearTimeout(timeout)
-                              timeout = null
-                        }
-                  }
-
-                  // Mouse leaves element
-                  versionInfoToast.onMouseLeave = () => {
-                        if (!timeout)
-                              timeout = setTimeout(() => {
-                                    toastManager.DismissToast(versionInfoToast, toastManager.toastList)
-                              }, DismissTime);
-                  }
+                  toastManager.DismissToast(versionInfoToast)
             }
       }
 
       // Settings updates
       else if (message.type == "settings-update") {
+            console.info(log("Received settings update"))
             // Workaround
-            // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
-            if (message.repeat)
-                  browser.runtime.sendMessage({ type: "setting-update", settings: settings })
+            // Extension popup window can only be addressed with runtime.sendMessage but background script can't access this
+            if (message.repeat) {
+                  console.info(log("Relaying settings update"))
+                  browser.runtime.sendMessage({ type: "settings-update", settings: message.settings })
+            }
 
             settings = message.settings
 
-            console.log(settings)
+            console.info(log(JSON.stringify(settings)))
 
 
-            let img = GetSetting("imgDownload").value
-            let vid = GetSetting("vidDownload").value
-            let gif = GetSetting("gifDownload").value
+            let img = GetSetting("imgDownload", settings).value
+            let vid = GetSetting("vidDownload", settings).value
+            let gif = GetSetting("gifDownload", settings).value
 
-            downloadButtons.image.forEach(downloadButton => downloadButton.SetVisibility(img))
-            downloadButtons.video.forEach(downloadButton => downloadButton.SetVisibility(vid))
-            downloadButtons.gif.forEach(downloadButton => downloadButton.SetVisibility(gif))
+            const buttonFunc = (downloadbutton, val, settings) => {
+                  downloadbutton.SetVisibility(val)
+                  downloadbutton.settings = settings
+            }
+
+            downloadButtons.image.forEach(downloadButton => buttonFunc(downloadButton, img, settings))
+            downloadButtons.video.forEach(downloadButton => buttonFunc(downloadButton, vid, settings))
+            downloadButtons.gif.forEach(downloadButton => buttonFunc(downloadButton, gif, settings))
       }
 
-      // Updates for the status of unboarding
+      // Updates for the status of onboarding
       else if (message.type == "onboarding-update") {
+            console.info(log("Received onboarding update"))
             onboardingStatus = message.onboardingStatus
             if (onboardingStatus.image) {
                   onboardingElements.image.forEach(borderElement => borderElement.Destroy())
@@ -239,8 +244,14 @@ browser.runtime.onMessage.addListener((message) => {
                   onboardingElements.video.forEach(borderElement => borderElement.Destroy())
             }
       }
+
+      // Updates for downloaded URLs from background-script
+      else if (message.type == "downloaded-urls-update") {
+            downloadedURLs = message.value
+      }
 })
 browser.runtime.sendMessage({ type: "init" })
+
 
 // Prevents false mouse inputs
 let lastTouch = 0
@@ -266,6 +277,8 @@ document.documentElement.addEventListener("touchstart", () => {
 
 // Switch input method for all relevant elements
 function HandleInputChange(method) {
+      console.info(log("Input change detected: " + method))
+
       inputMethod = method
       browser.runtime.sendMessage({ type: "set-input-method", value: inputMethod })
 
@@ -285,35 +298,35 @@ function HandleInputChange(method) {
       // Manually re-add onboarding elements
       // Images
       try {
-            if ((onboardingStatus && !onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.image && !onboardingHasRun.image && downloadButtons.image.length > 0) && GetSetting("imgDownload", settings).value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.image[0].element, downloadButtons.image[0], Downloadbutton.Image, inputMethod))
 
                   onboardingHasRun.image = true
             }
       }
       catch (error) {
-            console.error(error)
+            console.error(log(error))
       }
 
       // Videos
       try {
-            if ((onboardingStatus && !onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload").value) {
+            if ((onboardingStatus && !onboardingStatus.video && !onboardingHasRun.video && downloadButtons.video.length > 0) && GetSetting("vidDownload", settings).value) {
                   flashingBorders.push(new FlashingBorders(downloadButtons.video[0].videoElement, downloadButtons.video[0], Downloadbutton.Video, inputMethod))
 
                   onboardingHasRun.video = true
             }
       }
       catch (error) {
-            console.error(error)
+            console.error(log(error))
       }
 }
 
 
 // Add download buttons to images in feed
 new NodeObserver(
-      // rudimentary test
+      // Rudimentary test
       element =>
-            element.tagName == "IMG" || element.tagName == "VIDEO",
+            element.tagName == "IMG" || element.tagName == "VIDEO" || element.tagName == "DIV" || element.tagName == "BUTTON",
 
       element => {
             if (element.downloadButton == true) return
@@ -331,11 +344,11 @@ new NodeObserver(
                               if (mediaElements.includes(element)) return
                               mediaElements.push(element)
 
-                              const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager, !GetSetting("imgDownload").value, inputMethod)
+                              const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
                               downloadButtons.image.push(downloadButton)
 
                               // Show flashing borders tutorial
-                              if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload").value) {
+                              if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
                                     flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Image, inputMethod))
                                     onboardingHasRun.image = true
                               }
@@ -346,89 +359,101 @@ new NodeObserver(
                         else
                               onInit.push(func)
                   }
-                  catch (error) { console.error(error) }
+                  catch (error) { console.error(log(error)) }
             }
 
             // Video element posts
-            else if (element.tagName == "VIDEO" && element.hasAttribute("playsinline")) {
+            else if (element.tagName == "DIV" &&
+                  element.previousElementSibling &&
+                  element.previousElementSibling.tagName == "FIGURE" &&
+                  element.previousElementSibling.children[0].tagName == "VIDEO" &&
+                  element.downloadButton !== true) {
+
+                  element = element.previousElementSibling.firstElementChild
 
                   // Video posts
-                  if (element.preload == "none" &&
-                        element.hasAttribute("poster")) {
-                        let downloadElement;
-                        // Create download button
-                        new Promise(resolve => {
-                              // Wait for element next to downloadButton to load
-                              let observer = new NodeObserver(
-                                    element2 => element2.tagName == "DIV" &&
-                                          element2.dir == "auto" &&
-                                          !element2.parentElement.hasAttribute("aria-label"),
-                                    // Create download button
-                                    element2 => {
-                                          downloadElement = element2
-                                          resolve()
-                                    },
-                                    true,
-                                    element.parentElement.parentElement
-                              )
+                  let downloadElement;
 
-                              // Check if element next to downloadButton is already loaded
-                              const element2 = element.parentElement.parentElement.querySelector("div[dir='auto']")
-                              if (element2) {
+                  // Get blank spacer element, after which the download button should be inserted
+                  downloadElement = element.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
 
-                                    // Stop node observer from triggering
-                                    observer.Stop()
-                                    downloadElement = element2
-                                    resolve()
+                  try {
+                        const func = () => {
+                              // Early return if element has already been processed
+                              if (mediaElements.includes(element)) return
+                              mediaElements.push(element)
+
+                              const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, element)
+                              downloadButtons.video.push(downloadButton)
+
+                              // Show flashing borders tutorial
+                              if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                                    flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
+                                    onboardingHasRun.video = true
                               }
-                        }).then(() => {
-                              try {
-                                    const func = () => {
-                                          if (mediaElements.includes(element)) return
-                                          mediaElements.push(element)
+                        }
 
-                                          const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, element.poster, toastManager, !GetSetting("vidDownload").value, inputMethod, element)
-                                          downloadButtons.video.push(downloadButton)
+                        if (init)
+                              func()
+                        else
+                              onInit.push(func)
 
-                                          // Show flashing borders tutorial
-                                          if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload").value) {
-                                                flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Video, inputMethod))
-                                                onboardingHasRun.video = true
-                                          }
-                                    }
-
-                                    if (init)
-                                          func()
-                                    else
-                                          onInit.push(func)
-
-                              }
-                              catch (error) { console.error(error) }
-                        })
                   }
+                  catch (error) { console.error(log(error)) }
+            }
 
-                  // GIF posts (webm)
-                  else if (element.getAttribute("playsinline") === "" &&
-                        element.getAttribute("loop") === "" &&
-                        element.downloadButton !== true) {
-                        try {
-                              // Create download button
-                              const func = () => {
-                                    if (mediaElements.includes(element)) return
-                                    mediaElements.push(element)
+            // User GIF posts
+            else if (element.tagName == "BUTTON" &&
+                  element.previousElementSibling &&
+                  element.previousElementSibling.tagName == "FIGURE" &&
+                  element.previousElementSibling.children[0].tagName == "VIDEO" &&
+                  element.downloadButton !== true) {
+                  try {
+                        element = element.previousElementSibling.firstElementChild
+                        // Create download button
+                        const func = () => {
+                              if (mediaElements.includes(element)) return
+                              mediaElements.push(element)
 
-                                    const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager, !GetSetting("gifDownload").value, inputMethod)
-                                    downloadButtons.gif.push(downloadButton)
-                              }
-
-                              if (init)
-                                    func()
-                              else
-                                    onInit.push(func)
+                              const downloadButton = new Downloadbutton(Downloadbutton.UploadedGIF, element, element.poster, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
+                              downloadButtons.gif.push(downloadButton)
                         }
-                        catch (error) {
-                              console.error(error)
+
+                        if (init)
+                              func()
+                        else
+                              onInit.push(func)
+                  }
+                  catch (error) {
+                        console.error(log(error))
+                  }
+            }
+
+            // Tenor GIF posts
+            else if (element.tagName == "VIDEO" &&
+                  element.firstElementChild &&
+                  element.firstElementChild.src.includes("gifs.bsky.app") &&
+                  element.downloadButton !== true) {
+                  try {
+                        const mp4Src = Array.from(element.children)
+                              .find(element => /gifs\.bsky\.app\/[^\/]+\/[^.]+\.mp4/gi.test(element.src))
+
+                        // Create download button
+                        const func = () => {
+                              if (mediaElements.includes(element)) return
+                              mediaElements.push(element)
+
+                              const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, mp4Src.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
+                              downloadButtons.gif.push(downloadButton)
                         }
+
+                        if (init)
+                              func()
+                        else
+                              onInit.push(func)
+                  }
+                  catch (error) {
+                        console.error(log(error))
                   }
             }
       }
@@ -439,13 +464,16 @@ onInit.push(() => {
       Array.from(document.querySelectorAll("#bskyDownloadStylesheet"))
             .forEach(stylesheet => stylesheet.remove())
 
-      // Add stylesheet
-      const stylesheet = document.createElement("link")
-      // Incorporate version number to avoid caching issue
-      stylesheet.href = browser.runtime.getURL("../css/style.css") + "?version=" + version
-      stylesheet.id = "bskyDownloadStylesheet"
-      stylesheet.rel = "stylesheet"
-      document.head.appendChild(stylesheet)
+      let stylesheetPaths = ["../css/style.css", "../css/themes.css", "../css/shared.css"]
+      for (let i = 0; i < stylesheetPaths.length; i++) {
+            // Add stylesheet
+            const stylesheet = document.createElement("link")
+            // Incorporate version number to avoid caching issue
+            stylesheet.href = browser.runtime.getURL(stylesheetPaths[i]) + "?version=" + version
+            stylesheet.id = "bskyDownloadStylesheet"
+            stylesheet.rel = "stylesheet"
+            document.head.appendChild(stylesheet)
+      }
 })
 
 
@@ -467,67 +495,140 @@ function InstallCleanup() {
             .filter(element => /^https:\/\/cdn\.bsky\.app\/img\/feed_/.test(element.src) && !element.hasAttribute("draggable"))
             .forEach(element => {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, toastManager, !GetSetting("imgDownload").value, inputMethod)
+                        const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
                         downloadButtons.image.push(downloadButton)
 
-                        if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload").value) {
+                        if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
                               flashingBorders.push(new FlashingBorders(element, downloadButton, Downloadbutton.Image, inputMethod))
 
                               onboardingHasRun.image = true
                         }
                   }
                   catch (error) {
-                        console.error(error)
+                        console.error(log(error))
                   }
             })
 
       // Videos
-      Array.from(document.querySelectorAll("video[poster][playsinline][preload='none']"))
+      Array.from(document.querySelectorAll("figure:has(+div)>video[poster][playsinline][preload='none']"))
             .forEach(videoElement => {
-                  const downloadElements = Array.from(videoElement.parentElement.parentElement.querySelectorAll('div:not([aria-label])>div[dir=auto]'))
-                        .filter(element => !element.parentElement.hasAttribute("aria-label"))
-                  downloadElements.forEach(downloadElement => {
-                        if (downloadElement) {
-                              try {
-                                    const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, toastManager, !GetSetting("vidDownload").value, inputMethod, videoElement)
-                                    downloadButtons.video.push(downloadButton)
+                  try {
+                        const downloadElement = videoElement.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
 
-                                    // Onboarding procedure
-                                    if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload").value) {
-                                          flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
+                        const downloadButton = new Downloadbutton(Downloadbutton.Video, downloadElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
+                        downloadButtons.video.push(downloadButton)
 
-                                          onboardingHasRun.video = true
-                                    }
-                              }
-                              catch (error) {
-                                    console.error(error)
-                              }
+                        // Onboarding procedure
+                        if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                              flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
+
+                              onboardingHasRun.video = true
                         }
-                  })
+                  }
+                  catch (error) {
+                        console.error(log(error))
+                  }
+            })
+
+      // User gifs
+      Array.from(document.querySelectorAll("figure:has(+button)>video"))
+            .forEach(videoElement => {
+                  try {
+                        const downloadButton = new Downloadbutton(Downloadbutton.UploadedGIF, videoElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
+                        downloadButtons.gif.push(downloadButton)
+
+                        // Onboarding procedure
+                        if ((!onboardingStatus.video && !onboardingHasRun.video) && GetSetting("vidDownload", settings).value) {
+                              flashingBorders.push(new FlashingBorders(videoElement, downloadButton, Downloadbutton.Video, inputMethod))
+
+                              onboardingHasRun.video = true
+                        }
+                  }
+                  catch (error) {
+                        console.error(log(error))
+                  }
             })
 
       // GIFs
-      Array.from(document.querySelectorAll("video[playsinline][loop]"))
+      Array.from(document.querySelectorAll("video:has(>[src*='gifs.bsky.app'])"))
             .forEach(element => {
                   try {
-                        const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, element.src, toastManager, !GetSetting("gifDownload").value, inputMethod)
+                        const mp4Src = Array.from(element.children)
+                              .find(element => /gifs\.bsky\.app\/[^\/]+\/[^.]+\.mp4/gi.test(element.src))
+
+                        const downloadButton = new Downloadbutton(Downloadbutton.GIF, element, mp4Src.src, settings, toastManager, !GetSetting("gifDownload", settings).value, inputMethod)
                         downloadButtons.gif.push(downloadButton)
                   }
                   catch (error) {
-                        console.error(error)
+                        console.error(log(error))
                   }
             })
 }
 
+const onImgIntersection = (entries) => {
+      // Iterate though every intersection
+      entries.forEach(entry => {
+            const isVisible = entry.isIntersecting
+            const element = entry.target
+            let refreshInterval = null
 
-// Returns setting object with specified setting ID
-function GetSetting(settingId) {
-      for (let i = 0; i < settings.length; i++) {
-            for (let j = 0; j < settings[i].length; j++) {
-                  const setting = settings[i][j]
-                  if (setting.id == settingId) {
-                        return setting
+            if (isVisible) {
+                  // If element is visible and has failed to load
+                  if (element.naturalWidth == 0) {
+                        // Refresh the source to initialize loading the image again
+                        element.src = element.src
+
+                        // Check if the image has loaded in a regular interval
+                        refreshInterval = setInterval(() => {
+                              // Image hasn't loaded yet
+                              if (element.naturalWidth == 0) {
+                                    // Refresh the source to initialize loading the image again
+                                    element.src = element.src
+                              }
+                              // Image has loaded
+                              else {
+                                    // Stop interval and intersection observer for this element
+                                    intersectionObserver.unobserve(element)
+                                    clearInterval(refreshInterval)
+                              }
+                              // Interval of 1000ms ± 500ms to prevent simultaneous updates
+                        }, 500 + (1000 * Math.random()));
+
+                        // Save interval ID to element to stop interval once the element goes off screen
+                        element.refreshInterval = refreshInterval
+                  }
+                  // If element has successfully loaded 
+                  else {
+                        // Remove element from intersection observer list to prevent future activation
+                        intersectionObserver.unobserve(element)
                   }
             }
+            // If element goes off screen
+            else if (element.refreshInterval) {
+                  // Stop interval if it exists
+                  clearInterval(element.refreshInterval)
+                  element.refreshInterval = null
+            }
+      })
+};
+
+const intersectionObserver = new IntersectionObserver(
+      onImgIntersection,
+      {
+            // Configure to test if the element is on screen
+            root: document,
+            threshold: 0
+      });
+
+new NodeObserver(
+      element => element.tagName == "IMG",
+      element => {
+            // Apply the intersection observer to every image
+            intersectionObserver.observe(element)
       }
-}
+)
+
+// Add all images that loaded before the node observer executed
+Array.from(document.querySelectorAll("img")).forEach(image => {
+      intersectionObserver.observe(image)
+})
