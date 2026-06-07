@@ -8,7 +8,7 @@ html {
 
 body {
   opacity: 0;
-  transition: opacity ease 0.2s;
+  transition: opacity ease 0.1s;
   overflow-x: hidden;
   color: var(--text);
   font-variant: no-contextual;

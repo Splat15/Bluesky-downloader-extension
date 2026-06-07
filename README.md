@@ -8,14 +8,14 @@ It's built to support Firefox for desktop and android devices.
 [Download link](https://addons.mozilla.org/firefox/addon/bluesky-downloader)
 <br/><br/>
 
-## Compatility
+## Compatibility
 
 ### 3rd party Firefox versions
 
 > [!NOTE]
 > This can be ignored if you are using an official Firefox version
 
-Librewolf and other modified Firefox versions may not support promptless downloads. </br>
+Librewolf and other modified Firefox versions may not support prompt-less downloads. </br>
 This is not something that an extension can influence.  </br>
 If this bothers you, please use an official Firefox version. 
 </br>
@@ -24,7 +24,7 @@ If this bothers you, please use an official Firefox version.
 
 Firefox for android does not support specifying a path for downloaded files.</br>
 You can however freely change the file name.</br>
-Promptless downloads and downloading in the background are also not supported.</br>
+Prompt-less downloads and downloading in the background are also not supported.</br>
 Please keep the browser and tab in focus while downloading.
 </br></br>
 

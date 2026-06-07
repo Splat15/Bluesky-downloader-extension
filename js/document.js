@@ -139,7 +139,7 @@ function TestSavedPaths(element) {
                   path = knownURIPaths[i]
                   // Split path into components
                   let components = path.split(".")
-                  // Navigate into first subelement
+                  // Navigate into first sub-element
                   tempElement = element[components.shift()]
 
                   // Iterate through every component of the path
@@ -147,7 +147,7 @@ function TestSavedPaths(element) {
                         let component = components[i]
                         // Save the last element to use it as a result later
                         previousElement = tempElement
-                        // Try to navigate into a subelement
+                        // Try to navigate into a sub-element
                         tempElement = tempElement[component]
 
                         // Not the right path, abort
@@ -165,5 +165,5 @@ function TestSavedPaths(element) {
       }
 }
 
-// Let the content script know that this document has initialitzed
+// Let the content script know that this document has initialized
 document.currentScript.setAttribute("has-run", "true")

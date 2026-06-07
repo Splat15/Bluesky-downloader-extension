@@ -71,7 +71,7 @@ window.addEventListener("resize", () => {
 })
 
 
-const sidebarButton = document.getElementById("sidebarAcivateButton")
+const sidebarButton = document.getElementById("sidebarActivateButton")
 const sidebar = document.getElementById("sidebar")
 const inputBlock = document.getElementById("inputBlock")
 let sidebarActive = false

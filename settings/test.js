@@ -30,7 +30,7 @@ var settings = [
       [
             // Settings
             { value: false, id: "imgDownload", type: "toggle", name: "Image downloading" },
-            { value: true, id: "gifDownload", type: "toggle", name: "GIF downlosdfasading" }
+            { value: true, id: "gifDownload", type: "toggle", name: "GIF downloading" }
       ],
       [
             { value: true, id: "gifsAsWEBM", type: "toggle", name: "Download GIFs as .webm" },

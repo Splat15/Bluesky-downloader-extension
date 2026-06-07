@@ -96,7 +96,7 @@ class Setting {
                         this.element.appendChild(helpButton)
                   }
 
-                  // Handle toggeling
+                  // Handle toggling
                   this.element.addEventListener("click", () => {
                         // Invert value and sync with settings
 
@@ -131,17 +131,17 @@ class Setting {
 
                   function setQualSliderVis(value, qualitySlider) {
                         const category = qualitySlider.parentElement
-                        const categorySeperator = category.nextSibling
+                        const categorySeparator = category.nextSibling
 
                         if (value) {
-                              categorySeperator.classList.remove("category-separator-hidden")
+                              categorySeparator.classList.remove("category-separator-hidden")
                               qualitySlider.classList.remove("slider-hidden")
                               setTimeout(() => {
                                     category.style.overflow = ""
                               }, 200);
                         }
                         else {
-                              categorySeperator.classList.add("category-separator-hidden")
+                              categorySeparator.classList.add("category-separator-hidden")
                               qualitySlider.classList.add("slider-hidden")
                               category.style.overflow = "hidden"
                         }
@@ -418,7 +418,7 @@ class Setting {
                         this.FocusPathInput()
                   })
 
-                  // Handle var menu toggeling
+                  // Handle var menu toggling
                   pathActionInsert.addEventListener("click", () => {
                         this.pathVarMenuExpanded = !this.pathVarMenuExpanded
 
@@ -545,7 +545,7 @@ class Setting {
             pathInput.focus();
             pathInput.setSelectionRange(pathInput.value.length, pathInput.value.length);
 
-            pathInput.parentElement.scrollTo({ left: 1000000, behaviour: "smooth" })
+            pathInput.parentElement.scrollTo({ left: 1000000, behavior: "smooth" })
       }
 }
 
