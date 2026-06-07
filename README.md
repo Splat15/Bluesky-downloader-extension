@@ -8,6 +8,22 @@ It's built to support Firefox for desktop and android devices.
 [Download link](https://addons.mozilla.org/firefox/addon/bluesky-downloader)
 <br/><br/>
 
+## How to build
+
+### Setup
+
+Install Node.js<br>
+Navigate into repository and run:
+```
+npm install
+```
+
+### Build
+
+```
+npm run watch
+```
+
 ## Compatibility
 
 ### 3rd party Firefox versions
