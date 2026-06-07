@@ -29,7 +29,7 @@ const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been 
 const currentVersion = browser.runtime.getManifest().version
 // Get version from when the bg script last ran
 const lastVersion = localStorage.getItem("lastVersion")
-// Dertermine whether the extension has been updated, including patches
+// Determine whether the extension has been updated, including patches
 const updated = isVersionNewer(lastVersion, currentVersion)
 // Determine if the previous version of the extension was lower than the current major version. 
 // This means that a major version update must have been installed.
@@ -38,7 +38,7 @@ let showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInf
 if (updated) {
       console.log(log(`Version updated from v${lastVersion} to v${currentVersion}`))
       if (showVersionInfo)
-            console.log(log(`New version info for v${majorVersionInfo.version} availible`))
+            console.log(log(`New version info for v${majorVersionInfo.version} available`))
 }
 
 localStorage.setItem("lastVersion", currentVersion)
@@ -67,11 +67,11 @@ const standardSettings = [
             { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.<br/>Can produce better images.<br/><b>May cause performance issues.</b>" }
       ],
       [
-            { value: 20, id: "imgQuality", type: "slider", name: "Image quality" }
+            { value: 50, id: "imgQuality", type: "slider", name: "Image quality" }
       ],
       [
             { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications for downloads on the bluesky website.</br >This won't send you any push notifications or ads." },
-            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads when you close your browser during a download." }
+            { value: true, id: "restartDownloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads when you close your browser during a download." }
       ]
 ]
 
@@ -120,7 +120,7 @@ else {
             }
             settings = newSettings
 
-            console.info(log("Settings successuflly migrated"))
+            console.info(log("Settings successfully migrated"))
       }
       catch (e) {
             console.info(log("Error migrating settings: " + e))
@@ -240,7 +240,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Theme set requests
       else if (message.type == "set-theme") {
             if (theme == message.value) return
-            
+
             theme = message.value
             console.log(log("Theme change detected, new value: " + theme))
             localStorage.setItem("theme", theme)
@@ -255,7 +255,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Input method set requests
       else if (message.type == "set-input-method") {
             if (message.value == inputMethod) return
-            
+
             console.log(log("Input method change detected"))
             inputMethod = message.value
             localStorage.setItem("inputMethod", inputMethod)

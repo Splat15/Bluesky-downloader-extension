@@ -2,5 +2,28 @@
   "files.readonlyInclude": {
     "{**/.c4z/.extsrcs/*.PROTSYM.cbl,**/.c4z/.extsrcs/*.PROTSYM.listing}": true
   },
-  "livePreview.defaultPreviewPath": "/settings/settings.html"
+  "livePreview.defaultPreviewPath": "/settings/settings.html",
+  "cSpell.words": [
+    "avalible",
+    "bsky",
+    "dropshadow",
+    "falsly",
+    "fullsize",
+    "gifs",
+    "mediaindex",
+    "mediatype",
+    "palettegen",
+    "paletteuse",
+    "playsinline",
+    "postid",
+    "posttype",
+    "recordkey",
+    "replys",
+    "repost",
+    "reposted",
+    "Reposts",
+    "rkey",
+    "singleuse",
+    "uploadedgif"
+  ]
 }

@@ -18,7 +18,7 @@ let downloadedURLs
 
 // Mobile downloads don't have any way of detecting if the download popup was accepted or displayed at all
 // Prevent downloads from being presented faster than the user can accept them
-const mobileDownloadInterval = 2500 
+const mobileDownloadInterval = 2500
 // Timestamp for the last mobile download
 let lastMobileDownload = 0
 
@@ -110,7 +110,7 @@ browser.runtime.onMessage.addListener((message) => {
             // If there are unfinished downloads from the last session, ask to restart them
             if (message.unfinishedDownloads
                   && message.unfinishedDownloads.length > 0 &&
-                  GetSetting("restartDowwnloads", settings).value &&
+                  GetSetting("restartDownloads", settings).value &&
                   message.uptime < 3000) {
                   setTimeout(() => {
                         let popup
@@ -208,7 +208,7 @@ browser.runtime.onMessage.addListener((message) => {
       else if (message.type == "settings-update") {
             console.info(log("Received settings update"))
             // Workaround
-            // Extension popup window can only be adressed with runtime.sendMessage but background script can't access this
+            // Extension popup window can only be addressed with runtime.sendMessage but background script can't access this
             if (message.repeat) {
                   console.info(log("Relaying settings update"))
                   browser.runtime.sendMessage({ type: "settings-update", settings: message.settings })
@@ -233,7 +233,7 @@ browser.runtime.onMessage.addListener((message) => {
             downloadButtons.gif.forEach(downloadButton => buttonFunc(downloadButton, gif, settings))
       }
 
-      // Updates for the status of unboarding
+      // Updates for the status of onboarding
       else if (message.type == "onboarding-update") {
             console.info(log("Received onboarding update"))
             onboardingStatus = message.onboardingStatus
@@ -591,7 +591,7 @@ const onImgIntersection = (entries) => {
                                     intersectionObserver.unobserve(element)
                                     clearInterval(refreshInterval)
                               }
-                              // Inverval of 1000ms ± 500ms to prevent simultaneous updates
+                              // Interval of 1000ms ± 500ms to prevent simultaneous updates
                         }, 500 + (1000 * Math.random()));
 
                         // Save interval ID to element to stop interval once the element goes off screen

@@ -50,7 +50,7 @@ class NodeObserver {
                   }
             }
             if (this.#TestNodeDeep && !this.#stopped && node.childNodes.length > 0) {
-                  const childNodeArr = Array.from(node.childNodes) // Prevents recursive behaviour
+                  const childNodeArr = Array.from(node.childNodes) // Prevents recursive behavior
                   for (let i = 0; i < childNodeArr.length; i++) {
                         const child = childNodeArr[i]
                         if (child.nodeType === Node.ELEMENT_NODE) {
@@ -133,7 +133,7 @@ class Downloadbutton {
       }
 
 
-      constructor(type, element, url, setings, toastManager, hidden, inputMethod) {
+      constructor(type, element, url, settings, toastManager, hidden, inputMethod) {
             this.url = url
             this.type = type
             this.settings = settings
@@ -282,7 +282,7 @@ class Downloadbutton {
                               url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
                   }
 
-                  // If reqested, change file extension to .jpg
+                  // If requested, change file extension to .jpg
                   else if (this.type == Downloadbutton.Image) {
                         // Get relevant settings
                         imagesAsWEBP = GetSetting("imagesAsWEBP", this.settings).value
@@ -1462,7 +1462,7 @@ class FlashingBorders {
                               // Destroy old borders
                               if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
 
-                              // If onboaring has occurred for this type
+                              // If onboarding has occurred for this type
                               // or this eventlistener has run
                               // or flashing borders have been stopped
                               if (
@@ -1528,7 +1528,7 @@ class FlashingBorders {
                         // Destroy old borders
                         if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
 
-                        // If onboaring has occurred for this type
+                        // If onboarding has occurred for this type
                         // or this eventlistener has run
                         // or flashing borders have been stopped
                         if (
@@ -1632,27 +1632,27 @@ function textPadFactor(text, factor, paddingChar = " ", minLen) {
 
 function GetApproxFileSize(quality, format) {
       const q = Math.max(quality / 100, 0.01)
-      let apprFileSize
+      let approxFileSize
 
       if (!quality && quality !== 0) console.error(log("No quality provided"))
       else if (!format) console.error(log("No format provided"))
 
       else if (format == "image/webp") {
-            apprFileSize = 70 * q + 20 + Math.pow(q + 0.3, 20)
+            approxFileSize = 70 * q + 20 + Math.pow(q + 0.3, 20)
       }
       else {
-            apprFileSize = (60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30) * 2 // Quick fix
+            approxFileSize = (60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30) * 2 // Quick fix
       }
-      apprFileSize = Math.round(apprFileSize)
+      approxFileSize = Math.round(approxFileSize)
 
 
-      if (apprFileSize >= 950) {
-            apprFileSize = Math.round(apprFileSize / 100) / 10
-            apprFileSize = apprFileSize + "MB"
+      if (approxFileSize >= 950) {
+            approxFileSize = Math.round(approxFileSize / 100) / 10
+            approxFileSize = approxFileSize + "MB"
       }
-      else apprFileSize = apprFileSize + "KB"
+      else approxFileSize = approxFileSize + "KB"
 
-      return apprFileSize
+      return approxFileSize
 }
 
 function isVersionNewer(oldVer, newVer) {
@@ -2324,7 +2324,7 @@ const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been 
 const currentVersion = browser.runtime.getManifest().version
 // Get version from when the bg script last ran
 const lastVersion = localStorage.getItem("lastVersion")
-// Dertermine whether the extension has been updated, including patches
+// Determine whether the extension has been updated, including patches
 const updated = isVersionNewer(lastVersion, currentVersion)
 // Determine if the previous version of the extension was lower than the current major version. 
 // This means that a major version update must have been installed.
@@ -2333,7 +2333,7 @@ let showVersionInfo = updated && !isVersionNewer(currentVersion, majorVersionInf
 if (updated) {
       console.log(log(`Version updated from v${lastVersion} to v${currentVersion}`))
       if (showVersionInfo)
-            console.log(log(`New version info for v${majorVersionInfo.version} availible`))
+            console.log(log(`New version info for v${majorVersionInfo.version} available`))
 }
 
 localStorage.setItem("lastVersion", currentVersion)
@@ -2362,11 +2362,11 @@ const standardSettings = [
             { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.<br/>Can produce better images.<br/><b>May cause performance issues.</b>" }
       ],
       [
-            { value: 20, id: "imgQuality", type: "slider", name: "Image quality" }
+            { value: 50, id: "imgQuality", type: "slider", name: "Image quality" }
       ],
       [
             { value: true, id: "downloadToast", type: "toggle", name: "Show download popups", tooltip: "Show progress notifications for downloads on the bluesky website.</br >This won't send you any push notifications or ads." },
-            { value: true, id: "restartDowwnloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads when you close your browser during a download." }
+            { value: true, id: "restartDownloads", type: "toggle", name: "Track unfinished downloads", tooltip: "Offer to restart interrupted downloads when you close your browser during a download." }
       ]
 ]
 
@@ -2415,7 +2415,7 @@ else {
             }
             settings = newSettings
 
-            console.info(log("Settings successuflly migrated"))
+            console.info(log("Settings successfully migrated"))
       }
       catch (e) {
             console.info(log("Error migrating settings: " + e))
@@ -2534,6 +2534,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Theme set requests
       else if (message.type == "set-theme") {
+            if (theme == message.value) return
+
             theme = message.value
             console.log(log("Theme change detected, new value: " + theme))
             localStorage.setItem("theme", theme)
@@ -2548,6 +2550,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Input method set requests
       else if (message.type == "set-input-method") {
             if (message.value == inputMethod) return
+
             console.log(log("Input method change detected"))
             inputMethod = message.value
             localStorage.setItem("inputMethod", inputMethod)

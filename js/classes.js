@@ -41,7 +41,7 @@ class NodeObserver {
                   }
             }
             if (this.#TestNodeDeep && !this.#stopped && node.childNodes.length > 0) {
-                  const childNodeArr = Array.from(node.childNodes) // Prevents recursive behaviour
+                  const childNodeArr = Array.from(node.childNodes) // Prevents recursive behavior
                   for (let i = 0; i < childNodeArr.length; i++) {
                         const child = childNodeArr[i]
                         if (child.nodeType === Node.ELEMENT_NODE) {
@@ -124,7 +124,7 @@ class Downloadbutton {
       }
 
 
-      constructor(type, element, url, setings, toastManager, hidden, inputMethod) {
+      constructor(type, element, url, settings, toastManager, hidden, inputMethod) {
             this.url = url
             this.type = type
             this.settings = settings
@@ -273,7 +273,7 @@ class Downloadbutton {
                               url = url.replace("/thumbnail.jpg", "/playlist.m3u8")
                   }
 
-                  // If reqested, change file extension to .jpg
+                  // If requested, change file extension to .jpg
                   else if (this.type == Downloadbutton.Image) {
                         // Get relevant settings
                         imagesAsWEBP = GetSetting("imagesAsWEBP", this.settings).value
@@ -1453,7 +1453,7 @@ class FlashingBorders {
                               // Destroy old borders
                               if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
 
-                              // If onboaring has occurred for this type
+                              // If onboarding has occurred for this type
                               // or this eventlistener has run
                               // or flashing borders have been stopped
                               if (
@@ -1519,7 +1519,7 @@ class FlashingBorders {
                         // Destroy old borders
                         if (!hasRun) this.flashingBorders.forEach(border => border.Destroy())
 
-                        // If onboaring has occurred for this type
+                        // If onboarding has occurred for this type
                         // or this eventlistener has run
                         // or flashing borders have been stopped
                         if (
@@ -1623,27 +1623,27 @@ function textPadFactor(text, factor, paddingChar = " ", minLen) {
 
 function GetApproxFileSize(quality, format) {
       const q = Math.max(quality / 100, 0.01)
-      let apprFileSize
+      let approxFileSize
 
       if (!quality && quality !== 0) console.error(log("No quality provided"))
       else if (!format) console.error(log("No format provided"))
 
       else if (format == "image/webp") {
-            apprFileSize = 70 * q + 20 + Math.pow(q + 0.3, 20)
+            approxFileSize = 70 * q + 20 + Math.pow(q + 0.3, 20)
       }
       else {
-            apprFileSize = (60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30) * 2 // Quick fix
+            approxFileSize = (60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30) * 2 // Quick fix
       }
-      apprFileSize = Math.round(apprFileSize)
+      approxFileSize = Math.round(approxFileSize)
 
 
-      if (apprFileSize >= 950) {
-            apprFileSize = Math.round(apprFileSize / 100) / 10
-            apprFileSize = apprFileSize + "MB"
+      if (approxFileSize >= 950) {
+            approxFileSize = Math.round(approxFileSize / 100) / 10
+            approxFileSize = approxFileSize + "MB"
       }
-      else apprFileSize = apprFileSize + "KB"
+      else approxFileSize = approxFileSize + "KB"
 
-      return apprFileSize
+      return approxFileSize
 }
 
 function isVersionNewer(oldVer, newVer) {
