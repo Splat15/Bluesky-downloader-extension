@@ -239,6 +239,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
       // Theme set requests
       else if (message.type == "set-theme") {
+            if (theme == message.value) return
+            
             theme = message.value
             console.log(log("Theme change detected, new value: " + theme))
             localStorage.setItem("theme", theme)
@@ -253,6 +255,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
       // Input method set requests
       else if (message.type == "set-input-method") {
             if (message.value == inputMethod) return
+            
             console.log(log("Input method change detected"))
             inputMethod = message.value
             localStorage.setItem("inputMethod", inputMethod)
