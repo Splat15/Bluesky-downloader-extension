@@ -24,7 +24,7 @@ const downloader = new Downloader(unfinishedDownloads);
 
 
 // Set info for last major version. Will only be displayed if the extension has been updated from a version BELOW this one.
-const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
+const majorVersionInfo = { version: "2.3.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.3.0" } }
 // Get current version, including patches
 const currentVersion = browser.runtime.getManifest().version
 // Get version from when the bg script last ran
