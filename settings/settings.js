@@ -13,27 +13,6 @@ if (theme == "undefined") theme = "theme--dim"
 SetThemeClass(theme)
 
 
-// Testing purposes
-const testingURLS = [
-      browser.runtime.getURL("../settings/settings.html"),
-      browser.runtime.getURL("../licensepage/licensepage.html"),
-      "https://bsky.app/",
-      "https://bsky.app/profile/splat15.bsky.social",
-      "https://bsky.app/profile/splat15.bsky.social/post/3mfan3yqqv22f",
-      "https://bsky.app/profile/caffeinerabbit.bsky.social/post/3mdllnk5cbc2l",
-      "https://bsky.app/profile/russec.info/post/3mdlowhj6j227",
-      "https://bsky.app/profile/marcknelsen.art/post/3li63ufngnk22",
-      "https://bsky.app/profile/nbcnews.com/post/3mnndllwu3j2d"
-]
-
-chrome.tabs.query({ windowType: 'normal' }, function (tabs) {
-      if (tabs.length < 2) {
-            testingURLS.forEach(url => {
-                  window.open(url)
-            })
-      }
-});
-
 console.log(log("Fetching example post info"))
 let postInfo
 fetch("https://public.api.bsky.app/xrpc/app.bsky.feed.getPostThread?uri=" + exampleAtURI)
@@ -646,7 +625,6 @@ const mouseMove = e => {
             let scrollRange = settingsBox.height - window.innerHeight
 
             const mousePos = e.clientY || e.touches[0].clientY
-            console.warn(mousePos)
 
             let sliderPos = Math.min(Math.max(mousePos + scrollbarYOffset, minPos), maxPos)
             let percentage = (sliderPos - minPos) / sliderRange
@@ -672,7 +650,6 @@ const mouseUp = e => {
       scrollbarDown = false;
       scrollbarInputBlock.style.display = ""
       scrollbar.classList.remove("scrollbar-hover")
-      console.log("mouse up")
 }
 
 document.addEventListener("mousemove", e => mouseMove(e))
