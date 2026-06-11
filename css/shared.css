@@ -198,9 +198,12 @@ div.loading-bar > svg {
   text-align: center;
 }
 
+.bsky-downloader-popup-button {
+  color: white;
+}
+
 .bsky-downloader-popup-button:hover {
   background-color: var(--button-blue-hover);
-  color: white;
 }
 
 .bsky-downloader-popup-button-secondary {
@@ -210,6 +213,7 @@ div.loading-bar > svg {
 
 .bsky-downloader-popup-button-secondary:hover {
   background-color: var(--button-grey-hover);
+  color: var(--button-grey-text);
 }
 
 .bsky-downloader-popup-header {

@@ -345,6 +345,9 @@ class Downloadbutton {
                                                 this.#downloading = false
                                                 this.#DestroyProgressCircle()
                                           }, 300);
+
+                                          this.#toastManager.SetProgress(this.#toast, 0)
+                                          this.#toast.DismissOnUninterested()
                                           throw new Error(message.error)
                                     }
 
@@ -787,13 +790,18 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             let cid = media.find(cid => url.includes(cid))
             let mediaIndex = media.indexOf(cid)
             if (mediaIndex == -1) {
-                  postInfo = postInfo.embed.record.record || postInfo.embed.record || postInfo.record
-                  record = postInfo.value
+                  try {
+                        postInfo = postInfo.embed.record.record || postInfo.embed.record || postInfo.record
+                        record = postInfo.value
 
-                  atURI = postInfo.uri
+                        atURI = postInfo.uri
 
-                  media = ProcessMedia(record.embed)
-                  mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+                        media = ProcessMedia(record.embed)
+                        mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+                  }
+                  catch (e) {
+                        console.error(e)
+                  }
             }
             mediaIndex++
             if (mediaIndex == 1 && media.length == 1) mediaIndex = 0
@@ -850,24 +858,32 @@ function ProcessMedia(media) {
       if (media.$type == "app.bsky.embed.images") {
             media.images.forEach(image => mediaURLs.push(image.image.ref.$link))
       }
+
       // Handle videos
       else if (media.$type == "app.bsky.embed.video") {
             mediaURLs.push(media.video.ref.$link)
       }
+
       // Handle external media such as tenor gifs
       else if (media.$type == "app.bsky.embed.external") {
             try {
-                  // Tenor encodes desired format as 2 letters at the end of the ID
-                  // media.tenor.com/*P3/*.gif => .webm
-                  // media.tenor.com/*AC/*.gif => .gif
+                  const tenorURL = media.external.uri.match(/https?:\/\/(?:\w+\.)+\w+\/([^\/]+)[^\/]{2}\//i)
+                  const kBskyURL = media.external.uri.match(/https?:\/\/(?:\w+\.\w*)+\/\w+\/(\w+)/i)
 
-                  // Match GIF ID from tenor posts or website URLs with similar structure
-                  mediaURLs.push(media.external.uri.match(/https?:\/\/(?:\w+\.)+\w+\/([^\/]+)[^\/]{2}\//)[1])
+                  const mediaURL = tenorURL || kBskyURL
+
+                  mediaURLs.push(mediaURL[1])
             }
             catch {
                   //window.alert("non tenor external media: " + media.external.uri)
             }
       }
+
+      // Handle +5 image galleries
+      else if (media.$type == "app.bsky.embed.gallery") {
+            media.items.forEach(image => mediaURLs.push(image.image.ref.$link))
+      }
+
       return mediaURLs
 }
 
@@ -2319,7 +2335,7 @@ const downloader = new _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__.Downloade
 
 
 // Set info for last major version. Will only be displayed if the extension has been updated from a version BELOW this one.
-const majorVersionInfo = { version: "2.2.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.2.0" } }
+const majorVersionInfo = { version: "2.3.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.3.0" } }
 // Get current version, including patches
 const currentVersion = browser.runtime.getManifest().version
 // Get version from when the bg script last ran
@@ -2930,6 +2946,14 @@ class Downloader {
                                           setTimeout(() => {
                                                 URL.revokeObjectURL(fileURL)
                                           }, 5000)
+                                    }).catch(e => {
+                                          this.#setProgress(0, e)
+                                          resolve()
+
+                                          // Free up RAM, will interrupt download if done too soon for some reason
+                                          setTimeout(() => {
+                                                URL.revokeObjectURL(fileURL)
+                                          }, 5000)
                                     })
                               }
 
@@ -3062,16 +3086,25 @@ class Downloader {
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  await browser.downloads.download({
+                  browser.downloads.download({
                         url: fileURL, filename: filePath
+                  }).then(() => {
+                        this.#setProgress(100)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
+                  }).catch(e => {
+                        this.#setProgress(0, e)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
                   })
-
-                  this.#setProgress(100)
-
-                  // Free up RAM, will interrupt download if done too soon for some reason
-                  setTimeout(() => {
-                        URL.revokeObjectURL(fileURL)
-                  }, 5000)
             }
       }
 
@@ -3096,16 +3129,25 @@ class Downloader {
                         let fileURL = URL.createObjectURL(fileBlob)
 
                         // Initiate download
-                        await browser.downloads.download({
+                        browser.downloads.download({
                               url: fileURL, filename: filePath
+                        }).then(() => {
+                              this.#setProgress(100)
+                              resolve()
+
+                              // Free up RAM, will interrupt download if done too soon for some reason
+                              setTimeout(() => {
+                                    URL.revokeObjectURL(fileURL)
+                              }, 5000)
+                        }).catch(e => {
+                              this.#setProgress(0, e)
+                              resolve()
+
+                              // Free up RAM, will interrupt download if done too soon for some reason
+                              setTimeout(() => {
+                                    URL.revokeObjectURL(fileURL)
+                              }, 5000)
                         })
-
-                        this.#setProgress(100)
-
-                        // Free up RAM, will interrupt download if done too soon for some reason
-                        setTimeout(() => {
-                              URL.revokeObjectURL(fileURL)
-                        }, 5000)
                   }
 
                   return
@@ -3136,16 +3178,25 @@ class Downloader {
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  await browser.downloads.download({
+                  browser.downloads.download({
                         url: fileURL, filename: filePath
+                  }).then(() => {
+                        this.#setProgress(100)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
+                  }).catch(e => {
+                        this.#setProgress(0, e)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
                   })
-
-                  this.#setProgress(100)
-
-                  // Free up RAM, will interrupt download if done too soon for some reason
-                  setTimeout(() => {
-                        URL.revokeObjectURL(fileURL)
-                  }, 5000)
             }
       }
 

@@ -214,6 +214,14 @@ export class Downloader {
                                           setTimeout(() => {
                                                 URL.revokeObjectURL(fileURL)
                                           }, 5000)
+                                    }).catch(e => {
+                                          this.#setProgress(0, e)
+                                          resolve()
+
+                                          // Free up RAM, will interrupt download if done too soon for some reason
+                                          setTimeout(() => {
+                                                URL.revokeObjectURL(fileURL)
+                                          }, 5000)
                                     })
                               }
 
@@ -346,16 +354,25 @@ export class Downloader {
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  await browser.downloads.download({
+                  browser.downloads.download({
                         url: fileURL, filename: filePath
+                  }).then(() => {
+                        this.#setProgress(100)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
+                  }).catch(e => {
+                        this.#setProgress(0, e)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
                   })
-
-                  this.#setProgress(100)
-
-                  // Free up RAM, will interrupt download if done too soon for some reason
-                  setTimeout(() => {
-                        URL.revokeObjectURL(fileURL)
-                  }, 5000)
             }
       }
 
@@ -380,16 +397,25 @@ export class Downloader {
                         let fileURL = URL.createObjectURL(fileBlob)
 
                         // Initiate download
-                        await browser.downloads.download({
+                        browser.downloads.download({
                               url: fileURL, filename: filePath
+                        }).then(() => {
+                              this.#setProgress(100)
+                              resolve()
+
+                              // Free up RAM, will interrupt download if done too soon for some reason
+                              setTimeout(() => {
+                                    URL.revokeObjectURL(fileURL)
+                              }, 5000)
+                        }).catch(e => {
+                              this.#setProgress(0, e)
+                              resolve()
+
+                              // Free up RAM, will interrupt download if done too soon for some reason
+                              setTimeout(() => {
+                                    URL.revokeObjectURL(fileURL)
+                              }, 5000)
                         })
-
-                        this.#setProgress(100)
-
-                        // Free up RAM, will interrupt download if done too soon for some reason
-                        setTimeout(() => {
-                              URL.revokeObjectURL(fileURL)
-                        }, 5000)
                   }
 
                   return
@@ -420,16 +446,25 @@ export class Downloader {
                   let fileURL = URL.createObjectURL(blob)
 
                   // Initiate download
-                  await browser.downloads.download({
+                  browser.downloads.download({
                         url: fileURL, filename: filePath
+                  }).then(() => {
+                        this.#setProgress(100)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
+                  }).catch(e => {
+                        this.#setProgress(0, e)
+                        resolve()
+
+                        // Free up RAM, will interrupt download if done too soon for some reason
+                        setTimeout(() => {
+                              URL.revokeObjectURL(fileURL)
+                        }, 5000)
                   })
-
-                  this.#setProgress(100)
-
-                  // Free up RAM, will interrupt download if done too soon for some reason
-                  setTimeout(() => {
-                        URL.revokeObjectURL(fileURL)
-                  }, 5000)
             }
       }
 

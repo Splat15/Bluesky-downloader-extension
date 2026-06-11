@@ -8,7 +8,11 @@ async function GetURI(element) {
       let postInfo
       let resultPath
       // Get base post element
-      let postElement = OuterQuerySelector(element, ["[data-testid*='Screen']>div>div>div>div>div", "div:has(>div>[data-testid*='feedItem-by'])"]).lastElementChild.lastElementChild
+      let postElement = OuterQuerySelector(element, [
+            "[data-testid*='Screen']:not([data-testid='postThreadScreen'])>div>div>div>div>div>div>div>div",
+            "div:has(>[data-testid*='postThreadItem'])",
+            "div:has(>div>[data-testid*='feedItem-by'])"
+      ]).lastElementChild.lastElementChild
       console.log(postElement)
 
       //postElement.style.border = "solid green 1px"
@@ -38,7 +42,7 @@ async function GetURI(element) {
                         }
                   }
             )
-            
+
             // Add discovered path to array of known paths
             if (knownURIPaths.indexOf(result.path) == -1)
                   knownURIPaths.push(result.path)

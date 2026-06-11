@@ -336,6 +336,9 @@ class Downloadbutton {
                                                 this.#downloading = false
                                                 this.#DestroyProgressCircle()
                                           }, 300);
+
+                                          this.#toastManager.SetProgress(this.#toast, 0)
+                                          this.#toast.DismissOnUninterested()
                                           throw new Error(message.error)
                                     }
 
@@ -778,13 +781,18 @@ async function GetInfoFromThread(postInfo, atURI, url) {
             let cid = media.find(cid => url.includes(cid))
             let mediaIndex = media.indexOf(cid)
             if (mediaIndex == -1) {
-                  postInfo = postInfo.embed.record.record || postInfo.embed.record || postInfo.record
-                  record = postInfo.value
+                  try {
+                        postInfo = postInfo.embed.record.record || postInfo.embed.record || postInfo.record
+                        record = postInfo.value
 
-                  atURI = postInfo.uri
+                        atURI = postInfo.uri
 
-                  media = ProcessMedia(record.embed)
-                  mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+                        media = ProcessMedia(record.embed)
+                        mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+                  }
+                  catch (e) {
+                        console.error(e)
+                  }
             }
             mediaIndex++
             if (mediaIndex == 1 && media.length == 1) mediaIndex = 0
@@ -841,24 +849,32 @@ function ProcessMedia(media) {
       if (media.$type == "app.bsky.embed.images") {
             media.images.forEach(image => mediaURLs.push(image.image.ref.$link))
       }
+
       // Handle videos
       else if (media.$type == "app.bsky.embed.video") {
             mediaURLs.push(media.video.ref.$link)
       }
+
       // Handle external media such as tenor gifs
       else if (media.$type == "app.bsky.embed.external") {
             try {
-                  // Tenor encodes desired format as 2 letters at the end of the ID
-                  // media.tenor.com/*P3/*.gif => .webm
-                  // media.tenor.com/*AC/*.gif => .gif
+                  const tenorURL = media.external.uri.match(/https?:\/\/(?:\w+\.)+\w+\/([^\/]+)[^\/]{2}\//i)
+                  const kBskyURL = media.external.uri.match(/https?:\/\/(?:\w+\.\w*)+\/\w+\/(\w+)/i)
 
-                  // Match GIF ID from tenor posts or website URLs with similar structure
-                  mediaURLs.push(media.external.uri.match(/https?:\/\/(?:\w+\.)+\w+\/([^\/]+)[^\/]{2}\//)[1])
+                  const mediaURL = tenorURL || kBskyURL
+
+                  mediaURLs.push(mediaURL[1])
             }
             catch {
                   //window.alert("non tenor external media: " + media.external.uri)
             }
       }
+
+      // Handle +5 image galleries
+      else if (media.$type == "app.bsky.embed.gallery") {
+            media.items.forEach(image => mediaURLs.push(image.image.ref.$link))
+      }
+
       return mediaURLs
 }
 
