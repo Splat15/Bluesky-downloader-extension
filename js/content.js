@@ -117,7 +117,7 @@ browser.runtime.onMessage.addListener((message) => {
 
                         const downloadsAmount = message.unfinishedDownloads.length || 0
                         const numbers = ["Zero", "One", "Two", "Three"] // Friendly names for 0-3
-                        const amountText = downloadsAmount < 3 ? numbers[downloadsAmount] : downloadsAmount
+                        const amountText = numbers[downloadsAmount] || downloadsAmount
                         const multipleDownloads = downloadsAmount != 1 // For grammar
 
                         const popupText = `${amountText} download${multipleDownloads ? "s" : ""} didn't finish. Do you want to restart ${multipleDownloads ? "them" : "it"}?`

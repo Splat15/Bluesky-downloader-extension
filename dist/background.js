@@ -364,23 +364,41 @@ class Downloadbutton {
 
                                           AddURLToHistory(originalURL)
 
+
                                           if (message.fileBlob) {
-                                                const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
-                                                console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
+                                                const downloadFileBlob = () => {
+                                                      const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                                                      console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
 
-                                                lastMobileDownload = Date.now() + timeout
+                                                      lastMobileDownload = Date.now() + timeout
 
-                                                setTimeout(() => {
-                                                      let fileURL = URL.createObjectURL(message.fileBlob)
-                                                      const a = document.createElement('a');
-                                                      a.download = this.#fileName + this.#fileExtension;
-                                                      a.href = fileURL;
+                                                      setTimeout(() => {
+                                                            let fileURL = URL.createObjectURL(message.fileBlob)
+                                                            const a = document.createElement('a');
+                                                            a.download = this.#fileName + this.#fileExtension;
+                                                            a.href = fileURL;
 
-                                                      a.click();
+                                                            a.click();
 
-                                                      window.URL.revokeObjectURL(fileURL)
-                                                      a.remove()
-                                                }, timeout)
+                                                            window.URL.revokeObjectURL(fileURL)
+                                                            a.remove()
+
+                                                            browser.runtime.sendMessage({ type: "remove-unfinished-download", value: downloadProcessId })
+                                                      }, timeout)
+                                                }
+
+                                                if (document.hasFocus())
+                                                      downloadFileBlob()
+                                                else {
+                                                      let triggered = false
+                                                      document.addEventListener("focus", () => {
+                                                            if (!triggered) {
+                                                                  triggered = true
+                                                                  document.removeEventListener("focus", downloadFileBlob)
+                                                                  downloadFileBlob()
+                                                            }
+                                                      })
+                                                }
                                           }
 
                                           this.#downloadIcon.src = Downloadbutton.Icons.Done
@@ -574,23 +592,41 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
 
                         AddURLToHistory(downloadInfo.originalURL)
 
+
                         if (message.fileBlob) {
-                              const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
-                              console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
+                              const downloadFileBlob = () => {
+                                    const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                                    console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
 
-                              lastMobileDownload = Date.now() + timeout
+                                    lastMobileDownload = Date.now() + timeout
 
-                              setTimeout(() => {
-                                    let fileURL = URL.createObjectURL(message.fileBlob)
-                                    const a = document.createElement('a');
-                                    a.download = downloadInfo.fileName + downloadInfo.fileExt;
-                                    a.href = fileURL;
+                                    setTimeout(() => {
+                                          let fileURL = URL.createObjectURL(message.fileBlob)
+                                          const a = document.createElement('a');
+                                          a.download = downloadInfo.fileName + downloadInfo.fileExt;
+                                          a.href = fileURL;
 
-                                    a.click();
+                                          a.click();
 
-                                    window.URL.revokeObjectURL(fileURL)
-                                    a.remove()
-                              }, timeout)
+                                          window.URL.revokeObjectURL(fileURL)
+                                          a.remove()
+
+                                          browser.runtime.sendMessage({ type: "remove-unfinished-download", value: message.id })
+                                    }, timeout)
+                              }
+
+                              if (document.hasFocus())
+                                    downloadFileBlob()
+                              else {
+                                    let triggered = false
+                                    document.addEventListener("focus", () => {
+                                          if (!triggered) {
+                                                triggered = true
+                                                document.removeEventListener("focus", downloadFileBlob)
+                                                downloadFileBlob()
+                                          }
+                                    })
+                              }
                         }
                   }
             }
@@ -611,19 +647,12 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
  * Bypasses will break download functionality.
  */
 function DetectMobileDevice() {
-      const toMatch = [
-            /Android/i,
-            /webOS/i,
-            /iPhone/i,
-            /iPad/i,
-            /iPod/i,
-            /BlackBerry/i,
-            /Windows Phone/i
-      ];
+      return true
+      // removed by dead control flow
 
-      return toMatch.some((toMatchItem) => {
-            return navigator.userAgent.match(toMatchItem);
-      });
+
+      // removed by dead control flow
+
 }
 
 function GenerateHash(string) {
@@ -2483,6 +2512,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   return
             }
 
+            // Save job as an unfinished download in case it doesn't complete
+            if (!unfinishedDownloads.find(element => element.id == message.downloadInfo.id)) {
+                  console.log(log("Adding download " + message.downloadInfo.id + " to unfinished downloads"))
+                  unfinishedDownloads.push(message.downloadInfo)
+                  localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
+            }
+
             // Start download
             downloader.download(message.downloadInfo,
                   (progress, error, fileBlob = null) => {
@@ -2491,6 +2527,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
                               return
 
                         console.info(log(`Download progress for ${message.downloadInfo.id} at ${progress}%`))
+
+                        if (progress >= 100 && fileblob == null) {
+                              // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
+                              unfinishedDownloads = undefined.unfinishedDownloads.filter(element => element.id != id)
+                              localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
+                              console.log(log("Removing download " + message.downloadInfo.id + " from unfinished downloads"))
+                        }
 
                         // Send progress messages to sender
                         let response = {
@@ -2581,8 +2624,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
       else if (message.type == "clear-unfinished-downloads") {
             console.log(log("Clearing unfinished download queue"))
 
-            downloader.unfinishedDownloads = []
-            localStorage.setItem("unfinished-downloads", JSON.stringify(downloader.unfinishedDownloads))
+            unfinishedDownloads = []
+            localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
 
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
@@ -2591,6 +2634,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   }
                   catch { }
             }
+      }
+
+      // Remove a singular download from unfinished downloads
+      else if (message.type == "remove-unfinished-download") {
+            unfinishedDownloads = unfinishedDownloads.filter(element => element.id != message.value)
+            localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
+            console.log(log("Removing download " + message.value + " from unfinished downloads"))
       }
 
       // Update popup display status
@@ -2621,7 +2671,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   downloadedURLs: downloadedURLs,
                   version: currentVersion,
                   versionInfo: showVersionInfo ? majorVersionInfo : null,
-                  unfinishedDownloads: downloader.unfinishedDownloads
+                  unfinishedDownloads: unfinishedDownloads
             })
       }
 
@@ -2759,10 +2809,8 @@ class Downloader {
       #mobileDevice = DetectMobileDevice()
       ffmpegLoaded = false
       shutDownFFmpeg = null
-      unfinishedDownloads
 
-      constructor(unfinishedDownloads) {
-            this.unfinishedDownloads = unfinishedDownloads
+      constructor() {
             this.#queue = []
             this.#downloadReady = true
             this.progress = 0
@@ -2777,12 +2825,6 @@ class Downloader {
       download(downloadInfo,
             onProgress = () => { }) {
             if (this.#queue.find(element => element.data.url == downloadInfo.url)) return
-
-            // Save it as an unfinished download in case it doesn't complete
-            if (!this.unfinishedDownloads.find(element => element.id == downloadInfo.id)) {
-                  this.unfinishedDownloads.push(downloadInfo)
-                  localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
-            }
 
             this.#queue.push({
                   id: downloadInfo.id,
@@ -2880,27 +2922,20 @@ class Downloader {
 
             }
 
-            // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
-            this.unfinishedDownloads = this.unfinishedDownloads.filter(element => element.id != id)
-            localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
-
             // Start next download
             this.#downloadReady = true;
 
             if (this.#queue.length > 0) this.#download()
-            else {
-                  if (this.#ffmpeg.loaded) {
-                        console.info(log("Download queue empty, stopping FFmpeg in 10s"))
-                        this.shutDownFFmpeg = setTimeout(() => {
-                              console.info(log("Shutting down FFmpeg"))
-                              this.#ffmpeg.terminate()
-                              this.shutDownFFmpeg = null
-                              this.ffmpegLoaded = false
-                        }, 10000)
-                  }
-                  else
-                        console.info(log("Download queue empty, FFmpeg not running"))
+            else if (this.#ffmpeg.loaded) {
+                  console.info(log("Download queue empty, stopping FFmpeg in 10s"))
+                  this.shutDownFFmpeg = setTimeout(() => {
+                        console.info(log("Shutting down FFmpeg"))
+                        this.#ffmpeg.terminate()
+                        this.shutDownFFmpeg = null
+                        this.ffmpegLoaded = false
+                  }, 10000)
             }
+            else console.info(log("Download queue empty, FFmpeg not running"))
       }
 
       // Downloads for images

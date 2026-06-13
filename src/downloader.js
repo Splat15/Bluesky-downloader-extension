@@ -27,10 +27,8 @@ export class Downloader {
       #mobileDevice = DetectMobileDevice()
       ffmpegLoaded = false
       shutDownFFmpeg = null
-      unfinishedDownloads
 
-      constructor(unfinishedDownloads) {
-            this.unfinishedDownloads = unfinishedDownloads
+      constructor() {
             this.#queue = []
             this.#downloadReady = true
             this.progress = 0
@@ -45,12 +43,6 @@ export class Downloader {
       download(downloadInfo,
             onProgress = () => { }) {
             if (this.#queue.find(element => element.data.url == downloadInfo.url)) return
-
-            // Save it as an unfinished download in case it doesn't complete
-            if (!this.unfinishedDownloads.find(element => element.id == downloadInfo.id)) {
-                  this.unfinishedDownloads.push(downloadInfo)
-                  localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
-            }
 
             this.#queue.push({
                   id: downloadInfo.id,
@@ -148,27 +140,20 @@ export class Downloader {
 
             }
 
-            // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
-            this.unfinishedDownloads = this.unfinishedDownloads.filter(element => element.id != id)
-            localStorage.setItem("unfinished-downloads", JSON.stringify(this.unfinishedDownloads))
-
             // Start next download
             this.#downloadReady = true;
 
             if (this.#queue.length > 0) this.#download()
-            else {
-                  if (this.#ffmpeg.loaded) {
-                        console.info(log("Download queue empty, stopping FFmpeg in 10s"))
-                        this.shutDownFFmpeg = setTimeout(() => {
-                              console.info(log("Shutting down FFmpeg"))
-                              this.#ffmpeg.terminate()
-                              this.shutDownFFmpeg = null
-                              this.ffmpegLoaded = false
-                        }, 10000)
-                  }
-                  else
-                        console.info(log("Download queue empty, FFmpeg not running"))
+            else if (this.#ffmpeg.loaded) {
+                  console.info(log("Download queue empty, stopping FFmpeg in 10s"))
+                  this.shutDownFFmpeg = setTimeout(() => {
+                        console.info(log("Shutting down FFmpeg"))
+                        this.#ffmpeg.terminate()
+                        this.shutDownFFmpeg = null
+                        this.ffmpegLoaded = false
+                  }, 10000)
             }
+            else console.info(log("Download queue empty, FFmpeg not running"))
       }
 
       // Downloads for images

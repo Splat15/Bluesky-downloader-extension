@@ -355,23 +355,41 @@ class Downloadbutton {
 
                                           AddURLToHistory(originalURL)
 
+
                                           if (message.fileBlob) {
-                                                const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
-                                                console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
+                                                const downloadFileBlob = () => {
+                                                      const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                                                      console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
 
-                                                lastMobileDownload = Date.now() + timeout
+                                                      lastMobileDownload = Date.now() + timeout
 
-                                                setTimeout(() => {
-                                                      let fileURL = URL.createObjectURL(message.fileBlob)
-                                                      const a = document.createElement('a');
-                                                      a.download = this.#fileName + this.#fileExtension;
-                                                      a.href = fileURL;
+                                                      setTimeout(() => {
+                                                            let fileURL = URL.createObjectURL(message.fileBlob)
+                                                            const a = document.createElement('a');
+                                                            a.download = this.#fileName + this.#fileExtension;
+                                                            a.href = fileURL;
 
-                                                      a.click();
+                                                            a.click();
 
-                                                      window.URL.revokeObjectURL(fileURL)
-                                                      a.remove()
-                                                }, timeout)
+                                                            window.URL.revokeObjectURL(fileURL)
+                                                            a.remove()
+
+                                                            browser.runtime.sendMessage({ type: "remove-unfinished-download", value: downloadProcessId })
+                                                      }, timeout)
+                                                }
+
+                                                if (document.hasFocus())
+                                                      downloadFileBlob()
+                                                else {
+                                                      let triggered = false
+                                                      document.addEventListener("focus", () => {
+                                                            if (!triggered) {
+                                                                  triggered = true
+                                                                  document.removeEventListener("focus", downloadFileBlob)
+                                                                  downloadFileBlob()
+                                                            }
+                                                      })
+                                                }
                                           }
 
                                           this.#downloadIcon.src = Downloadbutton.Icons.Done
@@ -565,23 +583,41 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
 
                         AddURLToHistory(downloadInfo.originalURL)
 
+
                         if (message.fileBlob) {
-                              const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
-                              console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
+                              const downloadFileBlob = () => {
+                                    const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
+                                    console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
 
-                              lastMobileDownload = Date.now() + timeout
+                                    lastMobileDownload = Date.now() + timeout
 
-                              setTimeout(() => {
-                                    let fileURL = URL.createObjectURL(message.fileBlob)
-                                    const a = document.createElement('a');
-                                    a.download = downloadInfo.fileName + downloadInfo.fileExt;
-                                    a.href = fileURL;
+                                    setTimeout(() => {
+                                          let fileURL = URL.createObjectURL(message.fileBlob)
+                                          const a = document.createElement('a');
+                                          a.download = downloadInfo.fileName + downloadInfo.fileExt;
+                                          a.href = fileURL;
 
-                                    a.click();
+                                          a.click();
 
-                                    window.URL.revokeObjectURL(fileURL)
-                                    a.remove()
-                              }, timeout)
+                                          window.URL.revokeObjectURL(fileURL)
+                                          a.remove()
+
+                                          browser.runtime.sendMessage({ type: "remove-unfinished-download", value: message.id })
+                                    }, timeout)
+                              }
+
+                              if (document.hasFocus())
+                                    downloadFileBlob()
+                              else {
+                                    let triggered = false
+                                    document.addEventListener("focus", () => {
+                                          if (!triggered) {
+                                                triggered = true
+                                                document.removeEventListener("focus", downloadFileBlob)
+                                                downloadFileBlob()
+                                          }
+                                    })
+                              }
                         }
                   }
             }
@@ -602,6 +638,7 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
  * Bypasses will break download functionality.
  */
 function DetectMobileDevice() {
+      return true
       const toMatch = [
             /Android/i,
             /webOS/i,

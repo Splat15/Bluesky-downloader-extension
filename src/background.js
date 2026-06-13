@@ -172,6 +172,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   return
             }
 
+            // Save job as an unfinished download in case it doesn't complete
+            if (!unfinishedDownloads.find(element => element.id == message.downloadInfo.id)) {
+                  console.log(log("Adding download " + message.downloadInfo.id + " to unfinished downloads"))
+                  unfinishedDownloads.push(message.downloadInfo)
+                  localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
+            }
+
             // Start download
             downloader.download(message.downloadInfo,
                   (progress, error, fileBlob = null) => {
@@ -180,6 +187,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
                               return
 
                         console.info(log(`Download progress for ${message.downloadInfo.id} at ${progress}%`))
+
+                        if (progress >= 100 && fileblob == null) {
+                              // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
+                              unfinishedDownloads = this.unfinishedDownloads.filter(element => element.id != id)
+                              localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
+                              console.log(log("Removing download " + message.downloadInfo.id + " from unfinished downloads"))
+                        }
 
                         // Send progress messages to sender
                         let response = {
@@ -270,8 +284,8 @@ browser.runtime.onMessage.addListener((message, sender) => {
       else if (message.type == "clear-unfinished-downloads") {
             console.log(log("Clearing unfinished download queue"))
 
-            downloader.unfinishedDownloads = []
-            localStorage.setItem("unfinished-downloads", JSON.stringify(downloader.unfinishedDownloads))
+            unfinishedDownloads = []
+            localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
 
             for (let i = 0; i < tabIDs.length; i++) {
                   const tabID = tabIDs[i]
@@ -280,6 +294,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   }
                   catch { }
             }
+      }
+
+      // Remove a singular download from unfinished downloads
+      else if (message.type == "remove-unfinished-download") {
+            unfinishedDownloads = unfinishedDownloads.filter(element => element.id != message.value)
+            localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
+            console.log(log("Removing download " + message.value + " from unfinished downloads"))
       }
 
       // Update popup display status
@@ -310,7 +331,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
                   downloadedURLs: downloadedURLs,
                   version: currentVersion,
                   versionInfo: showVersionInfo ? majorVersionInfo : null,
-                  unfinishedDownloads: downloader.unfinishedDownloads
+                  unfinishedDownloads: unfinishedDownloads
             })
       }
 
