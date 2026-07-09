@@ -84,12 +84,28 @@ body {
 .scrollbar-hitbox {
   pointer-events: all;
   position: fixed;
-  top: calc(56px + (var(--scroll-pos) * (100vh - 56px - 60px)));
+  cursor: pointer;
+
+  --header-height: 56px; /* Clearance for the header */
+  --sb-height-perc: 0.5; /* Scroll bar height percentage of available height */
+  --sb-av-height: calc(
+    100vh - var(--header-height)
+  ); /* Available height for scrollbar */
+  --sb-margin: 8px; /* Scroll bar margin from borders */
+  --sb-height: calc(
+    var(--sb-av-height) * var(--sb-height-perc)
+  ); /* Height of the slider */
+  --sb-range: calc(
+    (100vh - var(--header-height) - var(--sb-height))
+  ); /* Total range that the slider can move */
+
+  top: calc(var(--slider-perc) * var(--sb-range) + var(--header-height));
+
   right: calc(50vw - (min(max(100vw, 300px), 500px) / 2));
   z-index: 100000;
   transition: opacity ease 0.2s;
   width: 19px;
-  height: 52px;
+  height: var(--sb-height);
 }
 
 .scrollbar-hitbox-hidden {
@@ -98,6 +114,7 @@ body {
 }
 
 .scrollbar {
+  transition: height ease 0.1s;
   position: relative;
   top: 50%;
   transform: translateY(-50%);
@@ -105,13 +122,13 @@ body {
   border-radius: 1000px;
   background-color: var(--button-blue);
   width: 7px;
-  height: 40px;
+  height: calc(var(--sb-height) - (2 * var(--sb-margin)));
 }
 
 .scrollbar-hitbox:hover .scrollbar,
 .scrollbar-hover .scrollbar {
-  transform: scale(1.2, 1.05) translateY(-50%);
   background-color: var(--button-blue-hover);
+  height: calc(var(--sb-height) - var(--sb-margin));
 }
 
 .scrollbar-input-block {

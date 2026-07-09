@@ -568,8 +568,6 @@ let settingsStyle
 let scrollbarInvisible
 
 const onDocumentScroll = () => {
-      if (scrollbarDown) return
-
       let boundingRect = document.documentElement.getBoundingClientRect()
       settingsBox = settingsContainer.getBoundingClientRect()
 
@@ -580,12 +578,13 @@ const onDocumentScroll = () => {
       scrollFadeTop.style.opacity = top ? 0 : 1;
       scrollFadeBottom.style.opacity = bottom ? 0 : 1;
 
+      if (scrollbarDown) return
 
       let scrollRange = settingsBox.height - window.innerHeight
       let scrollPos = window.scrollY
       let percentage = scrollPos / scrollRange
 
-      scrollbar.style = "--scroll-pos: " + percentage
+      scrollbar.style = "--slider-perc: " + percentage
 
       if (top && bottom) {
             if (!scrollbarInvisible) {
@@ -616,21 +615,20 @@ const mouseMove = e => {
                   return
             }
 
-            // Set scrollbar position to mouse cursor
-            let settingsHeight = settingsBox.height;
+            const mousePos = (e.clientY || e.touches[0].clientY) + scrollbarYOffset
+            const scrollbarHeight = scrollbar.getBoundingClientRect().height
 
-            let minPos = parseInt(settingsStyle.paddingTop)
-            let maxPos = window.innerHeight - 50
-            let sliderRange = maxPos - minPos
-            let scrollRange = settingsBox.height - window.innerHeight
+            const headerHeight = parseInt(settingsStyle.paddingTop)
+            const scrollbarMoveRange = window.innerHeight - headerHeight - scrollbarHeight
+            const overflow = settingsBox.height - window.innerHeight
 
-            const mousePos = e.clientY || e.touches[0].clientY
 
-            let sliderPos = Math.min(Math.max(mousePos + scrollbarYOffset, minPos), maxPos)
-            let percentage = (sliderPos - minPos) / sliderRange
+            let percentage = ((mousePos - headerHeight) / scrollbarMoveRange)
+            percentage = Math.min(Math.max(percentage, 0), 1)
 
-            window.scroll(0, percentage * scrollRange)
-            scrollbar.style = "--scroll-pos: " + percentage
+            window.scroll(0, percentage * (overflow))
+            scrollbar.sliderPerc = percentage
+            scrollbar.style = "--slider-perc: " + percentage
       }
 }
 
@@ -642,7 +640,6 @@ const mouseDown = e => {
       scrollbar.classList.add("scrollbar-hover")
       let hitbox = scrollbar.getBoundingClientRect();
       scrollbarYOffset = hitbox.top - (e.clientY || e.touches[0].clientY)
-      console.log(scrollbarYOffset)
       console.log("mouse down")
 }
 
@@ -650,6 +647,7 @@ const mouseUp = e => {
       scrollbarDown = false;
       scrollbarInputBlock.style.display = ""
       scrollbar.classList.remove("scrollbar-hover")
+      onDocumentScroll()
 }
 
 document.addEventListener("mousemove", e => mouseMove(e))
@@ -699,9 +697,10 @@ settingsStyle = getComputedStyle(settingsContainer)
 const bodyOutline = document.getElementById("bodyOutline")
 bodyOutline.style.height = settingsStyle.height - 1.1
 
-onDocumentScroll()
-
-setTimeout(() => document.body.style.opacity = 1, 200)
+setTimeout(() => {
+      document.body.style.opacity = 1
+      onDocumentScroll()
+}, 200)
 
 
 const licensesButton = document.getElementById("licensesButton")
