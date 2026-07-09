@@ -2528,7 +2528,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
                         console.info(log(`Download progress for ${message.downloadInfo.id} at ${progress}%`))
 
-                        if (progress >= 100 && fileblob == null) {
+                        if (progress >= 100 && fileBlob == null) {
                               // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
                               unfinishedDownloads = undefined.unfinishedDownloads.filter(element => element.id != id)
                               localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
