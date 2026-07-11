@@ -3,6 +3,8 @@ let exampleAtURI = "at://bsky.app/app.bsky.feed.post/3lxxo3i4qzs2c"
 let exampleURL = "https://video.bsky.app/watch/did%3Aplc%3Az72i7hdynmk6r22z27h6tvur/bafkreihqbowyhq3quw3ctt5t45jrvfycrbxbplp4oq5ho3pcq32zoihm6i/thumbnail.jpg"
 let onExampleReady = []
 let pathVarHelpPopup
+let settingsElements = []
+let qualitySlider
 
 let downloadedURLs = localStorage.getItem("downloadedURLs") || "{ migrated: false, urls: [] }"
 downloadedURLs = JSON.parse(downloadedURLs)
@@ -51,8 +53,10 @@ class Setting {
             this.settings = settings
             this.pathVarMenuExpanded = false
             this.originalValue = value
-            this.qualitySlider = undefined
+            qualitySlider = undefined
             this.tooltip = tooltip
+            this.setLocked
+            this.locked = false
             const domParser = new DOMParser()
 
             // Checkbox style setting
@@ -75,6 +79,7 @@ class Setting {
 
                   if (this.tooltip) {
                         let helpButton = document.createElement("div")
+                        helpButton.classList.add("help-button")
                         helpButton.innerHTML = `
                         <!-- Original file in ../icons/help.svg -->
                         <!-- Icon by https://www.flaticon.com/uicons -->
@@ -96,10 +101,64 @@ class Setting {
                         this.element.appendChild(helpButton)
                   }
 
+                  this.setLocked = (lock, value) => {
+                        this.locked = lock
+
+                        if (this.locked) {
+                              this.element.setAttribute("disabled", "")
+
+                              if (value)
+                                    this.element.classList.replace("setting-inactive", "setting-active")
+                              else
+                                    this.element.classList.replace("setting-active", "setting-inactive")
+
+                              if (this.settingId == "imgQualityMode")
+                                    setQualSliderVis(value, qualitySlider)
+                        }
+                        else {
+                              this.element.removeAttribute("disabled")
+                              if (this.value)
+                                    this.element.classList.replace("setting-inactive", "setting-active")
+                              else
+                                    this.element.classList.replace("setting-active", "setting-inactive")
+
+                              if (this.settingId == "imgQualityMode")
+                                    setQualSliderVis(this.value, qualitySlider)
+                        }
+                  }
+
+                  let originalImagesClick
+                  if (this.settingId == "originalImages") {
+                        originalImagesClick = () => {
+                              if (this.settingId == "originalImages") {
+                                    const imgQualityMode = settingsElements.find(e => e.settingId == "imgQualityMode")
+                                    const imgQuality = settingsElements.find(e => e.settingId == "imgQuality")
+                                    const imagesAsWEBP = settingsElements.find(e => e.settingId == "imagesAsWEBP")
+
+                                    if (this.value) {
+                                          imgQualityMode.setLocked(true, true)
+                                          imgQuality.setLocked(true, 100)
+                                          imagesAsWEBP.setLocked(true, false)
+                                    }
+                                    else {
+                                          imgQualityMode.setLocked(false)
+                                          imgQuality.setLocked(false)
+                                          imagesAsWEBP.setLocked(false)
+                                    }
+                              }
+                        }
+
+                        setTimeout(() => {
+                              if (this.value)
+                                    originalImagesClick()
+                        }, 50)
+                  }
+
                   // Handle toggling
                   this.element.addEventListener("click", () => {
-                        // Invert value and sync with settings
+                        if (this.locked) return
 
+                        // Invert value and sync with settings
                         this.value = !this.value
 
                         if (this.value)
@@ -109,21 +168,22 @@ class Setting {
 
                         SetSetting(this.settingId, this.value, this.settings)
 
-                        if (this.qualitySlider) setQualSliderVis(this.value, this.qualitySlider)
+                        if (this.settingId == "imgQualityMode" && qualitySlider) setQualSliderVis(this.value, qualitySlider)
 
                         document.querySelector("#sliderSubtext").textContent = "~" + GetApproxFileSize(GetSetting("imgQuality", settings).value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")
+
+                        if (this.settingId == "originalImages") originalImagesClick()
                   })
 
                   if (this.settingId == "imgQualityMode") {
-                        this.qualitySlider = document.querySelector("#imgQuality")
-                        if (this.qualitySlider) {
-                              setQualSliderVis(this.value, this.qualitySlider)
+                        if (qualitySlider) {
+                              setQualSliderVis(this.value, qualitySlider)
                         }
                         else {
                               new NodeObserver(e => e.id == "imgQuality",
                                     e => {
-                                          this.qualitySlider = e
-                                          setQualSliderVis(this.value, this.qualitySlider)
+                                          qualitySlider = e
+                                          setQualSliderVis(this.value, qualitySlider)
                                     }, true
                               )
                         }
@@ -201,7 +261,21 @@ class Setting {
 
                   let lastSliderInput = 0;
 
-                  const onInput = (save = false, text = false) => {
+
+                  this.setLocked = (locked, value) => {
+                        this.locked = locked
+
+                        if (locked) {
+                              this.element.setAttribute("disabled", "")
+                              onInput(false, true, value)
+                        }
+                        else {
+                              this.element.removeAttribute("disabled")
+                              onInput(false, true, this.value)
+                        }
+                  }
+
+                  const onInput = (save = false, text = false, value = null) => {
 
                         let originalValue
                         let choppyValue
@@ -209,7 +283,7 @@ class Setting {
                         if (text) {
                               if (lastSliderInput > Date.now() - 50) return
 
-                              originalValue = textInput.value
+                              originalValue = value.toString() || textInput.value
                               originalValue = originalValue.replaceAll(/\D/g, ""); // Sanitize input
                               originalValue = Number(originalValue) // Will spit out garbage without Number()
                               originalValue = Math.min(Math.max(originalValue, 0), 100) // limit to 10-100
@@ -218,31 +292,35 @@ class Setting {
                         }
                         else {
                               lastSliderInput = Date.now()
-                              originalValue = Number(sliderInput.value) / 100 // Will spit out garbage without Number()
-                              //originalValue = originalValue * 0.9 + 10
+                              originalValue = value || Number(sliderInput.value) / 100 // Will spit out garbage without Number()
 
                               choppyValue = ApplySliderChoppiness(originalValue) // Get value rounded to nearest 5, limits values to 10 - 100
                         }
 
+                        sliderPopupText.textContent = choppyValue
 
-                        this.value = choppyValue
+                        const jpg = GetSetting("originalImages", settings).value ? true : !GetSetting("imagesAsWEBP", settings).value
+                        sliderSubtext.textContent = "~" + GetApproxFileSize(
+                              choppyValue,
+                              jpg ? "image/jpeg" : "image/webp")
 
-                        sliderPopupText.textContent = this.value
-
-                        sliderSubtext.textContent = "~" + GetApproxFileSize(this.value, GetSetting("imagesAsWEBP", settings).value == true ? "image/webp" : "image/jpeg")
-
-                        if (!text) textInput.value = this.value
+                        if (!text) textInput.value = choppyValue
 
                         sliderActiveBar.style.width = choppyValue + "%"
                         sliderKnob.style.left = choppyValue + "%"
 
-                        if (save) {
-                              SetSetting(this.settingId, this.value, this.settings)
-                              textInput.value = this.value
+                        if (save || value) {
+                              textInput.value = choppyValue
+                              if (save) {
+                                    this.value = choppyValue
+                                    SetSetting(this.settingId, this.value, this.settings)
+                              }
                         }
                   }
 
                   const mouseDown = () => {
+                        if (this.locked) return
+
                         sliderPopup.classList.add("popup-val-container-active")
                         sliderKnob.classList.add("slider-knob-active")
 
@@ -250,6 +328,8 @@ class Setting {
                   }
 
                   const mouseUp = () => {
+                        if (this.locked) return
+
                         sliderPopup.classList.remove("popup-val-container-active")
                         sliderKnob.classList.remove("slider-knob-active")
 
@@ -291,7 +371,7 @@ class Setting {
                                     <p class="path-input-ext" type="text">.mp4</p>
                               </div>
                               <p class="path-example" id="pathExample"></p>
-                              <div class="path-actions path-input-vars-container">
+                              <div id="pathInputVarsContainer" class="path-actions path-input-vars-container">
                                     <p id="pathActionInsert" class="path-input-action-label path-input-vars" title="Open the variable selection">Variables</p>
                                     <div id="pathVarMenu" class="path-input-vars-menu">
                                           <div id="varList" class="path-input-menu-var-list">
@@ -324,6 +404,7 @@ class Setting {
                   const pathVarDesc = this.element.querySelector("#pathVarDesc")
                   const pathUndoButton = this.element.querySelector("#pathUndoButton")
                   const pathInputContainer = this.element.querySelector("#pathInputContainer")
+                  const pathInputVarsContainer = this.element.querySelector("#pathInputVarsContainer")
                   const varSuggestion = this.element.querySelector("#varSuggestion")
 
                   const pathInput = this.element.querySelector("#pathInput")
@@ -335,6 +416,7 @@ class Setting {
                   const pathActionHelp = this.element.querySelector("#pathActionHelp")
                   const pathActionReset = this.element.querySelector("#pathActionReset")
 
+                  pathInputVarsContainer.addEventListener("mousedown", e => e.preventDefault())
 
                   // Add variables to list
                   let pathVarKeys = Object.keys(pathVars)
@@ -540,6 +622,8 @@ class Setting {
             pathInputHidden.textContent = pathInput.value
             pathInput.style.width = window.getComputedStyle(pathInputHidden).width
 
+            if (document.activeElement == pathInput) return
+
             window.getSelection().selectAllChildren(pathInput)
             window.getSelection().collapseToEnd()
             pathInput.focus();
@@ -674,9 +758,11 @@ for (let i = 0; i < settings.length; i++) {
 
       for (let j = 0; j < settings[i].length; j++) {
             const setting = settings[i][j]
-            new Setting(setting.value, setting.type, setting.name, setting.description, setting.tooltip, setting.id, categoryElem, settings, isMobile)
+            settingsElements.push(new Setting(setting.value, setting.type, setting.name, setting.description, setting.tooltip, setting.id, categoryElem, settings, isMobile))
       }
 }
+
+qualitySlider = document.querySelector("#imgQuality")
 
 browser.runtime.onMessage.addListener(message => {
       // Handle updates to theme from content script

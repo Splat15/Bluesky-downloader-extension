@@ -183,6 +183,24 @@ body {
   padding: 4px 0px;
 }
 
+.setting[disabled] {
+  /* :disabled seemingly only works on valid inputs */
+  cursor: not-allowed;
+  filter: saturate(0);
+}
+
+.setting[disabled]> *:not(.help-button) {
+  filter: brightness(0.8);
+}
+
+.setting[disabled] .setting-body {
+  pointer-events: none;
+}
+
+.setting.slider[disabled] * {
+  pointer-events: none;
+}
+
 .setting-body {
   display: flex;
   flex-grow: 1;
@@ -196,7 +214,7 @@ div:has(> .setting-help-button) {
   height: 25px;
 }
 
-.setting:hover .setting-help-button,
+.setting:not[disabled]:hover .setting-help-button,
 .setting-help-button-touch {
   transform: scale(1);
   opacity: 1;
@@ -243,7 +261,7 @@ div:has(> .setting-help-button) {
   background-color: var(--checkbox-bg);
 }
 
-.setting-inactive:hover .checkbox {
+.setting-inactive:not([disabled]):hover .checkbox {
   border-color: var(--checkbox-hover-border);
   background-color: var(--checkbox-hover-bg);
 }
@@ -253,7 +271,7 @@ div:has(> .setting-help-button) {
   background-color: var(--button-blue);
 }
 
-.setting-active:hover .checkbox {
+.setting-active:not([disabled]):hover .checkbox {
   border-color: var(--button-blue-hover);
   background-color: var(--button-blue-hover);
 }
