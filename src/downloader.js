@@ -80,6 +80,7 @@ export class Downloader {
             const tries = currentItem.tries
 
             console.log(log("Download started for: " + currentItem.data.url))
+            this.#setProgress(0)
 
             // Initialize ffmpeg if needed
             // Always initialized unless media is an image and image compression is off

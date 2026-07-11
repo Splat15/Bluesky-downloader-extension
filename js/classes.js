@@ -239,7 +239,37 @@ class Downloadbutton {
 
                   this.#downloadIcon.style.opacity = 0
                   this.#CreateProgressCircle()
-                  this.#progressCircle.set(0.01)
+                  this.#progressCircle.set(0.1)
+
+                  let stopSpinner = false
+
+                  setTimeout(() => {
+                        if (stopSpinner) return
+
+                        let animationLength = 0.8
+                        let rotationInterval = 0.2
+                        let rotation = 0
+                        let timeStepSize = rotationInterval * animationLength
+                        this.#progressCircleElem.style.transition = `transform linear ${timeStepSize}s`
+                        let stopSpeed = 0.3
+
+                        let spinnerInterval = setInterval(() => {
+                              if (stopSpinner) {
+                                    rotation = Math.ceil(rotation)
+                                    this.#progressCircleElem.style.transition = `transform ease-out ${stopSpeed}s`
+                                    clearInterval(spinnerInterval)
+                              }
+                              else {
+                                    rotation += rotationInterval
+                                    if (rotation % 1 <= 0.5)
+                                          this.#progressCircle.animate(0.2, { duration: 300 })
+                                    else
+                                          this.#progressCircle.animate(0.1, { duration: 300 })
+                              }
+
+                              this.#progressCircleElem.style.transform = `rotate(${rotation * 360}deg)`
+                        }, timeStepSize * 1000)
+                  }, 100)
 
                   // Delay toast for up to 300ms to allow the post info to be fetched
                   let toastDisplayed = false
@@ -327,6 +357,8 @@ class Downloadbutton {
                               if (message.type == "bsky-download-progress" &&
                                     message.id == downloadProcessId &&
                                     message.url == url) {
+
+                                    stopSpinner = true
 
                                     if (message.hasOwnProperty("error")) {
                                           this.#downloadIcon.src = Downloadbutton.Icons.Error
