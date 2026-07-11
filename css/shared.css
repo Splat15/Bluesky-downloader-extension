@@ -119,9 +119,16 @@
   left: 0px;
   transition: filter;
   margin-top: -5px;
-  background-color: rgb(16, 185, 16);
   width: 100%;
   height: 2px;
+}
+
+.loading-bar-error {
+  background-color: var(--button-red) !important;
+}
+
+.loading-bar-error > * {
+  opacity: 0;
 }
 
 .loading-bar-done {

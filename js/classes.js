@@ -337,7 +337,19 @@ class Downloadbutton {
                                                 this.#DestroyProgressCircle()
                                           }, 300);
 
+                                          let errorPopup
+                                          const closeOption = new FullScreenPopup.PopupOption("Close", () => errorPopup.Dismiss(), true)
+                                          const copyOption = new FullScreenPopup.PopupOption("Copy", () => {
+                                                navigator.clipboard.writeText(message.error)
+                                                errorPopup.Dismiss()
+
+                                                const copyToast = this.#toastManager.DisplayToast("Copied to clipboard")
+                                                copyToast.DismissOnUninterested()
+                                          }, false)
+                                          errorPopup = new FullScreenPopup("Error during download", message.error, [copyOption, closeOption])
+
                                           this.#toastManager.SetProgress(this.#toast, 0)
+                                          this.#toast.SetErrorState(true)
                                           this.#toast.DismissOnUninterested()
                                           throw new Error(message.error)
                                     }
@@ -569,6 +581,20 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
                   message.url == downloadInfo.url) {
 
                   if (message.hasOwnProperty("error")) {
+                        let errorPopup
+                        const closeOption = new FullScreenPopup.PopupOption("Close", () => errorPopup.Dismiss(), true)
+                        const copyOption = new FullScreenPopup.PopupOption("Copy", () => {
+                              navigator.clipboard.writeText(message.error)
+                              errorPopup.Dismiss()
+
+                              const copyToast = toastManager.DisplayToast("Copied to clipboard")
+                              copyToast.DismissOnUninterested()
+                        }, false)
+                        errorPopup = new FullScreenPopup("Error during download", message.error, [copyOption, closeOption])
+
+                        toastManager.SetProgress(toast, 0)
+                        toast.SetErrorState(true)
+                        toast.DismissOnUninterested()
                         throw new Error(message.error)
                   }
 
@@ -638,7 +664,6 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
  * Bypasses will break download functionality.
  */
 function DetectMobileDevice() {
-      return true
       const toMatch = [
             /Android/i,
             /webOS/i,
@@ -1307,6 +1332,15 @@ class ToastManager {
                         }, 1500)
                   }
 
+            }
+
+            SetErrorState(state) {
+                  const loadingBarElem = this.toastElem.querySelector('[id="loadingBar"]')
+
+                  if (state)
+                        loadingBarElem.classList.add("loading-bar-error")
+                  else
+                        loadingBarElem.classList.remove("loading-bar-error")
             }
 
             SetInputMethod(method) {
