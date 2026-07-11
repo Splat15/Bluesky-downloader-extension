@@ -13,6 +13,7 @@ button[data-testid="altTextButton"] {
 }
 
 .download-button-div {
+  user-select: none;
   cursor: pointer;
   right: 20px;
   bottom: 20px;
