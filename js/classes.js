@@ -422,7 +422,7 @@ class Downloadbutton {
                                                       }, timeout)
                                                 }
 
-                                                if (document.hasFocus())
+                                                if (document.hasFocus() || !this.#mobileDevice)
                                                       downloadFileBlob()
                                                 else {
                                                       let triggered = false

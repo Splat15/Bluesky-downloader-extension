@@ -248,7 +248,37 @@ class Downloadbutton {
 
                   this.#downloadIcon.style.opacity = 0
                   this.#CreateProgressCircle()
-                  this.#progressCircle.set(0.01)
+                  this.#progressCircle.set(0.1)
+
+                  let stopSpinner = false
+
+                  setTimeout(() => {
+                        if (stopSpinner) return
+
+                        let animationLength = 0.8
+                        let rotationInterval = 0.2
+                        let rotation = 0
+                        let timeStepSize = rotationInterval * animationLength
+                        this.#progressCircleElem.style.transition = `transform linear ${timeStepSize}s`
+                        let stopSpeed = 0.3
+
+                        let spinnerInterval = setInterval(() => {
+                              if (stopSpinner) {
+                                    rotation = Math.ceil(rotation)
+                                    this.#progressCircleElem.style.transition = `transform ease-out ${stopSpeed}s`
+                                    clearInterval(spinnerInterval)
+                              }
+                              else {
+                                    rotation += rotationInterval
+                                    if (rotation % 1 <= 0.5)
+                                          this.#progressCircle.animate(0.2, { duration: 300 })
+                                    else
+                                          this.#progressCircle.animate(0.1, { duration: 300 })
+                              }
+
+                              this.#progressCircleElem.style.transform = `rotate(${rotation * 360}deg)`
+                        }, timeStepSize * 1000)
+                  }, 100)
 
                   // Delay toast for up to 300ms to allow the post info to be fetched
                   let toastDisplayed = false
@@ -337,6 +367,8 @@ class Downloadbutton {
                                     message.id == downloadProcessId &&
                                     message.url == url) {
 
+                                    stopSpinner = true
+
                                     if (message.hasOwnProperty("error")) {
                                           this.#downloadIcon.src = Downloadbutton.Icons.Error
                                           this.#progressCircleElem.style.opacity = 0
@@ -346,7 +378,19 @@ class Downloadbutton {
                                                 this.#DestroyProgressCircle()
                                           }, 300);
 
+                                          let errorPopup
+                                          const closeOption = new FullScreenPopup.PopupOption("Close", () => errorPopup.Dismiss(), true)
+                                          const copyOption = new FullScreenPopup.PopupOption("Copy", () => {
+                                                navigator.clipboard.writeText(message.error)
+                                                errorPopup.Dismiss()
+
+                                                const copyToast = this.#toastManager.DisplayToast("Copied to clipboard")
+                                                copyToast.DismissOnUninterested()
+                                          }, false)
+                                          errorPopup = new FullScreenPopup("Error during download", message.error, [copyOption, closeOption])
+
                                           this.#toastManager.SetProgress(this.#toast, 0)
+                                          this.#toast.SetErrorState(true)
                                           this.#toast.DismissOnUninterested()
                                           throw new Error(message.error)
                                     }
@@ -387,7 +431,7 @@ class Downloadbutton {
                                                       }, timeout)
                                                 }
 
-                                                if (document.hasFocus())
+                                                if (document.hasFocus() || !this.#mobileDevice)
                                                       downloadFileBlob()
                                                 else {
                                                       let triggered = false
@@ -578,6 +622,20 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
                   message.url == downloadInfo.url) {
 
                   if (message.hasOwnProperty("error")) {
+                        let errorPopup
+                        const closeOption = new FullScreenPopup.PopupOption("Close", () => errorPopup.Dismiss(), true)
+                        const copyOption = new FullScreenPopup.PopupOption("Copy", () => {
+                              navigator.clipboard.writeText(message.error)
+                              errorPopup.Dismiss()
+
+                              const copyToast = toastManager.DisplayToast("Copied to clipboard")
+                              copyToast.DismissOnUninterested()
+                        }, false)
+                        errorPopup = new FullScreenPopup("Error during download", message.error, [copyOption, closeOption])
+
+                        toastManager.SetProgress(toast, 0)
+                        toast.SetErrorState(true)
+                        toast.DismissOnUninterested()
                         throw new Error(message.error)
                   }
 
@@ -647,12 +705,19 @@ function ResumeUnfinishedDownload(downloadInfo, toastManager) {
  * Bypasses will break download functionality.
  */
 function DetectMobileDevice() {
-      return true
-      // removed by dead control flow
+      const toMatch = [
+            /Android/i,
+            /webOS/i,
+            /iPhone/i,
+            /iPad/i,
+            /iPod/i,
+            /BlackBerry/i,
+            /Windows Phone/i
+      ];
 
-
-      // removed by dead control flow
-
+      return toMatch.some((toMatchItem) => {
+            return navigator.userAgent.match(toMatchItem);
+      });
 }
 
 function GenerateHash(string) {
@@ -1308,6 +1373,15 @@ class ToastManager {
                         }, 1500)
                   }
 
+            }
+
+            SetErrorState(state) {
+                  const loadingBarElem = this.toastElem.querySelector('[id="loadingBar"]')
+
+                  if (state)
+                        loadingBarElem.classList.add("loading-bar-error")
+                  else
+                        loadingBarElem.classList.remove("loading-bar-error")
             }
 
             SetInputMethod(method) {
@@ -2404,6 +2478,7 @@ const standardSettings = [
       [
             { value: true, id: "gifsAsGIF", type: "toggle", name: "Download GIFs as .gif", tooltip: "Download GIFs as .gif files instead of as .mp4.<br/><b>May cause performance issues.</b>" },
             { value: true, id: "imagesAsWEBP", type: "toggle", name: "Download images as .webp", tooltip: "Download images as .webp instead of .jpg for potentially increased quality and smaller files." },
+            { value: false, id: "originalImages", type: "toggle", name: "Set best image quality", tooltip: "Download images in the best available quality. Images get compressed by Bluesky during upload.</b>" },
             { value: false, id: "imgQualityMode", type: "toggle", name: "Adjust image quality", tooltip: "Enable the adjustment of image quality.<br/>Can produce better images.<br/><b>May cause performance issues.</b>" }
       ],
       [
@@ -2530,7 +2605,7 @@ browser.runtime.onMessage.addListener((message, sender) => {
 
                         if (progress >= 100 && fileBlob == null) {
                               // Remove download from unfinished downloads regardless if an error has occurred to prevent loops
-                              unfinishedDownloads = undefined.unfinishedDownloads.filter(element => element.id != id)
+                              unfinishedDownloads = unfinishedDownloads.filter(element => element.id != id)
                               localStorage.setItem("unfinished-downloads", JSON.stringify(unfinishedDownloads))
                               console.log(log("Removing download " + message.downloadInfo.id + " from unfinished downloads"))
                         }
@@ -2862,6 +2937,7 @@ class Downloader {
             const tries = currentItem.tries
 
             console.log(log("Download started for: " + currentItem.data.url))
+            this.#setProgress(0)
 
             // Initialize ffmpeg if needed
             // Always initialized unless media is an image and image compression is off

@@ -322,7 +322,7 @@ function HandleInputChange(method) {
 }
 
 
-// Add download buttons to images in feed
+// Add download buttons to media in feed
 new NodeObserver(
       // Rudimentary test
       element =>
@@ -365,11 +365,11 @@ new NodeObserver(
             // Video element posts
             else if (element.tagName == "DIV" &&
                   element.previousElementSibling &&
-                  element.previousElementSibling.tagName == "FIGURE" &&
-                  element.previousElementSibling.children[0].tagName == "VIDEO" &&
+                  element.parentElement.firstElementChild.tagName == "FIGURE" &&
+                  element.parentElement.firstElementChild.children[0].tagName == "VIDEO" &&
                   element.downloadButton !== true) {
 
-                  element = element.previousElementSibling.firstElementChild
+                  element = element.parentElement.firstElementChild.firstElementChild
 
                   // Video posts
                   let downloadElement;
@@ -407,6 +407,7 @@ new NodeObserver(
                   element.previousElementSibling &&
                   element.previousElementSibling.tagName == "FIGURE" &&
                   element.previousElementSibling.children[0].tagName == "VIDEO" &&
+                  !element.matches("[data-testid*='alt']") &&
                   element.downloadButton !== true) {
                   try {
                         element = element.previousElementSibling.firstElementChild
