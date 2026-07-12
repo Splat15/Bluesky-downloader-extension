@@ -83,8 +83,9 @@ export class Downloader {
             this.#setProgress(0)
 
             // Initialize ffmpeg if needed
-            // Always initialized unless media is an image and image compression is off
-            if (fileType.id != Downloadbutton.Image.id || imgCompression) {
+            // Always initialized unless media is an image and image compression is off or unneeded
+            if (fileType.id != Downloadbutton.Image.id || (imgCompression && !(mimeType == "image/jpeg" && imgQuality == 100))) {
+                  console.info(log("Using ffmpeg for current download"))
 
                   if (this.shutDownFFmpeg) {
                         console.info(log("FFmpeg shutdown aborted"))
@@ -96,6 +97,7 @@ export class Downloader {
                         ffmpegLoading = this.#loadFFmpeg()
                   }
             }
+            else console.info(log("Not using ffmpeg for current download"))
 
             try {
                   if (fileType.id == Downloadbutton.Image.id)
@@ -129,8 +131,18 @@ export class Downloader {
 
             } catch (error) {
                   console.error(error)
+                  console.log(log("Restarting ffmpeg after error"))
+
+                  this.#ffmpeg.terminate()
+                  this.ffmpegLoaded = false
+                  await new Promise(resolve => setTimeout(resolve, 500))
 
                   if (tries < this.#maxTries) {
+                        if (error.toString().includes("index out of bounds")) {
+                              console.error(log("Insufficient memory for conversion at specified quality. Reducing quality by 10% and retrying."))
+                              currentItem.data.imgQuality -= 10
+                        }
+
                         currentItem.tries++
                         this.#queue.unshift(currentItem)
                         this.progress = 0
@@ -167,128 +179,124 @@ export class Downloader {
             imageQuality,
             mimeType
       ) {
-            try {
-                  // Runs when progress is made
-                  const _onProgress = (progress, blob = undefined, filePath = "") => {
-                        return new Promise(resolve => {
-                              this.progress = progress
+            // Runs when progress is made
+            const _onProgress = (progress, blob = undefined, filePath = "") => {
+                  return new Promise(resolve => {
+                        this.progress = progress
 
-                              // Download in progress
-                              if (!blob) {
-                                    this.#setProgress(progress)
-                                    resolve()
-                              }
+                        // Download in progress
+                        if (!blob) {
+                              this.#setProgress(progress)
+                              resolve()
+                        }
 
-                              // Download finished
-                              else if (this.#mobileDevice) {
-                                    // Send blob to content script to download
-                                    this.#setProgress(100, null, blob)
-                                    resolve()
-                              }
-                              else {
-                                    // Download using downloads API
-                                    let fileURL = URL.createObjectURL(blob)
-
-                                    // Initiate download
-                                    browser.downloads.download({
-                                          url: fileURL, filename: filePath
-                                    }).then(() => {
-                                          this.#setProgress(100)
-                                          resolve()
-
-                                          // Free up RAM, will interrupt download if done too soon for some reason
-                                          setTimeout(() => {
-                                                URL.revokeObjectURL(fileURL)
-                                          }, 5000)
-                                    }).catch(e => {
-                                          this.#setProgress(0, e)
-                                          resolve()
-
-                                          // Free up RAM, will interrupt download if done too soon for some reason
-                                          setTimeout(() => {
-                                                URL.revokeObjectURL(fileURL)
-                                          }, 5000)
-                                    })
-                              }
-
-                        })
-                  }
-
-                  // Fetch image
-                  let response = await fetch(url)
-                  // Set progress
-                  await _onProgress(compressImage ? 20 : 50)
-
-                  // Get image data
-                  let arrayBuffer = await response.arrayBuffer()
-                  let blob = new Blob([arrayBuffer], { type: mimeType })
-
-                  // Early exit when conversion is not needed
-                  if (!compressImage || (mimeType == "image/jpeg" && imageQuality == 100)) {
-                        await _onProgress(100, blob, filePath)
-                  }
-                  // Continue when conversion is needed
-                  else {
-                        // Set progress
-                        await _onProgress(40)
-
-                        // Write file to virtual FS
-                        await ffmpegLoading
-                        await this.#ffmpeg.writeFile(
-                              "input.jpg",
-                              await fetchFile(blob)
-                        );
-
-                        // Set argument for setting quality based on file type
-                        let qualityStr = "";
-                        if (mimeType == "image/webp") {
-                              qualityStr = "-q"
-
-                              imageQuality = Math.max(imageQuality, 1)
+                        // Download finished
+                        else if (this.#mobileDevice) {
+                              // Send blob to content script to download
+                              this.#setProgress(100, null, blob)
+                              resolve()
                         }
                         else {
-                              qualityStr = "-q:v"
+                              // Download using downloads API
+                              let fileURL = URL.createObjectURL(blob)
 
-                              // Convert from quality 0% = worst => 100% best to 32 = worst => 1 = best
-                              imageQuality = Math.round(32 - 0.31 * imageQuality)
+                              // Initiate download
+                              browser.downloads.download({
+                                    url: fileURL, filename: filePath
+                              }).then(() => {
+                                    this.#setProgress(100)
+                                    resolve()
+
+                                    // Free up RAM, will interrupt download if done too soon for some reason
+                                    setTimeout(() => {
+                                          URL.revokeObjectURL(fileURL)
+                                    }, 5000)
+                              }).catch(e => {
+                                    this.#setProgress(0, e)
+                                    resolve()
+
+                                    // Free up RAM, will interrupt download if done too soon for some reason
+                                    setTimeout(() => {
+                                          URL.revokeObjectURL(fileURL)
+                                    }, 5000)
+                              })
                         }
 
-                        console.info(log("Converting to " + mimeType + " at quality: " + imageQuality))
+                  })
+            }
 
-                        const startTime = Date.now()
-                        const onFFmpegProgress = async ({ progress, time }) => {
-                              await _onProgress(40 + Math.round(50 * progress))
+            // Fetch image
+            let response = await fetch(url)
+            // Set progress
+            await _onProgress(compressImage ? 20 : 50)
 
-                              let elapsedMS = Date.now() - startTime
-                              let remainingMS = (elapsedMS / progress) - elapsedMS
+            // Get image data
+            let arrayBuffer = await response.arrayBuffer()
+            let blob = new Blob([arrayBuffer], { type: mimeType })
 
-                              console.info(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
-                        }
+            // Early exit when conversion is not needed
+            if (!compressImage || (mimeType == "image/jpeg" && imageQuality == 100)) {
+                  console.log(log("Skipping ffmpeg"))
+                  await _onProgress(100, blob, filePath)
+            }
+            // Continue when conversion is needed
+            else {
+                  console.log(log("Re-encoding image with ffmpeg"))
+                  // Set progress
+                  await _onProgress(40)
 
-                        this.#ffmpeg.on('progress', onFFmpegProgress)
+                  // Write file to virtual FS
+                  await ffmpegLoading
+                  await this.#ffmpeg.writeFile(
+                        "input.jpg",
+                        await fetchFile(blob)
+                  );
 
-                        // Convert and compress file
-                        await this.#ffmpeg.exec(
-                              [
-                                    "-i",
-                                    "input.jpg",
-                                    qualityStr,
-                                    imageQuality.toString(),
-                                    "output" + fileExtension
-                              ]
-                        )
+                  // Set argument for setting quality based on file type
+                  let qualityStr = "";
+                  if (mimeType == "image/webp") {
+                        qualityStr = "-q"
 
-                        this.#ffmpeg.off("progress", onFFmpegProgress)
+                        imageQuality = Math.max(imageQuality, 1)
+                  }
+                  else {
+                        qualityStr = "-q:v"
 
-                        const image = await this.#ffmpeg.readFile("output" + fileExtension);
-                        const imageBlob = new Blob([image], { type: mimeType, });
-
-                        await _onProgress(100, imageBlob, filePath)
+                        // Convert from quality 0% = worst => 100% best to 32 = worst => 1 = best
+                        imageQuality = Math.round(32 - 0.31 * imageQuality)
                   }
 
-            } catch (error) {
-                  console.error(error)
-                  this.#setProgress(0, error)
+                  console.info(log("Converting to " + mimeType + " at quality: " + imageQuality))
+
+                  const startTime = Date.now()
+                  const onFFmpegProgress = async ({ progress, time }) => {
+                        await _onProgress(40 + Math.round(50 * progress))
+
+                        let elapsedMS = Date.now() - startTime
+                        let remainingMS = (elapsedMS / progress) - elapsedMS
+
+                        console.info(log(`Progress: ${Math.round(progress * 1000) / 10}%   Elapsed time: ${Math.round(elapsedMS / 100) / 10}s   Estimated time remaining: ${Math.round(remainingMS / 100) / 10}s`))
+                  }
+
+                  this.#ffmpeg.on('progress', onFFmpegProgress)
+
+                  // Convert and compress file
+                  await this.#ffmpeg.exec(
+                        [
+                              "-i",
+                              "input.jpg",
+                              qualityStr,
+                              imageQuality.toString(),
+                              "output" + fileExtension
+                        ]
+                  )
+
+                  this.#ffmpeg.off("progress", onFFmpegProgress)
+
+                  const image = await this.#ffmpeg.readFile("output" + fileExtension);
+                  const imageBlob = new Blob([image], { type: mimeType, });
+
+                  await _onProgress(100, imageBlob, filePath)
             }
       }
 
@@ -344,7 +352,6 @@ export class Downloader {
                         url: fileURL, filename: filePath
                   }).then(() => {
                         this.#setProgress(100)
-                        resolve()
 
                         // Free up RAM, will interrupt download if done too soon for some reason
                         setTimeout(() => {
@@ -352,7 +359,6 @@ export class Downloader {
                         }, 5000)
                   }).catch(e => {
                         this.#setProgress(0, e)
-                        resolve()
 
                         // Free up RAM, will interrupt download if done too soon for some reason
                         setTimeout(() => {
@@ -387,7 +393,6 @@ export class Downloader {
                               url: fileURL, filename: filePath
                         }).then(() => {
                               this.#setProgress(100)
-                              resolve()
 
                               // Free up RAM, will interrupt download if done too soon for some reason
                               setTimeout(() => {
@@ -395,7 +400,6 @@ export class Downloader {
                               }, 5000)
                         }).catch(e => {
                               this.#setProgress(0, e)
-                              resolve()
 
                               // Free up RAM, will interrupt download if done too soon for some reason
                               setTimeout(() => {
@@ -436,7 +440,6 @@ export class Downloader {
                         url: fileURL, filename: filePath
                   }).then(() => {
                         this.#setProgress(100)
-                        resolve()
 
                         // Free up RAM, will interrupt download if done too soon for some reason
                         setTimeout(() => {
@@ -444,7 +447,6 @@ export class Downloader {
                         }, 5000)
                   }).catch(e => {
                         this.#setProgress(0, e)
-                        resolve()
 
                         // Free up RAM, will interrupt download if done too soon for some reason
                         setTimeout(() => {

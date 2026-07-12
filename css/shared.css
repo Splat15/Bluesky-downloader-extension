@@ -1,3 +1,7 @@
+body:has(> .bsky-downloader-popup-container-visible) {
+  overflow: hidden;
+}
+
 .toast-container {
   position: fixed;
   right: 0px;
@@ -127,17 +131,18 @@
   background-color: var(--button-red) !important;
 }
 
-.loading-bar-error > * {
-  opacity: 0;
-}
-
 .loading-bar-done {
-  filter: hue-rotate(250deg) brightness(1.5) saturate(0.8);
+  background-color: rgb(16, 185, 16) !important;
 }
 
-div.loading-bar > svg {
+.loading-bar > * {
   transition: opacity ease 0.5s;
   background-color: var(--toast-surface);
+}
+
+.loading-bar-error > *,
+.loading-bar-done > * {
+  opacity: 0;
 }
 
 .bsky-downloader-popup-container {
@@ -152,6 +157,10 @@ div.loading-bar > svg {
   inset: 0;
   background-color: var(--popup-focus-effect);
   padding: 10vh 20px;
+}
+
+.bsky-downloader-popup-container-visible {
+  opacity: 1 !important;
 }
 
 .bsky-downloader-popup {
@@ -244,6 +253,8 @@ div.loading-bar > svg {
 }
 
 .bsky-downloader-popup-text {
+  max-height: 70vh;
+  overflow: scroll;
   margin: 0;
   font-size: 15px;
   line-height: 20px;
@@ -263,6 +274,7 @@ div.loading-bar > svg {
 }
 
 .bsky-downloader-popup-text-container {
+  max-height: 70vh;
   display: flex;
   flex-direction: column;
   gap: 8px;

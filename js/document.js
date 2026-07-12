@@ -11,7 +11,8 @@ async function GetURI(element) {
       let postElement = OuterQuerySelector(element, [
             "[data-testid*='Screen']:not([data-testid='postThreadScreen'])>div>div>div>div>div>div>div>div",
             "div:has(>[data-testid*='postThreadItem'])",
-            "div:has(>div>[data-testid*='feedItem-by'])"
+            "div:has(>div>[data-testid*='feedItem-by'])",
+            ":has(>*>*>*>*>*>[href*='/profile/'])"
       ]).lastElementChild.lastElementChild
       console.log(postElement)
 

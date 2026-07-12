@@ -203,7 +203,7 @@ class Downloadbutton {
 
             this.SetInputSupport(this.#inputMethod)
 
-            this.downloadButton.addEventListener(
+            this.#downloadButtonDiv.addEventListener(
                   "click",
                   (event) => {
                         event.stopPropagation()
@@ -231,6 +231,7 @@ class Downloadbutton {
                   let imagesAsWEBP = undefined;
                   let imgQualityMode = undefined;
                   let imgQuality = undefined;
+                  let originalImgMode = undefined
 
                   console.log(log("Downloading " + url))
 
@@ -239,12 +240,14 @@ class Downloadbutton {
 
                   this.#downloadIcon.style.opacity = 0
                   this.#CreateProgressCircle()
-                  this.#progressCircle.set(0.1)
+                  this.#progressCircle.set(0.01)
 
                   let stopSpinner = false
 
                   setTimeout(() => {
                         if (stopSpinner) return
+
+                        this.#progressCircle.animate(0.1, { duration: 200 })
 
                         let animationLength = 0.8
                         let rotationInterval = 0.2
@@ -269,7 +272,7 @@ class Downloadbutton {
 
                               this.#progressCircleElem.style.transform = `rotate(${rotation * 360}deg)`
                         }, timeStepSize * 1000)
-                  }, 100)
+                  }, 200)
 
                   // Delay toast for up to 300ms to allow the post info to be fetched
                   let toastDisplayed = false
@@ -289,7 +292,8 @@ class Downloadbutton {
                         this.postInfoDone = true
                   }
 
-                  this.#filePath = this.#GetFilePath()
+                  ///TODO - 
+                  this.#filePath = GetSetting("imgQuality", this.settings).value.toString() + "/" + this.#GetFilePath()
                   this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
 
                   this.#fileExtension = this.type.ext
@@ -307,14 +311,20 @@ class Downloadbutton {
                   else if (this.type == Downloadbutton.Image) {
                         // Get relevant settings
                         imagesAsWEBP = GetSetting("imagesAsWEBP", this.settings).value
-                        imgQualityMode = GetSetting("imgQualityMode", this.settings).value
                         imgQuality = GetSetting("imgQuality", this.settings).value
+                        imgQualityMode = GetSetting("imgQualityMode", this.settings).value
+
+                        originalImgMode = GetSetting("originalImages", this.settings).value
+                        if (originalImgMode) {
+                              imgQualityMode = false
+                              imagesAsWEBP = false
+                        }
 
                         // Override file extension
                         if (!imagesAsWEBP)
                               this.#fileExtension = ".jpg"
 
-                        if (imgQualityMode) {
+                        if (imgQualityMode || originalImgMode) {
                               // Change URL to API to get better quality
                               url = `https://bsky.social/xrpc/com.atproto.sync.getBlob?did=${this.postInfo.did}&cid=${this.postInfo.cid}`
                         }
@@ -390,6 +400,8 @@ class Downloadbutton {
                                     if (this.#progressCircle)
                                           this.#progressCircle.animate(progress, { duration: 300 })
                                     if (this.#toast) this.#toastManager.SetProgress(this.#toast, progress)
+
+                                    console.info(log("Download progress at " + progress * 100 + "%"))
 
                                     // Download is finished
                                     if (message.progress >= 100) {
@@ -882,7 +894,8 @@ async function GetInfoFromThread(postInfo, atURI, url) {
                         atURI = postInfo.uri
 
                         media = ProcessMedia(record.embed)
-                        mediaIndex = media.indexOf(media.find(cid => url.includes(cid)))
+                        cid = media.find(cid => url.includes(cid))
+                        mediaIndex = media.indexOf(cid)
                   }
                   catch (e) {
                         console.error(e)
@@ -1214,7 +1227,7 @@ class ToastManager {
             // Make progress bar transparent, revealing green background
             if (progress == 1)
                   setTimeout(() => {
-                        toast.toastElem.querySelector("div.loading-bar>svg").style.opacity = 0
+                        toast.loadingBarElem.classList.add("loading-bar-done")
                   }, 400);
       }
 
@@ -1281,6 +1294,7 @@ class ToastManager {
             dismissed = false
             #onDismiss
             toastManager
+            loadingBarElem
 
             constructor(text, container, progressBar, firstToast, mobileLayout, helpLink, onDismiss, toastManager) {
                   this.container = container
@@ -1327,8 +1341,8 @@ class ToastManager {
                         this.textElemDiv.style.transition = `transform linear ${scrollTime}s`
 
                         // Get gradient elements next to toast text
-                        let overflowLeft = this.textElemDiv.parentElement.querySelector('[id="overflowLeft"]')
-                        let overflowRight = this.textElemDiv.parentElement.querySelector('[id="overflowRight"]')
+                        let overflowLeft = this.textElemDiv.parentElement.querySelector('#overflowLeft')
+                        let overflowRight = this.textElemDiv.parentElement.querySelector('#overflowRight')
 
                         // Show right gradient
                         overflowRight.style.opacity = 1
@@ -1367,12 +1381,10 @@ class ToastManager {
             }
 
             SetErrorState(state) {
-                  const loadingBarElem = this.toastElem.querySelector('[id="loadingBar"]')
-
                   if (state)
-                        loadingBarElem.classList.add("loading-bar-error")
+                        this.loadingBarElem.classList.add("loading-bar-error")
                   else
-                        loadingBarElem.classList.remove("loading-bar-error")
+                        this.loadingBarElem.classList.remove("loading-bar-error")
             }
 
             SetInputMethod(method) {
@@ -1486,11 +1498,12 @@ class ToastManager {
             <div id="loadingBar" ${this.progressBar ? "" : 'style="background: none"'} class="loading-bar"></div>
       </div>`, "text/html").getElementById("toast")
 
-                  this.textElem = this.toastElem.querySelector('[id="toastText"]')
-                  this.textElemDiv = this.toastElem.querySelector('[id="toastTextDiv"]')
+                  this.textElem = this.toastElem.querySelector('#toastText')
+                  this.textElemDiv = this.toastElem.querySelector('#toastTextDiv')
+                  this.loadingBarElem = this.toastElem.querySelector('#loadingBar')
 
                   // Add click event to dismiss button
-                  this.#toastAction = this.toastElem.querySelector('[id="toastAction"]')
+                  this.#toastAction = this.toastElem.querySelector('#toastAction')
                   this.#toastAction.addEventListener("click", () => { this.onAction() })
 
                   // Add to main document
@@ -1498,8 +1511,7 @@ class ToastManager {
 
                   // Add progress bar
                   if (this.progressBar) {
-                        let progressbarElem = this.toastElem.querySelector('[id="loadingBar"]')
-                        this.progressBar = new ProgressBar.Line(progressbarElem, {
+                        this.progressBar = new ProgressBar.Line(this.loadingBarElem, {
                               strokeWidth: 10,
                               color: "rgb(15, 115, 255)",
                               trailColor: "rgb(34, 46, 63);"
@@ -1741,17 +1753,28 @@ function textPadFactor(text, factor, paddingChar = " ", minLen) {
 }
 
 function GetApproxFileSize(quality, format) {
-      const q = Math.max(quality / 100, 0.01)
+      const x = Math.max(quality, 1)
       let approxFileSize
 
       if (!quality && quality !== 0) console.error(log("No quality provided"))
       else if (!format) console.error(log("No format provided"))
 
+      // Approximate file size in KB for webp files
+      // 40+x+0.0000002\left(x-30\right)^{5}
       else if (format == "image/webp") {
-            approxFileSize = 70 * q + 20 + Math.pow(q + 0.3, 20)
+            if (x == 100)
+                  approxFileSize = 566 // Use outlier datum
+            else
+                  approxFileSize = 40 + x + 0.0000002 * Math.pow((x - 30), 5)
       }
+
+      // Approximate file size in KB for jpg files
+      // 110+0.3x+0.0003\left(x-15\right)^{3}
       else {
-            approxFileSize = (60 * Math.pow(q, 2) + 0.1 * Math.pow(q + 0.3, 34) + 30) * 2 // Quick fix
+            if (x == 100)
+                  approxFileSize = 1022 // Use outlier datum
+            else
+                  approxFileSize = 110 + 0.3 * x + 0.0003 * Math.pow((x - 15), 3)
       }
       approxFileSize = Math.round(approxFileSize)
 
@@ -1855,7 +1878,7 @@ class FullScreenPopup {
             document.body.appendChild(this.containerElem)
 
             setTimeout(() => {
-                  this.containerElem.style.opacity = "1"
+                  this.containerElem.classList.add("bsky-downloader-popup-container-visible")
                   this.popupElem.style.transform = "scale(1)"
             }, 50)
       }
@@ -1863,7 +1886,7 @@ class FullScreenPopup {
       Dismiss() {
             this.dismissed = true;
 
-            this.containerElem.style.opacity = "0"
+            this.containerElem.classList.remove("bsky-downloader-popup-container-visible")
             this.popupElem.style.transform = "scale(0.95)"
             this.containerElem.style.pointerEvents = "none"
             setTimeout(() => {

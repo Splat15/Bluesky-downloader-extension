@@ -487,8 +487,10 @@ onInit.push(() => {
  */
 function InstallCleanup() {
       // Clean up
-      Array.from(document.querySelectorAll("#download-button-div")).forEach(element => element.remove())
-      Array.from(document.querySelectorAll("#flashing-border")).forEach(element => element.remove())
+      const selectorsToRemove = ["#downloaderPopupContainer", "#download-button-div", "#flashing-border"]
+      selectorsToRemove.forEach(selector => {
+            Array.from(document.querySelectorAll(selector)).forEach(element => element.remove())
+      })
 
       // Manually re-add download buttons without the document needing to refresh
       // Images
@@ -497,6 +499,8 @@ function InstallCleanup() {
             .forEach(element => {
                   try {
                         const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
+                        ///TODO - 
+                        downloadButton.Download()
                         downloadButtons.image.push(downloadButton)
 
                         if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
@@ -511,7 +515,7 @@ function InstallCleanup() {
             })
 
       // Videos
-      Array.from(document.querySelectorAll("figure:has(+div)>video[poster][playsinline][preload='none']"))
+      Array.from(document.querySelectorAll("figure>video[poster][playsinline][preload='none']"))
             .forEach(videoElement => {
                   try {
                         const downloadElement = videoElement.parentElement.parentElement.querySelector("button[tabindex][aria-label]+div[style*='flex:']")
@@ -532,7 +536,7 @@ function InstallCleanup() {
             })
 
       // User gifs
-      Array.from(document.querySelectorAll("figure:has(+button)>video"))
+      Array.from(document.querySelectorAll("figure:has(+button:not([data-testid*='alt']))>video"))
             .forEach(videoElement => {
                   try {
                         const downloadButton = new Downloadbutton(Downloadbutton.UploadedGIF, videoElement, videoElement.poster, settings, toastManager, !GetSetting("vidDownload", settings).value, inputMethod, videoElement)
