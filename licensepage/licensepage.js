@@ -96,7 +96,7 @@ const contentElem = document.getElementById("content")
 const homepageLink = document.getElementById("homepageLink")
 const repoLink = document.getElementById("repoLink")
 const rawLink = document.getElementById("rawLink")
-const selectLicense = async (event) => {
+const selectLicense = async (event, name) => {
       // Fade out license content
       contentElem.style.opacity = 0;
       const timer = new Promise(resolve => setTimeout(() => resolve(), 80))
@@ -108,6 +108,8 @@ const selectLicense = async (event) => {
 
 
       const element = event.target
+      if (name) location.href = location.href.replace(/(#[^\/]*)?$/, "#" + name)
+
       // Remove active class from all elements
       Array.from(document.getElementsByClassName("license-entry-active"))
             .forEach(element => element.classList.remove("license-entry-active"))
@@ -149,13 +151,26 @@ for (let i = 0; i < licenses.length; i++) {
       licenseListElem.repoURL = license.links.repo
       licenseListElem.homeURL = license.links.homepage
 
-      licenseListElem.addEventListener("click", elem => selectLicense(elem))
+      licenseListElem.addEventListener("click", elem => selectLicense(elem, license.name))
 
       sidebar.appendChild(licenseListElem)
       licenseElems.push(licenseListElem)
 }
 
-selectLicense({ target: licenseElems[0] })
+let page = decodeURI(location.href).match(/#([^\/]+)$/)
+let pageIndex
+if (page && page[1]) {
+      for (let i = 0; i < licenses.length; i++) {
+            const license = licenses[i]
+            if (license.name.toLowerCase() == page[1].toLowerCase()) {
+                  page = license
+                  pageIndex = i
+                  break
+            }
+      }
+}
+
+selectLicense({ target: licenseElems[pageIndex] || licenseElems[0] }, page?.name)
 
 
 setTimeout(() => document.body.style.opacity = 1, 200)
