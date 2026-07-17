@@ -3,9 +3,7 @@
 var knownURIPaths = []
 
 /** Gets at uri */
-async function GetURI(element) {
-      let uri
-      let postInfo
+async function GetURI(element, depth = 0) {
       let resultPath
       // Get base post element
       let postElement = OuterQuerySelector(element, [
@@ -13,10 +11,17 @@ async function GetURI(element) {
             "div:has(>[data-testid*='postThreadItem'])",
             "div:has(>div>[data-testid*='feedItem-by'])",
             ":has(>*>*>*>*>*>[href*='/profile/'])"
-      ]).lastElementChild.lastElementChild
+      ])
       console.log(postElement)
 
-      //postElement.style.border = "solid green 1px"
+      const result = await SearchForURI(postElement)
+
+      return result
+}
+
+async function SearchForURI(postElement, depth = 0) {
+      let uri
+      let postInfo
 
       // Get property keys
       const keys = Object.getOwnPropertyNames(postElement)
@@ -59,6 +64,12 @@ async function GetURI(element) {
       }
 
       console.log(uri, postInfo, resultPath)
+
+      if (!postInfo && depth < 3) {
+            const result = GetURI(element.lastElementChild, depth + 1)
+            uri = result.uri
+            postInfo = result.postInfo
+      }
 
       return { uri: uri, postInfo: postInfo }
 }

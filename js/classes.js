@@ -245,34 +245,42 @@ class Downloadbutton {
                   let stopSpinner = false
 
                   setTimeout(() => {
+                        // Early return
                         if (stopSpinner) return
 
-                        this.#progressCircle.animate(0.1, { duration: 200 })
+                        this.#progressCircle.animate(0.1, { duration: 300 })
 
-                        let animationLength = 0.8
-                        let rotationInterval = 0.2
+                        // Define parameters for timing
+                        const animationLength = 0.8
+                        const rotationInterval = 0.2
                         let rotation = 0
-                        let timeStepSize = rotationInterval * animationLength
+                        const timeStepSize = rotationInterval * animationLength
                         this.#progressCircleElem.style.transition = `transform linear ${timeStepSize}s`
-                        let stopSpeed = 0.3
+                        const stopSpeed = 0.2
 
                         let spinnerInterval = setInterval(() => {
+                              // If canceled
                               if (stopSpinner) {
+                                    // Set rotation to next full rotation value
                                     rotation = Math.ceil(rotation)
-                                    this.#progressCircleElem.style.transition = `transform ease-out ${stopSpeed}s`
+                                    // Speed up animation
+                                    this.#progressCircleElem.style.transition = `transform ease-out ${stopSpeed}s, opacity ease 0.2s`
                                     clearInterval(spinnerInterval)
                               }
                               else {
+                                    // Advance rotation
                                     rotation += rotationInterval
+                                    // if the spinner is in the first half of rotation, expand, else retract
                                     if (rotation % 1 <= 0.5)
                                           this.#progressCircle.animate(0.2, { duration: 300 })
                                     else
                                           this.#progressCircle.animate(0.1, { duration: 300 })
                               }
 
-                              this.#progressCircleElem.style.transform = `rotate(${rotation * 360}deg)`
+                              // Apply rotation
+                              this.#progressCircleElem.style.transform = `rotate(${rotation}turn)`
                         }, timeStepSize * 1000)
-                  }, 200)
+                  }, 300)
 
                   // Delay toast for up to 300ms to allow the post info to be fetched
                   let toastDisplayed = false
@@ -292,8 +300,7 @@ class Downloadbutton {
                         this.postInfoDone = true
                   }
 
-                  ///TODO - 
-                  this.#filePath = GetSetting("imgQuality", this.settings).value.toString() + "/" + this.#GetFilePath()
+                  this.#filePath = this.#GetFilePath()
                   this.#fileName = this.#filePath.match(/[^\/\\]+$/gi)[0]
 
                   this.#fileExtension = this.type.ext
@@ -368,9 +375,11 @@ class Downloadbutton {
                                     message.id == downloadProcessId &&
                                     message.url == url) {
 
+                                    // Stop spinner if it is running
                                     stopSpinner = true
 
                                     if (message.hasOwnProperty("error")) {
+                                          // Set error icon and fade out progress circle
                                           this.#downloadIcon.src = Downloadbutton.Icons.Error
                                           this.#progressCircleElem.style.opacity = 0
                                           setTimeout(() => {
@@ -379,17 +388,21 @@ class Downloadbutton {
                                                 this.#DestroyProgressCircle()
                                           }, 300);
 
+                                          // Display error popup and offer to copy error text
                                           let errorPopup
                                           const closeOption = new FullScreenPopup.PopupOption("Close", () => errorPopup.Dismiss(), true)
                                           const copyOption = new FullScreenPopup.PopupOption("Copy", () => {
+                                                // Copy error text to clipboard
                                                 navigator.clipboard.writeText(message.error)
                                                 errorPopup.Dismiss()
 
-                                                const copyToast = this.#toastManager.DisplayToast("Copied to clipboard")
-                                                copyToast.DismissOnUninterested()
+                                                // Display confirmation toast
+                                                this.#toastManager.DisplayToast("Copied to clipboard").DismissOnUninterested()
                                           }, false)
+                                          // Display popup
                                           errorPopup = new FullScreenPopup("Error during download", message.error, [copyOption, closeOption])
 
+                                          // Set toast to error state
                                           this.#toastManager.SetProgress(this.#toast, 0)
                                           this.#toast.SetErrorState(true)
                                           this.#toast.DismissOnUninterested()
@@ -405,21 +418,28 @@ class Downloadbutton {
 
                                     // Download is finished
                                     if (message.progress >= 100) {
+                                          // Clear toast for dismissal
                                           this.#toast.DismissOnUninterested()
 
                                           console.log(log("Download successful"))
 
+                                          // Save hashed URL to history
+                                          // Must provide unmodified URL
                                           AddURLToHistory(originalURL)
 
 
+                                          // Background script provided file as blob
                                           if (message.fileBlob) {
                                                 const downloadFileBlob = () => {
+                                                      // On mobile, downloads cannot be queued
+                                                      // Set cooldown to give user time to accept the download 
                                                       const timeout = Math.max(0, mobileDownloadInterval - (Date.now() - lastMobileDownload))
                                                       console.log(log("Delaying mobile download by " + Math.round(timeout / 100) / 10 + "s"))
 
                                                       lastMobileDownload = Date.now() + timeout
 
                                                       setTimeout(() => {
+                                                            // Download file
                                                             let fileURL = URL.createObjectURL(message.fileBlob)
                                                             const a = document.createElement('a');
                                                             a.download = this.#fileName + this.#fileExtension;
@@ -430,10 +450,12 @@ class Downloadbutton {
                                                             window.URL.revokeObjectURL(fileURL)
                                                             a.remove()
 
+                                                            // Remove from unfinished downloads
                                                             browser.runtime.sendMessage({ type: "remove-unfinished-download", value: downloadProcessId })
                                                       }, timeout)
                                                 }
 
+                                                // If document is in focus, download blob, else wait for focus
                                                 if (document.hasFocus() || !this.#mobileDevice)
                                                       downloadFileBlob()
                                                 else {
@@ -442,7 +464,9 @@ class Downloadbutton {
                                                             if (!triggered) {
                                                                   triggered = true
                                                                   document.removeEventListener("focus", downloadFileBlob)
-                                                                  downloadFileBlob()
+                                                                  setTimeout(() => {
+                                                                        downloadFileBlob()
+                                                                  }, 1000);
                                                             }
                                                       })
                                                 }
@@ -456,7 +480,7 @@ class Downloadbutton {
                                                       this.#downloading = false
                                                       this.#DestroyProgressCircle()
                                                 }, 200);
-                                          }, 800)
+                                          }, 1000)
                                     }
                               }
 
@@ -494,7 +518,7 @@ class Downloadbutton {
                                           this.#DestroyProgressCircle()
                                     }
                                     catch { }
-                              }, 100);
+                              }, 200);
                         }, 800)
 
                         throw new Error(error)
@@ -516,7 +540,7 @@ class Downloadbutton {
                                     this.#DestroyProgressCircle()
                               }
                               catch { }
-                        }, 100);
+                        }, 200);
                   }, 800)
             }
       }
@@ -1862,7 +1886,9 @@ class FullScreenPopup {
                   const option = options[i]
                   const button = option.GetElement()
 
-                  button.addEventListener("click", option.onClick || (() => this.Dismiss()))
+                  setTimeout(() =>
+                        button.addEventListener("click", option.onClick || (() => this.Dismiss()))
+                        , 500)
 
                   this.buttonDiv.appendChild(button)
             }

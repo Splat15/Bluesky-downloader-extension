@@ -487,7 +487,7 @@ onInit.push(() => {
  */
 function InstallCleanup() {
       // Clean up
-      const selectorsToRemove = ["#downloaderPopupContainer", "#download-button-div", "#flashing-border"]
+      const selectorsToRemove = ["#downloaderPopupContainer", "#download-button-div", "#flashing-border", "#mainThreadHelper"]
       selectorsToRemove.forEach(selector => {
             Array.from(document.querySelectorAll(selector)).forEach(element => element.remove())
       })
@@ -499,8 +499,6 @@ function InstallCleanup() {
             .forEach(element => {
                   try {
                         const downloadButton = new Downloadbutton(Downloadbutton.Image, element, element.src, settings, toastManager, !GetSetting("imgDownload", settings).value, inputMethod)
-                        ///TODO - 
-                        downloadButton.Download()
                         downloadButtons.image.push(downloadButton)
 
                         if ((!onboardingStatus.image && !onboardingHasRun.image) && GetSetting("imgDownload", settings).value) {
