@@ -2668,7 +2668,13 @@ browser.runtime.onMessage.addListener((message, sender) => {
                               fileBlob: fileBlob
                         }
 
-                        if (error !== null) response.error = error.toString()
+                        if (error !== null) {
+                              if (error.toString().includes("Download canceled by the user"))
+                                    response.progress = 100
+
+                              else
+                                    response.error = error.toString()
+                        }
 
                         browser.tabs.sendMessage(sender.tab.id, response)
                   })
