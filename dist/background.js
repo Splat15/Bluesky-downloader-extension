@@ -473,7 +473,9 @@ class Downloadbutton {
                                                             if (!triggered) {
                                                                   triggered = true
                                                                   document.removeEventListener("focus", downloadFileBlob)
-                                                                  downloadFileBlob()
+                                                                  setTimeout(() => {
+                                                                        downloadFileBlob()
+                                                                  }, 1000);
                                                             }
                                                       })
                                                 }
@@ -2485,7 +2487,7 @@ const downloader = new _src_downloader_js__WEBPACK_IMPORTED_MODULE_0__.Downloade
 
 
 // Set info for last major version. Will only be displayed if the extension has been updated from a version BELOW this one.
-const majorVersionInfo = { version: "2.3.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.3.0" } }
+const majorVersionInfo = { version: "2.4.0", text: "Bluesky downloader has been updated", link: { text: "See changes", link: "https://github.com/Splat15/Bluesky-downloader-extension/releases/tag/v2.4.0" } }
 // Get current version, including patches
 const currentVersion = browser.runtime.getManifest().version
 // Get version from when the bg script last ran
