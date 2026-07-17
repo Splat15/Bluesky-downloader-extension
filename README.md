@@ -22,7 +22,6 @@ npm install
 
 ```
 npm run build
-web-ext build
 ```
 
 ## Compatibility
