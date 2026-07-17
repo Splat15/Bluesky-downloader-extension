@@ -6,7 +6,7 @@
   "scripts": {
     "watch": "npx watch \"npm run runwebpack\"",
     "runwebpack": "webpack --config webpack-config.js",
-    "build": "web-ext build",
+    "build": "npm run runwebpack & web-ext build",
     "debugA": "py .vscode/StartAndroidDebug.py",
     "debug": "web-ext run --arg='--new-tab=about:debugging' --arg='--new-tab=https://bsky.app/' --devtools --pref toolkit.telemetry.reportingpolicy.firstRun=false",
     "scrcpy": "py .vscode/StartScrcpy.py"
