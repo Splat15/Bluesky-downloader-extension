@@ -5,7 +5,10 @@
   "private": true,
   "scripts": {
     "watch": "npx watch \"npm run build\"",
-    "build": "webpack --config webpack-config.js"
+    "build": "webpack --config webpack-config.js",
+    "debugA": "py .vscode/StartAndroidDebug.py",
+    "debug": "web-ext run --arg='--new-tab=about:debugging' --arg='--new-tab=https://bsky.app/' --devtools --pref toolkit.telemetry.reportingpolicy.firstRun=false",
+    "scrcpy": "py .vscode/StartScrcpy.py"
   },
   "keywords": [],
   "author": "Splat (https://github.com/Splat15)",
