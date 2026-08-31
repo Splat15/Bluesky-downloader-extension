@@ -1,5 +1,9 @@
 # Bluesky Downloader
 
+> [!Warning]
+> This repository has moved to [Codeberg](https://codeberg.org/Splat15/Bluesky-downloader-extension) and will no longer be kept up-to-date on GitHub. <b>It should only be used for issues.</b> The source code will be removed from GitHub on October 1st 2026.
+
+
 ## Introduction
 
 Bluesky downloader is a Firefox extension that adds download buttons for videos, images and GIFs on Bluesky.<br/>
@@ -46,7 +50,7 @@ Please keep the browser and tab in focus while downloading.
 ## Credit
 
 Video downloads are based on [downloader.notx.blue](https://github.com/breakzplatform/downloader.notx.blue) ([down.blue](https://down.blue)) by [breakzplatform](https://github.com/breakzplatform).<br/>
-The extension uses [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm), a WebAssembly port of ffmpeg to convert downloaded videos to the mp4 format.<br/>
+The extension uses [ffmpeg.wasm](https://github.com/ffmpegwasm/ffmpeg.wasm), a WebAssembly port of FFmpeg to convert downloaded videos to the mp4 format.<br/>
 Implementation of ffmpeg.wasm is based on [browser-extension-ffmpeg](https://github.com/Aniny21/browser-extension-ffmpeg) by [Aniny21](https://github.com/Aniny21).<br/>
 SVG icons are made by [https://flaticon.com/uicons](https://flaticon.com/uicons).<br/>
 Progress indicators are from [progressbar.js](https://github.com/kimmobrunfeldt/progressbar.js) by [kimmobrunfeldt](https://github.com/kimmobrunfeldt). 
